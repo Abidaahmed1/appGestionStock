@@ -23,8 +23,14 @@ public class AdminController {
     }
 
     @GetMapping
-    public List<Map<String, Object>> getAllUsers() {
-        return adminService.getAllUsers();
+    public ResponseEntity<?> getAllUsers() {
+        try {
+            return ResponseEntity.ok(adminService.getAllUsers());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erreur lors de la récupération des utilisateurs: " + e.getMessage());
+        }
     }
 
     @PostMapping
