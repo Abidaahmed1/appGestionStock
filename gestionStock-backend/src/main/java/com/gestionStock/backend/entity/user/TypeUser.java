@@ -1,4 +1,4 @@
-package com.gestionStock.backend.entity;
+package com.gestionStock.backend.entity.user;
 
 public enum TypeUser {
 	ADMINISTRATEUR,

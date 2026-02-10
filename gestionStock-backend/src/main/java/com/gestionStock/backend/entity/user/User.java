@@ -1,4 +1,4 @@
-package com.gestionStock.backend.entity;
+package com.gestionStock.backend.entity.user;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;

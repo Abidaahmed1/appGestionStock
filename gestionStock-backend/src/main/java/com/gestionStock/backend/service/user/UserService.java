@@ -6,7 +6,7 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.gestionStock.backend.entity.User;
+import com.gestionStock.backend.entity.user.User;
 import com.gestionStock.backend.repository.UserRepository;
 
 @Service
