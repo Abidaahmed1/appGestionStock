@@ -1,0 +1,34 @@
+# Eclipse / STS
+.metadata/
+.settings/
+.project
+.classpath
+.springBeans
+.sts4-cache/
+
+# IDE
+.idea/
+.vscode/
+
+# Node / Angular
+node_modules/
+dist/
+# package-lock.json (Optional: usually kept, but following user's .idea/.gitignore)
+# package-lock.json
+
+# Maven / Java
+target/
+*.log
+*.iml
+
+# Keycloak Theme / Exported Files
+myrealm-export.json
+
+# Build / Temp / Workspace
+build/
+.shelf/
+workspace.xml
+queries/
+dataSources/
+dataSources.local.xml
+httpRequests/
