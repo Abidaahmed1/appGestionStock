@@ -1,0 +1,51 @@
+{
+    "id": "myrealm",
+    "realm": "myrealm",
+    "enabled": true,
+    "resetPasswordAllowed": true,
+    "rememberMe": true,
+    "verifyEmail": false,
+    "loginWithEmailAllowed": true,
+    "duplicateEmailsAllowed": false,
+    "smtpServer": {
+        "host": "maildev",
+        "port": "1025",
+        "from": "noreply@stockmasters.com",
+        "fromDisplayName": "StockMasters",
+        "auth": "false",
+        "starttls": "false",
+        "ssl": "false"
+    },
+    "clients": [
+        {
+            "clientId": "myclient",
+            "enabled": true,
+            "publicClient": true,
+            "directAccessGrantsEnabled": true,
+            "webOrigins": [
+                "*"
+            ],
+            "redirectUris": [
+                "http://localhost:4200/*"
+            ]
+        }
+    ],
+    "users": [
+        {
+            "username": "admin_user",
+            "enabled": true,
+            "email": "admin@stockmasters.com",
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "admin",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": [
+                "admin"
+            ]
+        }
+    ]
+}

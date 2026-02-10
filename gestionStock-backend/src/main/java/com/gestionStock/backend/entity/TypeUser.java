@@ -1,0 +1,9 @@
+package com.gestionStock.backend.entity;
+
+public enum TypeUser {
+	ADMINISTRATEUR,
+	RESPONSABL_ACHATS,
+	AUDITEUR,
+	MAGASINIER,
+	GESTIONNAIRE_STOCK,RESPONSABLE_INVONTAIRE
+}
