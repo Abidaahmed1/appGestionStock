@@ -7,15 +7,6 @@
     "verifyEmail": false,
     "loginWithEmailAllowed": true,
     "duplicateEmailsAllowed": false,
-    "smtpServer": {
-        "host": "maildev",
-        "port": "1025",
-        "from": "noreply@stockmasters.com",
-        "fromDisplayName": "StockMasters",
-        "auth": "false",
-        "starttls": "false",
-        "ssl": "false"
-    },
     "clients": [
         {
             "clientId": "myclient",

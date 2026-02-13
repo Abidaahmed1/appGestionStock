@@ -21,5 +21,5 @@ public class User {
     private String email;
     private boolean active = true;
     @Enumerated(value = EnumType.STRING)
-    private TypeUser type;
+    private Role role;
 }

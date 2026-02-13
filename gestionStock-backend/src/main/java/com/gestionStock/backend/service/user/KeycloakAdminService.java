@@ -7,11 +7,10 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClient.RequestBodySpec;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import reactor.core.publisher.Mono;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -51,24 +50,27 @@ public class KeycloakAdminService {
                 .uri(keycloakServerUrl + "/admin/realms/" + targetRealm + "/users")
                 .headers(h -> h.setBearerAuth(getAdminToken()))
                 .retrieve()
-                .bodyToMono(List.class)
+                .bodyToMono(new org.springframework.core.ParameterizedTypeReference<List<Map<String, Object>>>() {
+                })
                 .block());
     }
 
-    public void createUser(Map<String, Object> user) {
-        executeWithRetry(() -> {
-            webClient.post()
+    public String createUser(Map<String, Object> user) {
+        return executeWithRetry(() -> {
+            var response = webClient.post()
                     .uri(keycloakServerUrl + "/admin/realms/" + targetRealm + "/users")
                     .headers(h -> h.setBearerAuth(getAdminToken()))
                     .bodyValue(user)
                     .retrieve()
                     .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
-                            response -> response.bodyToMono(String.class).flatMap(body -> {
+                            res -> res.bodyToMono(String.class).flatMap(body -> {
                                 return Mono.error(new RuntimeException("Keycloak error: " + body));
                             }))
-                    .bodyToMono(Void.class)
+                    .toBodilessEntity()
                     .block();
-            return null;
+
+            String location = response.getHeaders().getLocation().getPath();
+            return location.substring(location.lastIndexOf("/") + 1);
         });
     }
 
@@ -79,7 +81,8 @@ public class KeycloakAdminService {
                     .uri(url)
                     .headers(h -> h.setBearerAuth(getAdminToken()))
                     .retrieve()
-                    .bodyToMono(List.class)
+                    .bodyToMono(new org.springframework.core.ParameterizedTypeReference<List<Map<String, Object>>>() {
+                    })
                     .block();
 
             return (users != null && !users.isEmpty()) ? users.get(0) : null;
@@ -113,39 +116,122 @@ public class KeycloakAdminService {
         });
     }
 
+    public void updateUserEnabledStatus(String id, boolean enabled) {
+        executeWithRetry(() -> {
+            Map<String, Object> update = new HashMap<>();
+            update.put("enabled", enabled);
+
+            webClient.put()
+                    .uri(keycloakServerUrl + "/admin/realms/" + targetRealm + "/users/" + id)
+                    .headers(h -> h.setBearerAuth(getAdminToken()))
+                    .bodyValue(update)
+                    .retrieve()
+                    .bodyToMono(Void.class)
+                    .block();
+            return null;
+        });
+    }
+
+    public void updateUserProfile(String id, String firstName, String lastName, String email) {
+        executeWithRetry(() -> {
+            Map<String, Object> update = new HashMap<>();
+            update.put("firstName", firstName);
+            update.put("lastName", lastName);
+            update.put("email", email);
+            update.put("emailVerified", true);
+
+            webClient.put()
+                    .uri(keycloakServerUrl + "/admin/realms/" + targetRealm + "/users/" + id)
+                    .headers(h -> h.setBearerAuth(getAdminToken()))
+                    .bodyValue(update)
+                    .retrieve()
+                    .bodyToMono(Void.class)
+                    .block();
+            return null;
+        });
+    }
+
+    public void resetUserPassword(String id, String newPassword) {
+        executeWithRetry(() -> {
+            Map<String, Object> passwordCred = new HashMap<>();
+            passwordCred.put("type", "password");
+            passwordCred.put("value", newPassword);
+            passwordCred.put("temporary", false);
+
+            webClient.put()
+                    .uri(keycloakServerUrl + "/admin/realms/" + targetRealm + "/users/" + id + "/reset-password")
+                    .headers(h -> h.setBearerAuth(getAdminToken()))
+                    .bodyValue(passwordCred)
+                    .retrieve()
+                    .bodyToMono(Void.class)
+                    .block();
+            return null;
+        });
+    }
+
     public List<Map<String, Object>> getUserRoles(String userId) {
         return webClient.get()
                 .uri(keycloakServerUrl + "/admin/realms/" + targetRealm + "/users/" + userId + "/role-mappings/realm")
                 .headers(h -> h.setBearerAuth(getAdminToken()))
                 .retrieve()
-                .bodyToMono(List.class)
+                .bodyToMono(new org.springframework.core.ParameterizedTypeReference<List<Map<String, Object>>>() {
+                })
                 .block();
     }
 
     public void assignRole(String userId, String roleName) {
+        Map<String, Object> role = getRealmRole(roleName);
+        if (role == null) {
+            throw new RuntimeException("Le rôle '" + roleName + "' n'existe pas dans le realm " + targetRealm);
+        }
+
         webClient.post()
                 .uri(keycloakServerUrl + "/admin/realms/" + targetRealm + "/users/" + userId + "/role-mappings/realm")
                 .headers(h -> h.setBearerAuth(getAdminToken()))
-                .bodyValue(List.of(Map.of("name", roleName)))
+                .bodyValue(List.of(role))
                 .retrieve()
+                .onStatus(status -> status.is4xxClientError() || status.is5xxServerError(),
+                        response -> response.bodyToMono(String.class).flatMap(body -> {
+                            return Mono.error(new RuntimeException("Erreur assignation rôle Keycloak: " + body));
+                        }))
                 .bodyToMono(Void.class)
                 .block();
     }
 
     public void removeRole(String userId, String roleName) {
-        ((RequestBodySpec) webClient.delete()
+        Map<String, Object> role = getRealmRole(roleName);
+        if (role == null)
+            return;
+
+        webClient.method(org.springframework.http.HttpMethod.DELETE)
                 .uri(keycloakServerUrl + "/admin/realms/" + targetRealm + "/users/" + userId + "/role-mappings/realm")
-                .headers(h -> h.setBearerAuth(getAdminToken())))
-                .bodyValue(List.of(Map.of("name", roleName)))
+                .headers(h -> h.setBearerAuth(getAdminToken()))
+                .bodyValue(List.of(role))
                 .retrieve()
                 .bodyToMono(Void.class)
                 .block();
     }
 
+    public Map<String, Object> getRealmRole(String roleName) {
+        return executeWithRetry(() -> {
+            try {
+                return webClient.get()
+                        .uri(keycloakServerUrl + "/admin/realms/" + targetRealm + "/roles/" + roleName)
+                        .headers(h -> h.setBearerAuth(getAdminToken()))
+                        .retrieve()
+                        .bodyToMono(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {
+                        })
+                        .block();
+            } catch (Exception e) {
+                System.err.println("KeycloakAdminService: Rôle non trouvé: " + roleName);
+                return null;
+            }
+        });
+    }
+
     private String getAdminToken() {
         if (adminToken == null) {
-            // System.out.println("KeycloakAdminService: Tentative de récupération du token
-            // admin...");
+
             MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
             formData.add("grant_type", "password");
             formData.add("client_id", adminClientId);
@@ -158,7 +244,8 @@ public class KeycloakAdminService {
                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                         .body(BodyInserters.fromFormData(formData))
                         .retrieve()
-                        .bodyToMono(Map.class)
+                        .bodyToMono(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {
+                        })
                         .block();
 
                 adminToken = (String) tokenResponse.get("access_token");

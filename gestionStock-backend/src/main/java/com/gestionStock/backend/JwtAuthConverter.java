@@ -56,7 +56,9 @@ public class JwtAuthConverter implements Converter<Jwt, AbstractAuthenticationTo
             return Set.of();
         }
 
+        @SuppressWarnings("unchecked")
         Map<String, Object> resource = (Map<String, Object>) resourceAccess.get(resourceId);
+        @SuppressWarnings("unchecked")
         Collection<String> resourceRoles = (Collection<String>) resource.get("roles");
 
         if (resourceRoles == null) {
@@ -74,6 +76,7 @@ public class JwtAuthConverter implements Converter<Jwt, AbstractAuthenticationTo
             return Set.of();
         }
 
+        @SuppressWarnings("unchecked")
         Collection<String> realmRoles = (Collection<String>) realmAccess.get("roles");
         if (realmRoles == null) {
             return Set.of();
