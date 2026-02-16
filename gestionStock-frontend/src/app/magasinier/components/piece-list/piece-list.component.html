@@ -1,0 +1,702 @@
+<div class="admin-container">
+    <div class="notification-toast" *ngIf="notification" [class.success]="notification.type === 'success'"
+        [class.error]="notification.type === 'error'">
+        <span class="msg">{{ notification.message }}</span>
+        <button class="close-btn" (click)="notification = null">✕</button>
+    </div>
+
+    <div class="header-section">
+        <div class="header-left">
+            <h1>
+                <div class="title-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path
+                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                        </path>
+                    </svg>
+                </div>
+                Gestion des Pièces Détachées
+            </h1>
+            <div class="search-box">
+                <div class="search-input-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" [(ngModel)]="searchTerm" placeholder="Rechercher une pièce...">
+                </div>
+                <select class="category-select" [(ngModel)]="searchCategory">
+                    <option value="all">Tout</option>
+                    <option value="reference">Référence</option>
+                    <option value="designation">Désignation</option>
+                    <option value="codeBarre">Code Barre</option>
+                    <option value="produit">Produit Associé</option>
+                </select>
+            </div>
+        </div>
+        <button class="btn-add" (click)="openCreateModal()" *ngIf="canManage()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Nouvelle Pièce
+        </button>
+    </div>
+
+    <div class="loading-spinner-container" *ngIf="loading">
+        <div class="spinner"></div>
+        <span>Actualisation...</span>
+    </div>
+
+    <div class="card-grid" *ngIf="!loading">
+        <div class="item-card" *ngFor="let piece of filteredPieces">
+            <div class="card-image">
+                <img [src]="getImageUrl(piece.imageUrl)"
+                    onerror="this.onerror=null;this.src='assets/images/default-piece.svg'">
+                <div class="card-actions-overlay" *ngIf="canManage()">
+                    <button class="action-btn edit" title="Modifier" (click)="openEditModal(piece)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                    </button>
+                    <button class="action-btn delete" title="Supprimer" (click)="confirmDelete(piece)">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="card-content">
+                <div class="card-header-info">
+                    <h3 class="item-title">{{ piece.designation }}</h3>
+                    <code class="item-code">{{ piece.codeBarre }}</code>
+                </div>
+                <div class="item-details">
+                    <div class="detail-row">
+                        <span class="label">Référence:</span>
+                        <span class="value">{{ piece.reference }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">Seuil Min:</span>
+                        <span class="value">{{ piece.seuilMinimum }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="label">TVA:</span>
+                        <span class="value">{{ piece.tauxTVA }}%</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <button class="btn-view-associated" *ngIf="piece.produitsAssocies && piece.produitsAssocies.length > 0"
+                    (click)="showAssociatedProducts(piece)" title="Voir les produits associés">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                    </svg>
+                    {{ piece.produitsAssocies.length }} produit{{ piece.produitsAssocies.length > 1 ? 's' : '' }}
+                </button>
+                <span class="price-tag">{{ piece.prixVente | currency:'TND' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="empty-state" *ngIf="filteredPieces.length === 0">
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+            <path
+                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+            </path>
+            <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
+            <polyline points="7.5 19.79 7.5 14.63 3 12"></polyline>
+            <polyline points="21 12 16.5 14.63 16.5 19.79"></polyline>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+        </svg>
+        <p>Aucune pièce détachée trouvée.</p>
+    </div>
+</div>
+
+<div class="modal-overlay delete-modal" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
+    <div class="modal-content small confirm-danger" (click)="$event.stopPropagation()">
+        <div class="confirm-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path
+                    d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" />
+            </svg>
+        </div>
+        <h2>Confirmer la suppression</h2>
+        <p>Voulez-vous vraiment supprimer la pièce <strong>{{ itemToDelete?.designation }}</strong> ?</p>
+        <p class="warning-subtext">Cette action est irréversible.</p>
+        <div class="confirm-actions">
+            <button class="btn-cancel" (click)="cancelDelete()">Annuler</button>
+            <button class="btn-confirm-delete" (click)="deletePiece(itemToDelete.codeBarre)">
+                Oui, Supprimer
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay piece-modal-overlay" *ngIf="showCreateModal" (click)="closeCreateModal()">
+    <div class="modal-content piece-modal-content" (click)="$event.stopPropagation()">
+        <div class="piece-modal-header">
+            <div class="piece-modal-title-block">
+                <div class="piece-modal-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path
+                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                        </path>
+                    </svg>
+                </div>
+                <div>
+                    <h2>{{ selectedPiece ? 'Modifier' : 'Ajouter' }} une pièce</h2>
+                    <p class="piece-modal-subtitle">{{ selectedPiece ? 'Mettre à jour les informations' : 'Complétez les
+                        informations de la pièce détachée' }}</p>
+                </div>
+            </div>
+            <button class="btn-icon piece-modal-close" (click)="closeCreateModal()" type="button" title="Fermer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <form #pieceForm="ngForm" (ngSubmit)="pieceForm.form.valid && savePiece()" class="piece-modal-form">
+            <div class="piece-form-scroll">
+                <div class="form-section-row">
+                    <div class="form-section image-section">
+                        <label class="section-label">Image</label>
+                        <div class="image-preview-container" (click)="fileInput.click()">
+                            <img *ngIf="imagePreview" [src]="getImageUrl(imagePreview)" class="preview-img">
+                            <div class="overlay">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path
+                                        d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                                    <circle cx="12" cy="13" r="4" />
+                                </svg>
+                                <span *ngIf="!imagePreview">Cliquer pour ajouter</span>
+                            </div>
+                        </div>
+                        <input type="file" #fileInput (change)="onFileSelected($event)" hidden accept="image/*">
+                    </div>
+                    <div class="form-section flex-1">
+                        <h3 class="form-section-title">Informations de base</h3>
+                        <div class="form-group piece-form-group">
+                            <label>Référence <span class="required">*</span></label>
+                            <div class="control-wrapper">
+                                <input type="text" [(ngModel)]="newPiece.reference" name="reference" #ref="ngModel"
+                                    required placeholder="Ex: REF-001">
+                                <span class="error-msg" *ngIf="ref.invalid && ref.touched">La référence est
+                                    obligatoire</span>
+                            </div>
+                        </div>
+                        <div class="form-group piece-form-group">
+                            <label>Désignation <span class="required">*</span></label>
+                            <div class="control-wrapper">
+                                <input type="text" [(ngModel)]="newPiece.designation" name="designation" #des="ngModel"
+                                    required placeholder="Nom de la pièce">
+                                <span class="error-msg" *ngIf="des.invalid && des.touched">La désignation est
+                                    obligatoire</span>
+                            </div>
+                        </div>
+                        <div class="form-group piece-form-group">
+                            <label>Code Barre <span class="required">*</span></label>
+                            <div class="control-wrapper">
+                                <input type="text" [(ngModel)]="newPiece.codeBarre" name="codeBarre" #cb="ngModel"
+                                    required placeholder="123456789">
+                                <span class="error-msg" *ngIf="cb.invalid && cb.touched">Le code barre est
+                                    obligatoire</span>
+                            </div>
+                        </div>
+                        <div class="form-group piece-form-group">
+                            <label>Catégorie</label>
+                            <div class="custom-picker" #categoryPicker>
+                                <div class="selected-display" *ngIf="newPiece.categorie?.nom"
+                                    (click)="toggleCategorySelector($event)">
+                                    <span class="value">{{ newPiece.categorie?.nom }}</span>
+                                    <span class="picker-badge" *ngIf="newPiece.categorie?.code">{{
+                                        newPiece.categorie?.code }}</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <path d="m6 9 6 6 6-6" />
+                                    </svg>
+                                </div>
+                                <button type="button" class="btn-picker-trigger" *ngIf="!newPiece.categorie?.nom"
+                                    (click)="toggleCategorySelector($event)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <path d="M4 7h16M4 12h16M4 17h10" />
+                                    </svg>
+                                    Choisir une catégorie...
+                                </button>
+                                <div class="picker-dropdown picker-dropdown-friendly" *ngIf="showCategorySelector">
+                                    <div class="picker-search">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="11" cy="11" r="8"></circle>
+                                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                        </svg>
+                                        <input type="text" [(ngModel)]="categorySearchTerm"
+                                            (ngModelChange)="triggerChangeDetection()" name="catSearch"
+                                            placeholder="Rechercher une catégorie..."
+                                            (click)="$event.stopPropagation()">
+                                    </div>
+                                    <div class="picker-list">
+                                        <div class="picker-item picker-item-cat" *ngFor="let cat of filteredCategories"
+                                            (click)="selectCategory(cat)">
+                                            <span class="picker-item-name">{{ cat.nom }}</span>
+                                            <span class="picker-item-code" *ngIf="cat.code">{{ cat.code }}</span>
+                                        </div>
+                                        <div class="picker-empty"
+                                            *ngIf="filteredCategories.length === 0 && categorySearchTerm">
+                                            <span>Aucune catégorie trouvée</span>
+                                            <small>Essayez un autre terme ou créez-en une</small>
+                                        </div>
+                                        <div class="picker-item add-new" (click)="openQuickAddCategory($event)">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                            </svg>
+                                            Créer une nouvelle catégorie
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section form-section-compact">
+                    <div class="form-group piece-form-group">
+                        <label>Produits Finis Associés</label>
+                        <div class="product-selection-area">
+                            <button type="button" class="btn-open-selector"
+                                (click)="toggleProductSelectorModal($event)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                                </svg>
+                                {{ (newPiece.produitsAssocies?.length || 0) > 0 ? 'Modifier les produits associés' :
+                                'Sélectionner des produits finis' }}
+                                <span class="selector-count" *ngIf="(newPiece.produitsAssocies?.length || 0) > 0">
+                                    ({{ newPiece.produitsAssocies?.length }})
+                                </span>
+                            </button>
+                            <div class="selected-tags"
+                                *ngIf="newPiece.produitsAssocies && newPiece.produitsAssocies.length > 0">
+                                <span class="product-tag" *ngFor="let prod of newPiece.produitsAssocies; let i = index">
+                                    {{ prod.designation }}
+                                    <button type="button" (click)="removeAssociatedProduct(i)"
+                                        aria-label="Retirer">✕</button>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3 class="form-section-title">Prix & Stock</h3>
+                    <div class="form-row-2">
+                        <div class="form-group piece-form-group">
+                            <label>Prix de vente (TND) <span class="required">*</span></label>
+                            <div class="control-wrapper">
+                                <input type="number" [(ngModel)]="newPiece.prixVente" name="prixVente" #pa="ngModel"
+                                    required min="0.001" step="0.001" placeholder="0.000">
+                                <span class="error-msg" *ngIf="pa.invalid && pa.touched">
+                                    {{ pa.errors?.['required'] ? 'Le prix de vente est obligatoire' : 'Le prix doit être
+                                    > 0' }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="form-group piece-form-group">
+                            <label>Seuil Minimum <span class="required">*</span></label>
+                            <div class="control-wrapper">
+                                <input type="number" [(ngModel)]="newPiece.seuilMinimum" name="seuilMinimum"
+                                    #sm="ngModel" required min="0" placeholder="0">
+                                <span class="error-msg" *ngIf="sm.invalid && sm.touched">
+                                    {{ sm.errors?.['required'] ? 'Le seuil est obligatoire' : 'Le seuil ne peut pas être
+                                    négatif' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row-2">
+                        <div class="form-group piece-form-group">
+                            <label>Taux TVA (%) <span class="required">*</span></label>
+                            <div class="control-wrapper">
+                                <input type="number" [(ngModel)]="newPiece.tauxTVA" name="tauxTVA" #tva="ngModel"
+                                    required min="0" max="100" step="0.1" placeholder="19">
+                                <span class="error-msg" *ngIf="tva.invalid && tva.touched">
+                                    {{ tva.errors?.['required'] ? 'Le taux TVA est obligatoire' : 'Le taux doit être
+                                    entre 0 et 100' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-selector-interface" *ngIf="showProductSelector" [class.visible]="showProductSelector">
+                <div class="product-selector-backdrop" (click)="toggleProductSelectorModal($event)"></div>
+                <div class="product-selector-panel" (click)="$event.stopPropagation()">
+                    <header class="product-selector-header">
+                        <div class="product-selector-title-block">
+                            <div class="product-selector-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2>Sélectionner les produits finis</h2>
+                                <p class="product-selector-subtitle">Cliquez sur une carte pour associer ou retirer le
+                                    produit </p>
+                            </div>
+                        </div>
+                        <div class="product-selector-header-right">
+                            <div class="product-selector-current-piece-header"
+                                *ngIf="newPiece.reference || newPiece.designation">
+                                <div class="current-piece-header-compact">
+                                    <div class="current-piece-image-compact" *ngIf="imagePreview || newPiece.imageUrl">
+                                        <img [src]="getImageUrl(imagePreview || newPiece.imageUrl)"
+                                            [alt]="newPiece.designation"
+                                            onerror="this.onerror=null;this.src='assets/images/default-piece.svg'">
+                                    </div>
+                                    <div class="current-piece-info-compact">
+                                        <div class="current-piece-name-compact">{{ newPiece.designation || 'Nouvelle
+                                            pièce' }}</div>
+                                        <div class="current-piece-details-compact">
+                                            <span class="current-piece-ref-compact" *ngIf="newPiece.reference">{{
+                                                newPiece.reference }}</span>
+                                            <span class="current-piece-code-compact" *ngIf="newPiece.codeBarre">{{
+                                                newPiece.codeBarre }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn-close-interface" (click)="toggleProductSelectorModal($event)"
+                                type="button" title="Fermer">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </header>
+                    <div class="product-selector-body">
+                        <div class="product-selector-split">
+                            <section class="product-selector-available">
+                                <div class="product-selector-toolbar">
+                                    <h3>Produits </h3>
+                                    <div class="search-bar search-bar-interface">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="11" cy="11" r="8"></circle>
+                                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                        </svg>
+                                        <input type="text" [(ngModel)]="productSearchTerm"
+                                            (ngModelChange)="triggerChangeDetection()" name="prodSearch"
+                                            placeholder="Rechercher un produit...">
+                                    </div>
+                                </div>
+                                <div class="product-selector-grid">
+                                    <div class="product-selector-card" *ngFor="let prod of filteredProduitsSelection"
+                                        [class.selected]="isProductSelected(prod.id)"
+                                        (click)="toggleProductSelection(prod)">
+                                        <div class="product-selector-card-image">
+                                            <img [src]="getImageUrl(prod.imageUrl)" [alt]="prod.designation"
+                                                onerror="this.onerror=null;this.src='assets/images/default-produit.svg'">
+                                            <div class="product-selector-card-check"
+                                                [class.checked]="isProductSelected(prod.id)">
+                                                <svg *ngIf="isProductSelected(prod.id)"
+                                                    xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <div class="product-selector-card-info">
+                                            <span class="product-selector-card-code">{{ prod.code }}</span>
+                                            <span class="product-selector-card-name">{{ prod.designation }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="product-selector-card product-selector-card-new"
+                                        (click)="openQuickAddProduct($event)">
+                                        <div class="product-selector-card-new-inner">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                            </svg>
+                                            <span>Nouveau produit</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="product-selector-empty" *ngIf="filteredProduitsSelection.length === 0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    </svg>
+                                    <p>Aucun produit trouvé</p>
+                                    <small>Modifiez votre recherche ou créez un nouveau produit</small>
+                                </div>
+                            </section>
+                            <aside class="product-selector-selected">
+                                <h3>Sélectionnés <span class="count">({{ getSelectedProductsCount() }})</span></h3>
+                                <div class="product-selector-selected-list">
+                                    <div class="product-selector-selected-item"
+                                        *ngFor="let prod of newPiece.produitsAssocies; let i = index">
+                                        <div class="product-selector-selected-thumb">
+                                            <img [src]="getImageUrl(prod.imageUrl)" [alt]="prod.designation"
+                                                onerror="this.onerror=null;this.src='assets/images/default-produit.svg'">
+                                        </div>
+                                        <div class="product-selector-selected-info">
+                                            <span class="product-selector-selected-name">{{ prod.designation }}</span>
+                                            <span class="product-selector-selected-code">{{ prod.code }}</span>
+                                        </div>
+                                        <button type="button" class="btn-remove-selected"
+                                            (click)="removeAssociatedProduct(i); $event.stopPropagation()"
+                                            title="Retirer">✕</button>
+                                    </div>
+                                    <div class="product-selector-selected-empty"
+                                        *ngIf="!newPiece.produitsAssocies?.length">
+                                        <p>Aucun produit sélectionné</p>
+                                        <small>Cliquez sur les cartes à gauche pour ajouter</small>
+                                    </div>
+                                </div>
+                                <div class="product-selector-footer">
+                                    <div class="product-selector-footer-actions">
+                                        <button type="button" class="btn-cancel-interface"
+                                            (click)="toggleProductSelectorModal($event)">
+                                            Annuler
+                                        </button>
+                                        <button type="button" class="btn-validate-interface"
+                                            (click)="toggleProductSelectorModal($event)">
+                                            Valider ({{ getSelectedProductsCount() }})
+                                        </button>
+                                    </div>
+                                </div>
+                            </aside>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="piece-modal-actions">
+                <button type="button" class="btn-secondary" (click)="closeCreateModal()">Annuler</button>
+                <button type="submit" class="btn-primary piece-btn-save" [disabled]="pieceForm.invalid">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                    {{ selectedPiece ? 'Mettre à jour' : 'Enregistrer' }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+
+<div class="modal-overlay nested" *ngIf="showQuickAddCategory" (click)="closeQuickAddCategory($event)">
+    <div class="modal-content small" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>Ajouter une Catégorie</h2>
+            <button class="btn-icon" (click)="closeQuickAddCategory($event)">✕</button>
+        </div>
+        <form #catForm="ngForm" (ngSubmit)="catForm.form.valid && quickAddCategorySubmit()">
+            <div class="form-group">
+                <label>Nom*</label>
+                <div class="control-wrapper">
+                    <input type="text" [(ngModel)]="newCategory.nom" name="catNom" #cn="ngModel" required>
+                    <span class="error-msg" *ngIf="cn.invalid && cn.touched">Le nom est obligatoire</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Code*</label>
+                <div class="control-wrapper">
+                    <input type="text" [(ngModel)]="newCategory.code" name="catCode" #cc="ngModel" required>
+                    <span class="error-msg" *ngIf="cc.invalid && cc.touched">Le code est obligatoire</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea [(ngModel)]="newCategory.description" name="catDesc" rows="3"
+                    placeholder="Description de la catégorie..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" (click)="closeQuickAddCategory($event)">Annuler</button>
+                <button type="submit" class="btn-primary" [disabled]="catForm.invalid">Ajouter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay produit-modal-overlay" *ngIf="showQuickAddProduct" (click)="closeQuickAddProduct($event)">
+    <div class="modal-content produit-modal-content" (click)="$event.stopPropagation()">
+        <div class="produit-modal-header">
+            <div class="produit-modal-title-block">
+                <div class="produit-modal-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h2>Ajouter un produit</h2>
+                    <p class="produit-modal-subtitle">Complétez les informations pour créer un nouveau produit fini</p>
+                </div>
+            </div>
+            <button class="btn-icon produit-modal-close" (click)="closeQuickAddProduct($event)" type="button"
+                title="Fermer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <form #qProdForm="ngForm" (ngSubmit)="qProdForm.form.valid && quickAddProductSubmit()"
+            class="produit-modal-form">
+            <div class="produit-form-scroll">
+                <div class="form-section-row">
+                    <div class="form-section image-section">
+                        <label class="section-label">Image du produit</label>
+                        <div class="image-preview-container quick-product-image" (click)="qProdFileInput.click()">
+                            <img *ngIf="newProductPreview" [src]="getImageUrl(newProductPreview)" class="preview-img">
+                            <div class="overlay">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path
+                                        d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                                    <circle cx="12" cy="13" r="4" />
+                                </svg>
+                                <span *ngIf="!newProductPreview">Ajouter une image</span>
+                            </div>
+                        </div>
+                        <input type="file" #qProdFileInput (change)="onQuickProductFileSelected($event)" hidden
+                            accept="image/*">
+                    </div>
+
+                    <div class="form-section flex-1">
+                        <h3 class="form-section-title">Informations Générales</h3>
+
+                        <div class="form-group produit-form-group">
+                            <label>Code Produit <span class="required">*</span></label>
+                            <div class="control-wrapper">
+                                <input type="text" [(ngModel)]="newProduct.code" name="prodCode" #pc="ngModel" required
+                                    placeholder="Ex: PROD-100">
+                                <span class="error-msg" *ngIf="pc.invalid && pc.touched">Le code produit est
+                                    obligatoire</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group produit-form-group">
+                            <label>Désignation <span class="required">*</span></label>
+                            <div class="control-wrapper">
+                                <input type="text" [(ngModel)]="newProduct.designation" name="prodDes" #pd="ngModel"
+                                    required placeholder="Nom complet du produit">
+                                <span class="error-msg" *ngIf="pd.invalid && pd.touched">La désignation est
+                                    obligatoire</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="produit-modal-actions">
+                <button type="button" class="btn-secondary" (click)="closeQuickAddProduct($event)">Annuler</button>
+                <button type="submit" class="btn-primary produit-btn-save" [disabled]="qProdForm.invalid">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                    Enregistrer
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<div class="modal-overlay" *ngIf="showAssociatedProductsModal" (click)="closeAssociatedProductsModal()">
+    <div class="modal-content associated-modal" (click)="$event.stopPropagation()">
+        <div class="associated-modal-header">
+            <div class="associated-modal-title-block">
+                <div class="associated-modal-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h2>Produits Finis Associés</h2>
+                    <p class="associated-modal-subtitle" *ngIf="selectedPieceForProducts">
+                        Pièce : {{ selectedPieceForProducts.designation }} ({{ selectedPieceForProducts.reference }})
+                    </p>
+                </div>
+            </div>
+            <button class="btn-icon" (click)="closeAssociatedProductsModal()" type="button" title="Fermer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="associated-modal-body">
+            <div class="associated-search">
+                <input type="text" class="associated-search-input" [(ngModel)]="associatedProductsSearchTerm"
+                    (ngModelChange)="triggerChangeDetection()" placeholder="Rechercher un produit associé...">
+            </div>
+            <div class="associated-grid">
+                <div class="associated-card" *ngFor="let produit of filteredAssociatedProducts">
+                    <div class="associated-card-image">
+                        <img [src]="getImageUrl(produit.imageUrl)" [alt]="produit.designation"
+                            onerror="this.onerror=null;this.src='assets/images/default-produit.svg'">
+                    </div>
+                    <div class="associated-card-info">
+                        <code class="associated-card-code">{{ produit.code }}</code>
+                        <h4 class="associated-card-name">{{ produit.designation }}</h4>
+                    </div>
+                </div>
+            </div>
+            <div class="associated-empty"
+                *ngIf="selectedPieceForProducts && filteredAssociatedProducts.length === 0">
+                <p>Aucun produit trouvé</p>
+            </div>
+        </div>
+    </div>
+</div>

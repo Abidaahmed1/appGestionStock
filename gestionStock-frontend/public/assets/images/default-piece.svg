@@ -1,0 +1,20 @@
+<!-- Default Piece Image SVG -->
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="pieceGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3498db;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2980b9;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="400" height="400" fill="#f8f9fa"/>
+  <g transform="translate(200, 200)">
+    <!-- Gear Icon -->
+    <path d="M 0,-80 L 15,-70 L 15,-50 L 30,-40 L 50,-40 L 60,-25 L 60,-5 L 70,10 L 70,30 L 55,40 L 35,40 L 25,55 L 5,55 L -10,70 L -30,70 L -40,55 L -40,35 L -55,25 L -55,5 L -70,-10 L -70,-30 L -55,-40 L -35,-40 L -25,-55 L -5,-55 L 10,-70 Z" 
+          fill="url(#pieceGradient)" 
+          stroke="#2c3e50" 
+          stroke-width="3"/>
+    <circle cx="0" cy="0" r="35" fill="#f8f9fa" stroke="#2c3e50" stroke-width="3"/>
+    <circle cx="0" cy="0" r="20" fill="url(#pieceGradient)"/>
+  </g>
+  <text x="200" y="330" font-family="Arial, sans-serif" font-size="24" fill="#7f8c8d" text-anchor="middle">Pièce Détachée</text>
+</svg>

@@ -1,0 +1,305 @@
+<div class="admin-container">
+  <div class="notification-toast" *ngIf="notification" [class]="notification.type">
+    <span class="msg">{{ notification.message }}</span>
+    <button class="close-btn" (click)="notification = null">✕</button>
+  </div>
+  <div class="header-section">
+    <div class="header-left">
+      <h1>
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="title-icon">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+        Gestion des Utilisateurs
+      </h1>
+      <div class="search-box">
+        <div class="search-input-wrapper">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" [(ngModel)]="searchTerm" placeholder="Rechercher...">
+        </div>
+        <select class="category-select" [(ngModel)]="searchCategory">
+          <option value="all">Tout</option>
+          <option value="username">Identifiant</option>
+          <option value="email">Email</option>
+          <option value="name">Nom/Prénom</option>
+          <option value="role">Rôle</option>
+          <option value="status">Statut</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-add" (click)="openCreateModal()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      Nouvel Utilisateur
+    </button>
+  </div>
+
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Prénom</th>
+          <th>Nom</th>
+          <th>Rôle</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let user of filteredUsers">
+          <td>
+            <div class="user-info">
+              <span class="username">{{ user.username }}</span>
+              <span class="email">{{ user.email }}</span>
+            </div>
+          </td>
+          <td>{{ user.firstName }}</td>
+          <td>{{ user.lastName }}</td>
+          <td>
+            <span class="role-badge">{{ getRoleDisplayName(user.role) }}</span>
+          </td>
+          <td>
+            <div *ngIf="user.role === 'ADMINISTRATEUR'" class="status-locked" title="Compte protégé">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              <span class="status-text active">Protégé</span>
+            </div>
+
+            <div *ngIf="user.role !== 'ADMINISTRATEUR'" class="status-wrapper" (click)="toggleStatus(user)"
+              [title]="user.enabled ? 'Désactiver' : 'Activer'">
+              <div class="toggle-switch" [class.active]="user.enabled">
+                <div class="switch-handle"></div>
+              </div>
+              <span class="status-text" [class.active]="user.enabled">
+                {{ user.enabled ? 'Actif' : 'Bloqué' }}
+              </span>
+            </div>
+          </td>
+          <td>
+            <div class="actions">
+              <button *ngIf="user.role !== 'ADMINISTRATEUR'" class="btn-icon btn-roles" title="Gérer les rôles"
+                (click)="manageRoles(user)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              </button>
+
+              <button *ngIf="user.role !== 'ADMINISTRATEUR'" class="btn-icon btn-reset"
+                title="Réinitialiser le mot de passe" (click)="openResetPassword(user)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                </svg>
+              </button>
+
+              <span *ngIf="user.role === 'ADMINISTRATEUR'" class="admin-badge" title="Rôle protégé">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+                Admin
+              </span>
+
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal-overlay" *ngIf="showCreateModal" (click)="closeCreateModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Créer un utilisateur</h2>
+      <button class="btn-icon" (click)="closeCreateModal()">✕</button>
+    </div>
+    <form #userForm="ngForm" (ngSubmit)="userForm.form.valid && createUser()">
+      <div class="form-group">
+        <label>Prénom*</label>
+        <div class="control-wrapper">
+          <input type="text" [(ngModel)]="newUser.firstName" name="firstName" #firstName="ngModel" required>
+          <div class="error-msg" *ngIf="firstName.invalid && (firstName.dirty || firstName.touched)">
+            Le prénom est requis.
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Nom*</label>
+        <div class="control-wrapper">
+          <input type="text" [(ngModel)]="newUser.lastName" name="lastName" #lastName="ngModel" required>
+          <div class="error-msg" *ngIf="lastName.invalid && (lastName.dirty || lastName.touched)">
+            Le nom est requis.
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Email*</label>
+        <div class="control-wrapper">
+          <input type="email" [(ngModel)]="newUser.email" name="email" #email="ngModel" required email>
+          <div class="error-msg" *ngIf="email.invalid && (email.dirty || email.touched)">
+            <span *ngIf="email.errors?.['required']">L'email est requis.</span>
+            <span *ngIf="email.errors?.['email']">Format invalide.</span>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Rôle*</label>
+        <div class="control-wrapper">
+          <select [(ngModel)]="newUser.role" name="role" #role="ngModel" required>
+            <option value="" disabled selected>Sélectionnez un rôle</option>
+            <option *ngFor="let role of valideRoles" [value]="role">{{ getRoleDisplayName(role) }}</option>
+          </select>
+          <div class="error-msg" *ngIf="role.invalid && (role.dirty || role.touched)">
+            Le rôle est requis.
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Mot de passe*</label>
+        <div class="control-wrapper">
+          <input type="password" [(ngModel)]="newUser.password" name="password" #password="ngModel" required
+            minlength="8" autocomplete="new-password">
+          <div class="error-msg" *ngIf="password.invalid && (password.dirty || password.touched)">
+            <span *ngIf="password.errors?.['required']">Requis.</span>
+            <span *ngIf="password.errors?.['minlength']">8 caractères min.</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-secondary" (click)="closeCreateModal()">Annuler</button>
+        <button type="submit" class="btn-primary" [disabled]="userForm.invalid">Créer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" *ngIf="showRoleModal" (click)="closeRoleModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Rôles de {{ selectedUser?.username }}</h2>
+      <button class="btn-icon" (click)="closeRoleModal()">✕</button>
+    </div>
+
+
+    <div class="roles-container">
+      <div *ngFor="let role of availableRoles" class="role-chip" [class.active]="hasRole(role)"
+        [class.inactive]="!hasRole(role)" (click)="hasRole(role) ? removeRole(role) : addRole(role)">
+        {{ getRoleDisplayName(role) }}
+        <span *ngIf="hasRole(role)">✓</span>
+        <span *ngIf="!hasRole(role)">+</span>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-primary" (click)="closeRoleModal()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" *ngIf="showConfirmStatusModal" (click)="closeConfirmStatus()">
+  <div class="modal-content confirm-modal" (click)="$event.stopPropagation()">
+    <div class="warning-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 0 0 0 1.71 3h16.94a2 0 0 0 1.71-3L13.71 3.86a2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+    </div>
+    <div class="modal-body">
+      <h3>Confirmer le changement</h3>
+      <p>Voulez-vous vraiment {{ pendingStatusUser?.enabled ? 'bloquer' : 'activer' }} {{
+        getRoleDisplayName(pendingStatusUser?.role).toLowerCase() }} <strong>{{
+          pendingStatusUser?.username }}</strong> ?</p>
+      <p class="sub-text">Cette action modifiera immédiatement l'accès de l'utilisateur.</p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" (click)="closeConfirmStatus()">Annuler</button>
+      <button [class]="pendingStatusUser?.enabled ? 'btn-danger' : 'btn-primary'" (click)="confirmStatusChange()">
+        {{ pendingStatusUser?.enabled ? 'Bloquer' : 'Activer' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" *ngIf="showConfirmRoleModal" (click)="closeConfirmRole()">
+  <div class="modal-content confirm-modal" (click)="$event.stopPropagation()">
+    <div class="warning-icon blue">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="16" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+      </svg>
+    </div>
+    <div class="modal-body">
+      <h3>Modifier le rôle</h3>
+      <p *ngIf="pendingRoleChange?.action === 'replace'">
+        Voulez-vous remplacer le rôle <strong>{{ pendingRoleChange?.oldRole }}</strong> par <strong>{{
+          pendingRoleChange?.roleName }}</strong> pour <strong>{{ selectedUser?.username }}</strong> ?
+      </p>
+      <p *ngIf="pendingRoleChange?.action !== 'replace'">
+        Voulez-vous {{ pendingRoleChange?.action === 'add' ? 'attribuer' : 'retirer' }} le rôle <strong>{{
+          pendingRoleChange?.roleName }}</strong> à <strong>{{ selectedUser?.username }}</strong> ?
+      </p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" (click)="closeConfirmRole()">Annuler</button>
+      <button class="btn-primary" (click)="executeRoleChange()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" *ngIf="showResetPasswordModal" (click)="closeResetPassword()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Réinitialiser le mot de passe</h2>
+      <button class="btn-icon" (click)="closeResetPassword()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p>Réinitialisation du mot de passe pour <strong>{{ selectedUser?.username }}</strong></p>
+      <form #resetForm="ngForm" (ngSubmit)="resetForm.form.valid && confirmResetPassword()">
+        <div class="form-group">
+          <label>Nouveau mot de passe*</label>
+          <input type="password" [(ngModel)]="resetPasswordData.newPassword" name="newPassword" #newPass="ngModel"
+            required minlength="8" placeholder="Minimum 8 caractères" autocomplete="new-password">
+          <div class="error-msg" *ngIf="newPass.invalid && (newPass.dirty || newPass.touched)">
+            <span *ngIf="newPass.errors?.['required']">Le mot de passe est requis.</span>
+            <span *ngIf="newPass.errors?.['minlength']">Minimum 8 caractères.</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Confirmer le mot de passe*</label>
+          <input type="password" [(ngModel)]="resetPasswordData.confirmPassword" name="confirmPassword"
+            #confirmPass="ngModel" required placeholder="Confirmez le mot de passe" autocomplete="new-password">
+          <div class="error-msg"
+            *ngIf="resetPasswordData.newPassword !== resetPasswordData.confirmPassword && confirmPass.touched">
+            Les mots de passe ne correspondent pas.
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeResetPassword()">Annuler</button>
+          <button type="submit" class="btn-primary"
+            [disabled]="resetForm.invalid || resetPasswordData.newPassword !== resetPasswordData.confirmPassword">
+            Réinitialiser
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

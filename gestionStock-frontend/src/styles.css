@@ -1,0 +1,53 @@
+/* You can add global styles to this file, and also import other style files */
+
+/* --- Global Notification Toasts (Circular messages) --- */
+.notification-toast {
+    position: fixed !important;
+    top: 2rem !important;
+    right: 2rem !important;
+    z-index: 20000 !important;
+    /* Higher than any modale (9999) */
+    padding: 1.25rem 1.75rem !important;
+    border-radius: 16px !important;
+    background: #ffffff !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 1.25rem !important;
+    min-width: 380px !important;
+    max-width: 500px !important;
+    border-left: 6px solid #3d7a7f !important;
+    animation: toastSlideIn 0.4s cubic-bezier(0.165, 0.84, 0.44, 1) !important;
+    color: #1e293b !important;
+    font-weight: 600 !important;
+}
+
+.notification-toast.success {
+    border-left-color: #10b981 !important;
+}
+
+.notification-toast.error {
+    border-left-color: #ef4444 !important;
+    background: #fffafa !important;
+    /* Slight red tint for errors */
+}
+
+/* Ensure the message content is clear */
+.notification-toast .msg {
+    color: #334155 !important;
+    font-size: 1rem !important;
+    line-height: 1.4 !important;
+    flex: 1 !important;
+}
+
+@keyframes toastSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100%) scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}

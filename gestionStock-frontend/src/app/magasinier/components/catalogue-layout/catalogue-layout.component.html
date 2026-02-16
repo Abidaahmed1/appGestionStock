@@ -1,0 +1,177 @@
+<div class="admin-container">
+    <div class="notification-toast" *ngIf="notification" [class.success]="notification.type === 'success'"
+        [class.error]="notification.type === 'error'">
+        <span class="msg">{{ notification.message }}</span>
+        <button class="close-btn" (click)="notification = null">✕</button>
+    </div>
+
+    <div class="header-section">
+        <div class="header-left">
+            <h1>
+                <div class="title-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
+                        <path d="M6 7h12" />
+                        <path d="M6 11h12" />
+                        <path d="M6 15h12" />
+                    </svg>
+                </div>
+                Catalogue d'Inventaire
+            </h1>
+            <div class="search-box">
+                <div class="search-input-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" [(ngModel)]="searchTerm" (input)="filterItems()"
+                        placeholder="Rechercher dans le catalogue...">
+                </div>
+                <select class="category-select" [(ngModel)]="searchCategory" (change)="filterItems()">
+                    <option value="all">Tout</option>
+                    <option value="designation">Désignation</option>
+                    <option value="code">Code/Réf</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn" [class.active]="activeTab === 'pieces'" (click)="switchTab('pieces')">
+                Pièces
+            </button>
+            <button class="tab-btn" [class.active]="activeTab === 'produits'" (click)="switchTab('produits')">
+                Produits
+            </button>
+        </div>
+    </div>
+
+    <!-- Content Area -->
+    <div class="catalog-container">
+        <div class="catalog-main">
+            <div class="items-grid-wrapper">
+                <div class="card-grid" *ngIf="activeTab === 'pieces'">
+                    <div class="item-card-premium" *ngFor="let piece of filteredPieces"
+                        [class.selected]="selectedPiece?.id === piece.id" (click)="selectPiece(piece)">
+                        <div class="card-visual">
+                            <img [src]="getImageUrl(piece.imageUrl)"
+                                onerror="this.onerror=null;this.src='assets/images/default-piece.svg'">
+                            <div class="card-badges">
+                                <span class="badge-status" [class.archived]="piece.archivee">
+                                    {{ piece.archivee ? 'Archivé' : 'Disponible' }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-info">
+                            <span class="category-tag">{{ piece.categorie?.nom || 'Pièce' }}</span>
+                            <h3 class="item-title">{{ piece.designation }}</h3>
+                            <div class="item-meta">
+                                <span class="ref">REF: {{ piece.reference }}</span>
+                                <span class="price-val" *ngIf="piece.prixVente">{{ piece.prixVente | currency:'TND'
+                                    }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-grid" *ngIf="activeTab === 'produits'">
+                    <div class="item-card-premium" *ngFor="let produit of filteredProduits"
+                        [class.selected]="selectedProduit?.id === produit.id" (click)="selectProduit(produit)">
+                        <div class="card-visual">
+                            <img [src]="getImageUrl(produit.imageUrl)"
+                                onerror="this.onerror=null;this.src='assets/images/default-produit.svg'">
+                            <div class="card-badges">
+                                <span class="badge-status" [class.archived]="produit.estArchivee">
+                                    {{ produit.estArchivee ? 'Archivé' : 'Actif' }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="card-info">
+                            <span class="category-tag">Produit Fini</span>
+                            <h3 class="item-title">{{ produit.designation }}</h3>
+                            <div class="item-meta">
+                                <span class="code">{{ produit.code }}</span>
+                                <span class="components-count" *ngIf="produit.pieces">
+                                    {{ produit.pieces.length }} composants
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Details Showcase (Right Side) -->
+        <div class="showcase-panel">
+            <div class="showcase-content" *ngIf="selectedPiece || selectedProduit">
+                <div class="showcase-scrollable">
+                    <button class="panel-close-btn" (click)="selectedPiece = null; selectedProduit = null">✕</button>
+
+                    <div class="hero-image-container">
+                        <img [src]="getImageUrl(selectedPiece?.imageUrl || selectedProduit?.imageUrl)"
+                            [alt]="selectedPiece?.designation || selectedProduit?.designation"
+                            onerror="this.onerror=null;this.src='assets/images/default-piece.svg'">
+                    </div>
+
+                    <div class="details-text-area">
+                        <div class="showcase-header">
+                            <span class="showcase-pill">{{ selectedPiece ? 'Pièce Détachée' : 'Produit Fini' }}</span>
+                            <h2>{{ selectedPiece?.designation || selectedProduit?.designation }}</h2>
+                            <p class="showcase-id">
+                                <span class="label">IDENTIFIANT :</span>
+                                <span class="id-value">{{ selectedPiece?.reference || selectedProduit?.code }}</span>
+                            </p>
+                        </div>
+
+                        <div class="data-section">
+                            <div class="data-group">
+                                <h3>Données Techniques</h3>
+                                <div class="data-grid">
+                                    <div class="data-item">
+                                        <span class="d-label">Code Barre</span>
+                                        <span class="d-value">{{ selectedPiece?.codeBarre || 'N/A' }}</span>
+                                    </div>
+                                    <div class="data-item">
+                                        <span class="d-label">Catégorie</span>
+                                        <span class="d-value">{{ selectedPiece?.categorie?.nom || 'Standard' }}</span>
+                                    </div>
+                                    <div class="data-item price-item" *ngIf="selectedPiece?.prixVente">
+                                        <span class="d-label">Prix unitaire</span>
+                                        <span class="d-value large">{{ selectedPiece?.prixVente | currency:'TND'
+                                            }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="data-group" *ngIf="selectedProduit?.pieces?.length">
+                                <h3>Nomenclature ({{ selectedProduit?.pieces?.length }})</h3>
+                                <div class="components-stack">
+                                    <div class="comp-item" *ngFor="let p of selectedProduit?.pieces">
+                                        <div class="comp-dot"></div>
+                                        <span class="comp-name">{{ p.designation }}</span>
+                                        <span class="comp-ref">{{ p.reference }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty Selection State -->
+            <div class="panel-empty-state" *ngIf="!selectedPiece && !selectedProduit">
+                <div class="visual-placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.5">
+                        <path d="M21 7.5L12 3L3 7.5V16.5L12 21L21 16.5V7.5Z" />
+                        <path d="M12 3V12" />
+                        <path d="M12 12L3 7.5" />
+                        <path d="M12 12L21 7.5" />
+                    </svg>
+                </div>
+                <h4>Sélection Catalogue</h4>
+                <p>Parcourez la liste à gauche pour afficher les caractéristiques détaillées</p>
+            </div>
+        </div>
+    </div>
+</div>

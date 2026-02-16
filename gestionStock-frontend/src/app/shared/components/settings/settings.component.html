@@ -1,0 +1,118 @@
+<div class="settings-container">
+    <div class="settings-header">
+        <h1>
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path
+                    d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+            </svg>
+            Paramètres du compte
+        </h1>
+        <p>Gérez vos informations personnelles et vos préférences</p>
+    </div>
+
+    <div class="settings-content">
+        <div class="settings-card">
+            <div class="card-header">
+                <h2>Informations personnelles</h2>
+                <p>Mettez à jour vos informations de profil</p>
+            </div>
+
+            <form [formGroup]="profileForm" (ngSubmit)="updateProfile()">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="firstName">Prénom</label>
+                        <input type="text" id="firstName" formControlName="firstName" placeholder="Votre prénom"
+                            autocomplete="given-name">
+                        <span class="error-msg"
+                            *ngIf="profileForm.get('firstName')?.invalid && profileForm.get('firstName')?.touched">
+                            Le prénom est requis
+                        </span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lastName">Nom</label>
+                        <input type="text" id="lastName" formControlName="lastName" placeholder="Votre nom"
+                            autocomplete="family-name">
+                        <span class="error-msg"
+                            *ngIf="profileForm.get('lastName')?.invalid && profileForm.get('lastName')?.touched">
+                            Le nom est requis
+                        </span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Adresse email</label>
+                    <input type="email" id="email" formControlName="email" placeholder="votre.email@exemple.com"
+                        autocomplete="email">
+                    <span class="error-msg"
+                        *ngIf="profileForm.get('email')?.invalid && profileForm.get('email')?.touched">
+                        Email invalide
+                    </span>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" (click)="cancelProfileEdit()">Annuler</button>
+                    <button type="submit" class="btn-primary" [disabled]="profileForm.invalid || !profileForm.dirty">
+                        Enregistrer les modifications
+                    </button>
+                </div>
+            </form>
+        </div>
+
+
+        <div class="settings-card">
+            <div class="card-header">
+                <h2>Sécurité</h2>
+                <p>Modifiez votre mot de passe</p>
+            </div>
+
+            <form [formGroup]="passwordForm" (ngSubmit)="updatePassword()">
+                <div class="form-group">
+                    <label for="currentPassword">Mot de passe actuel</label>
+                    <input type="password" id="currentPassword" formControlName="currentPassword"
+                        placeholder="Entrez votre mot de passe actuel" autocomplete="current-password">
+                    <span class="error-msg"
+                        *ngIf="passwordForm.get('currentPassword')?.invalid && passwordForm.get('currentPassword')?.touched">
+                        Le mot de passe actuel est requis
+                    </span>
+                </div>
+
+                <div class="form-group">
+                    <label for="newPassword">Nouveau mot de passe</label>
+                    <input type="password" id="newPassword" formControlName="newPassword"
+                        placeholder="Entrez un nouveau mot de passe" autocomplete="new-password">
+                    <span class="error-msg"
+                        *ngIf="passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched">
+                        Le mot de passe doit contenir au moins 8 caractères
+                    </span>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirmer le mot de passe</label>
+                    <input type="password" id="confirmPassword" formControlName="confirmPassword"
+                        placeholder="Confirmez le nouveau mot de passe" autocomplete="new-password">
+                    <span class="error-msg"
+                        *ngIf="passwordForm.hasError('mismatch') && passwordForm.get('confirmPassword')?.touched">
+                        Les mots de passe ne correspondent pas
+                    </span>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" (click)="cancelPasswordEdit()">Annuler</button>
+                    <button type="submit" class="btn-primary" [disabled]="passwordForm.invalid || !passwordForm.dirty">
+                        Changer le mot de passe
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <div class="notification-toast" *ngIf="notification" [class.success]="notification.type === 'success'"
+        [class.error]="notification.type === 'error'">
+        <span class="msg">{{ notification.message }}</span>
+        <button class="close-btn" (click)="notification = null">✕</button>
+    </div>
+</div>
