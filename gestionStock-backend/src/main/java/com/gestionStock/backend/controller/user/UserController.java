@@ -1,4 +1,4 @@
-package com.gestionStock.backend.controller;
+package com.gestionStock.backend.controller.user;
 
 import com.gestionStock.backend.service.user.KeycloakAdminService;
 import com.gestionStock.backend.service.user.UserService;

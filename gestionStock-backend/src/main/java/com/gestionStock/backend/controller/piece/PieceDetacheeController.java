@@ -1,4 +1,4 @@
-package com.gestionStock.backend.controller;
+package com.gestionStock.backend.controller.piece;
 
 import com.gestionStock.backend.entity.piece.PieceDetachee;
 import com.gestionStock.backend.service.piece.PieceDetacheeService;

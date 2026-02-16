@@ -1,4 +1,4 @@
-package com.gestionStock.backend.controller;
+package com.gestionStock.backend.controller.piece;
 
 import com.gestionStock.backend.service.images.ImageService;
 import lombok.AllArgsConstructor;

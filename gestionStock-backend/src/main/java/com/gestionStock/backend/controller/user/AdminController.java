@@ -1,4 +1,4 @@
-package com.gestionStock.backend.controller;
+package com.gestionStock.backend.controller.user;
 
 import java.util.HashMap;
 import java.util.List;
@@ -264,16 +264,16 @@ public class AdminController {
 			return null;
 		String upper = roleName.toUpperCase().replace(" ", "_");
 		switch (upper) {
-		case "ADMINISTRATEUR":
-			return "Administrateur";
-		case "AUDITEUR":
-			return "Auditeur";
-		case "MAGASINIER":
-			return "Magasinier";
-		case "RESPONSABL_LOGISTIQUE":
-			return "Responsable logistique";
-		default:
-			return roleName;
+			case "ADMINISTRATEUR":
+				return "Administrateur";
+			case "AUDITEUR":
+				return "Auditeur";
+			case "MAGASINIER":
+				return "Magasinier";
+			case "RESPONSABL_LOGISTIQUE":
+				return "Responsable logistique";
+			default:
+				return roleName;
 		}
 	}
 }
