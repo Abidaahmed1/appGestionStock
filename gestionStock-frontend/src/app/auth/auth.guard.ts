@@ -22,25 +22,23 @@ export const authGuard: CanActivateFn = async (route, state) => {
             return false;
         }
 
-        const requiredRoles = route.data['roles'] as string[];
+        const normalizeRole = (r: string) => r.toUpperCase().replace('ROLE_', '').replace(/\s+/g, '_');
 
-        if (!requiredRoles || requiredRoles.length === 0) {
+        const userRoles = keycloak.getUserRoles().map(role => normalizeRole(role));
+
+        const requiredRoles = (route.data['roles'] as string[] || []).map(r => normalizeRole(r));
+
+        if (requiredRoles.length === 0) {
             return true;
         }
 
-        const userRoles = keycloak.getUserRoles().map(role =>
-            role.toUpperCase().replace('ROLE_', '')
-        );
-
-        const hasRequiredRole = requiredRoles.some(role =>
-            userRoles.includes(role.toUpperCase())
-        );
+        const hasRequiredRole = requiredRoles.some(role => userRoles.includes(role));
 
         if (hasRequiredRole) {
             return true;
         }
 
-        router.navigate(['/dashboard']);
+        await router.navigate(['/dashboard']);
         return false;
 
     } catch (error) {

@@ -76,6 +76,15 @@
     padding: 1.75rem;
     max-height: 600px;
     overflow-y: auto;
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+}
+
+.associated-modal-body::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari and Opera */
 }
 
 .associated-search {
@@ -205,6 +214,14 @@
 
 .detail-modal-body {
     padding: 1.75rem;
+    max-height: 80vh;
+    overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.detail-modal-body::-webkit-scrollbar {
+    display: none;
 }
 
 .detail-image-section {

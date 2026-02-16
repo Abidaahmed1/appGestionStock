@@ -1900,6 +1900,11 @@ body:has(.product-selector-interface.visible) {
     overflow-y: auto;
     padding-right: 0.5rem;
     flex: 1;
+    scrollbar-width: none;
+}
+
+.selection-grid::-webkit-scrollbar {
+    display: none;
 }
 
 .selection-card {
@@ -2035,6 +2040,11 @@ body:has(.product-selector-interface.visible) {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    scrollbar-width: none;
+}
+
+.selected-preview-list::-webkit-scrollbar {
+    display: none;
 }
 
 .selected-preview-item {

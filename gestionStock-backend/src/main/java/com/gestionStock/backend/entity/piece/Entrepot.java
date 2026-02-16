@@ -27,6 +27,7 @@ public class Entrepot {
 	private String adresse;
 	private String nomEntrepot;
 	private String ville;
+	private Double taille;
 
 	@JsonIgnore
 	@OneToMany(mappedBy = "entrepot")

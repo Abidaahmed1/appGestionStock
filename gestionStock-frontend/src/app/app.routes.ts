@@ -7,6 +7,7 @@ import { MainLayoutComponent } from './shared/layouts/main-layout/main-layout.co
 import { DashboardComponent } from './shared/components/dashboard/dashboard.component';
 import { SettingsComponent } from './shared/components/settings/settings.component';
 import { authGuard } from './auth/auth.guard';
+import { EntrepotListComponent } from './logistique/components/entrepot-list/entrepot-list.component';
 
 export const routes: Routes = [
     {
@@ -23,19 +24,25 @@ export const routes: Routes = [
                 path: 'magasinier/catalogue',
                 component: CatalogueLayoutComponent,
                 canActivate: [authGuard],
-                data: { roles: ['MAGASINIER', 'ADMINISTRATEUR'] }
+                data: { roles: ['MAGASINIER'] }
             },
             {
                 path: 'magasinier/pieces',
                 component: PieceListComponent,
                 canActivate: [authGuard],
-                data: { roles: ['MAGASINIER', 'ADMINISTRATEUR'] }
+                data: { roles: ['MAGASINIER'] }
             },
             {
                 path: 'magasinier/produits',
                 component: ProduitListComponent,
                 canActivate: [authGuard],
-                data: { roles: ['MAGASINIER', 'ADMINISTRATEUR'] }
+                data: { roles: ['MAGASINIER'] }
+            },
+            {
+                path: 'logistique/entrepots',
+                component: EntrepotListComponent,
+                canActivate: [authGuard],
+                data: { roles: ['RESPONSABLE_LOGISTIQUE'] }
             },
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
             {

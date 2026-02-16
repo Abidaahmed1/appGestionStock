@@ -59,7 +59,8 @@ public class JwtAuthConverter implements Converter<Jwt, AbstractAuthenticationTo
 			return Set.of();
 		}
 
-		return resourceRoles.stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
+		return resourceRoles.stream()
+				.map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase().replace(" ", "_")))
 				.collect(Collectors.toSet());
 	}
 
@@ -75,7 +76,8 @@ public class JwtAuthConverter implements Converter<Jwt, AbstractAuthenticationTo
 			return Set.of();
 		}
 
-		return realmRoles.stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()))
+		return realmRoles.stream()
+				.map(role -> new SimpleGrantedAuthority("ROLE_" + role.toUpperCase().replace(" ", "_")))
 				.collect(Collectors.toSet());
 	}
 }

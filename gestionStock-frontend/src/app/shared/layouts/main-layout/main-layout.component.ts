@@ -30,24 +30,22 @@ export class MainLayoutComponent implements OnInit {
     }
 
     hasRole(role: string): boolean {
-        const targetRole = role.toUpperCase().replace('ROLE_', '');
-        return this.roles().some(r => {
-            const upperR = r.toUpperCase().replace('ROLE_', '');
-            return upperR === targetRole;
-        });
+        const normalize = (r: string) => r.toUpperCase().replace('ROLE_', '').replace(/\s+/g, '_');
+        const targetRole = normalize(role);
+        return this.roles().some(r => normalize(r) === targetRole);
     }
 
     getDisplayRole(): string {
         const userRoles = this.roles();
         const businessRolesMapping: { [key: string]: string } = {
             'ADMINISTRATEUR': 'Administrateur',
-            'RESPONSABL_LOGISTIQUE': 'Responsable Logistique',
+            'RESPONSABLE_LOGISTIQUE': 'Responsable Logistique',
             'AUDITEUR': 'Auditeur',
             'MAGASINIER': 'Magasinier'
         };
 
         for (const role of userRoles) {
-            const cleanRole = role.toUpperCase().replace('ROLE_', '');
+            const cleanRole = role.toUpperCase().replace('ROLE_', '').replace(/\s+/g, '_');
             if (businessRolesMapping[cleanRole]) {
                 return businessRolesMapping[cleanRole];
             }
