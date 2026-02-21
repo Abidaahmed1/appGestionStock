@@ -1,0 +1,139 @@
+@import "../stock-management/stock-management.component.css";
+
+.odoo-view {
+    min-height: 100vh;
+    background: #f0f2f5;
+}
+
+.container {
+    padding: 2rem 1.5rem 3rem;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.supplier-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.supplier-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #3d7a7f;
+    background: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 6px;
+    width: fit-content;
+}
+
+.supplier-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.fournisseur-table td {
+    vertical-align: middle;
+}
+
+.truncate {
+    max-width: 420px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.modal-form textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    resize: vertical;
+    transition: all 0.2s;
+}
+
+.modal-form textarea:focus {
+    outline: none;
+    border-color: #3d7a7f;
+    box-shadow: 0 0 0 4px rgba(61, 122, 127, 0.12);
+}
+
+.empty-state .btn-add {
+    margin: 1.5rem auto 0;
+    width: fit-content;
+}
+
+.btn-add.outline {
+    background: transparent;
+    color: #3d7a7f;
+    border: 2px solid #3d7a7f;
+    box-shadow: none;
+}
+
+.btn-add.outline:hover {
+    background: #f0f7f7;
+    transform: translateY(-2px);
+}
+
+.btn-icon-action.delete:hover {
+    background: #ef4444;
+    color: white;
+    transform: scale(1.1);
+}
+
+.btn-icon-action.edit {
+    background: linear-gradient(135deg, #e6f2f2 0%, #dcefef 100%);
+    color: #3d7a7f;
+    border: 1px solid rgba(61, 122, 127, 0.2);
+}
+
+.btn-icon-action.edit:hover {
+    background: linear-gradient(135deg, #3d7a7f 0%, #2a565a 100%);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(61, 122, 127, 0.3);
+    border-color: transparent;
+}
+
+.btn-icon-action.catalog {
+    background: linear-gradient(135deg, #f0f7f7 0%, #e8f4f4 100%);
+    color: #3d7a7f;
+    border: 1px solid rgba(61, 122, 127, 0.2);
+}
+
+.btn-icon-action.catalog:hover {
+    background: linear-gradient(135deg, #3d7a7f 0%, #2a565a 100%);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(61, 122, 127, 0.3);
+    border-color: transparent;
+}
+
+@media (max-width: 640px) {
+    .container {
+        padding: 1.25rem 1rem 2rem;
+    }
+
+    .truncate {
+        max-width: 160px;
+    }
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+    .supplier-code {
+        background: #0f172a;
+        color: #60a5fa;
+    }
+
+    .modal-form textarea {
+        background: #0f172a;
+        border-color: #334155;
+        color: #f8fafc;
+    }
+}

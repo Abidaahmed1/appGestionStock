@@ -5,10 +5,12 @@ import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.gestionStock.backend.entity.Stock.Stock;
+
 import jakarta.persistence.*;
 import lombok.*;
 
-@ToString
+@ToString(exclude = { "stock", "produitsAssocies" })
 @Getter
 @Setter
 @EqualsAndHashCode(of = "codeBarre")
@@ -29,18 +31,21 @@ public class PieceDetachee {
 
 	private String reference;
 	private int seuilMinimum;
+	
+	private int seuilMaximum ;
+
 	private double tauxTVA;
 	private String imageUrl;
 
 	@JsonIgnore
-	@OneToMany(mappedBy = "piece", cascade = CascadeType.ALL, orphanRemoval = true)
-	private Set<Stock> stocks = new HashSet<>();
-
+	@OneToOne(mappedBy = "piece")
+	private Stock stock;
 	@JsonIgnoreProperties("pieces")
 	@ManyToMany(mappedBy = "pieces", cascade = { CascadeType.PERSIST, CascadeType.MERGE })
 	private Set<ProduitFini> produitsAssocies = new HashSet<>();
 	@ManyToOne(cascade = { CascadeType.PERSIST, CascadeType.MERGE })
 	@JoinColumn(name = "categorie_id")
 	private Categorie categorie;
+	
 
 }

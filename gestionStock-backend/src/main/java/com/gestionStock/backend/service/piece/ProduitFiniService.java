@@ -1,6 +1,7 @@
 package com.gestionStock.backend.service.piece;
 
 import com.gestionStock.backend.entity.piece.ProduitFini;
+import com.gestionStock.backend.entity.piece.PieceDetachee;
 import com.gestionStock.backend.repository.piece.ProduitFiniRepository;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -29,9 +30,14 @@ public class ProduitFiniService {
         ProduitFini produit = produitRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Produit non trouvé"));
 
-        if (!produit.getPieces().isEmpty()) {
+        // Un produit fini peut être archivé si toutes ses pièces associées sont
+        // archivées
+        boolean allPiecesArchived = produit.getPieces().isEmpty() ||
+                produit.getPieces().stream().allMatch(PieceDetachee::isArchivee);
+
+        if (!allPiecesArchived) {
             throw new IllegalStateException(
-                    "Impossible de supprimer ce produit car il est associé à des pièces détachées.");
+                    "Impossible d'archiver ce produit car il possède des pièces associées qui ne sont pas encore archivées.");
         }
 
         produit.setEstArchivee(true);

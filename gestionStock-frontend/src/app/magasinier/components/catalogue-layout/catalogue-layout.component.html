@@ -68,8 +68,8 @@
                             <h3 class="item-title">{{ piece.designation }}</h3>
                             <div class="item-meta">
                                 <span class="ref">REF: {{ piece.reference }}</span>
-                                <span class="price-val" *ngIf="piece.prixVente">{{ piece.prixVente | currency:'TND'
-                                    }}</span>
+                                <span class="price-val" *ngIf="piece.prixVente">{{ piece.prixVente | number:'1.2-2'
+                                    }} DT</span>
                             </div>
                         </div>
                     </div>
@@ -136,10 +136,18 @@
                                         <span class="d-label">Catégorie</span>
                                         <span class="d-value">{{ selectedPiece?.categorie?.nom || 'Standard' }}</span>
                                     </div>
+                                    <div class="data-item">
+                                        <span class="d-label">Seuil Min</span>
+                                        <span class="d-value">{{ selectedPiece?.seuilMinimum }}</span>
+                                    </div>
+                                    <div class="data-item">
+                                        <span class="d-label">Seuil Max</span>
+                                        <span class="d-value">{{ selectedPiece?.seuilMaximum }}</span>
+                                    </div>
                                     <div class="data-item price-item" *ngIf="selectedPiece?.prixVente">
                                         <span class="d-label">Prix unitaire</span>
-                                        <span class="d-value large">{{ selectedPiece?.prixVente | currency:'TND'
-                                            }}</span>
+                                        <span class="d-value large">{{ selectedPiece?.prixVente | number:'1.2-2'
+                                            }} DT</span>
                                     </div>
                                 </div>
                             </div>
@@ -159,7 +167,7 @@
                 </div>
             </div>
 
-            <!-- Empty Selection State -->
+
             <div class="panel-empty-state" *ngIf="!selectedPiece && !selectedProduit">
                 <div class="visual-placeholder">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.5">

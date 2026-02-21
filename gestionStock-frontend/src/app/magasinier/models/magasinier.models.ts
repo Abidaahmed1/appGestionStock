@@ -5,6 +5,7 @@ export interface PieceDetachee {
     prixVente: number;
     reference: string;
     seuilMinimum: number;
+    seuilMaximum: number;
     tauxTVA: number;
     archivee: boolean;
     imageUrl?: string;
@@ -24,13 +25,6 @@ export interface Stock {
     id?: number;
     quantite: number;
     type: string;
-    entrepot?: Entrepot;
-}
-
-export interface Entrepot {
-    id?: number;
-    nom: string;
-    adresse?: string;
 }
 
 export interface ProduitFini {

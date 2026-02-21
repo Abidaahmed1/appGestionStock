@@ -29,8 +29,6 @@ export class ProduitListComponent implements OnInit {
 
     showAssociatedPiecesModal = false;
     selectedProductForPieces: ProduitFini | null = null;
-    showPieceDetailsModal = false;
-    selectedPieceForDetails: PieceDetachee | null = null;
     associatedPiecesSearchTerm: string = '';
 
     private keycloak = inject(KeycloakService);
@@ -199,13 +197,15 @@ export class ProduitListComponent implements OnInit {
     deleteProduit(id: number): void {
         this.magasinierService.deleteProduit(id).subscribe({
             next: () => {
-                this.notify('Produit supprimé', 'success');
+                this.notify('Produit archivé avec succès', 'success');
                 this.loadProduits();
                 this.cancelDelete();
                 this.cdr.detectChanges();
             },
-            error: () => {
-                this.notify('Erreur lors de la suppression', 'error');
+            error: (err) => {
+                console.error('Error deleting product:', err);
+                const msg = err.error?.message || err.error || 'Erreur lors de l\'archivage';
+                this.notify(msg, 'error');
                 this.cdr.detectChanges();
             }
         });
@@ -236,6 +236,11 @@ export class ProduitListComponent implements OnInit {
         }
 
         return url;
+    }
+
+    canArchiveProduit(produit: ProduitFini): boolean {
+        if (!produit.pieces || produit.pieces.length === 0) return true;
+        return produit.pieces.every(p => p.archivee);
     }
 
     get filteredProduits() {
@@ -290,22 +295,10 @@ export class ProduitListComponent implements OnInit {
         this.showAssociatedPiecesModal = false;
         this.selectedProductForPieces = null;
         this.associatedPiecesSearchTerm = '';
-        this.showPieceDetailsModal = false;
-        this.selectedPieceForDetails = null;
         this.cdr.detectChanges();
     }
 
-    openPieceDetailsModal(piece: PieceDetachee): void {
-        this.selectedPieceForDetails = piece;
-        this.showPieceDetailsModal = true;
-        this.cdr.detectChanges();
-    }
 
-    closePieceDetailsModal(): void {
-        this.showPieceDetailsModal = false;
-        this.selectedPieceForDetails = null;
-        this.cdr.detectChanges();
-    }
 
     triggerChangeDetection(): void {
         this.cdr.detectChanges();

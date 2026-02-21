@@ -18,7 +18,7 @@ public class CategorieController {
     private final CategorieService categorieService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'MAGASINIER', 'RESPONSABLE_LOGISTIQUE')")
     public List<Categorie> getAll() {
         return categorieService.getAll();
     }

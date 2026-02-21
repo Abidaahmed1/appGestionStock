@@ -7,7 +7,14 @@ import { MainLayoutComponent } from './shared/layouts/main-layout/main-layout.co
 import { DashboardComponent } from './shared/components/dashboard/dashboard.component';
 import { SettingsComponent } from './shared/components/settings/settings.component';
 import { authGuard } from './auth/auth.guard';
-import { EntrepotListComponent } from './logistique/components/entrepot-list/entrepot-list.component';
+import { StockManagementComponent } from './logistique/components/stock-management/stock-management.component';
+import { BonListComponent } from './magasinier/components/bon-list/bon-list.component';
+import { FournisseurListComponent } from './logistique/components/fournisseur-list/fournisseur-list.component';
+
+import { CommandeFournisseurListComponent } from './logistique/components/commande-fournisseur-list/commande-fournisseur-list.component';
+import { PriceTrackingComponent } from './logistique/components/price-tracking/price-tracking.component';
+import { SupplierCatalogComponent } from './logistique/components/supplier-catalog/supplier-catalog.component';
+import { FournisseurDetailsComponent } from './logistique/components/fournisseur-details/fournisseur-details.component';
 
 export const routes: Routes = [
     {
@@ -39,8 +46,63 @@ export const routes: Routes = [
                 data: { roles: ['MAGASINIER'] }
             },
             {
-                path: 'logistique/entrepots',
-                component: EntrepotListComponent,
+                path: 'magasinier/stocks',
+                component: StockManagementComponent,
+                canActivate: [authGuard],
+                data: { roles: ['MAGASINIER'] }
+            },
+            {
+                path: 'magasinier/bons',
+                component: BonListComponent,
+                canActivate: [authGuard],
+                data: { roles: ['MAGASINIER'] }
+            },
+            {
+                path: 'logistique/fournisseurs',
+                component: FournisseurListComponent,
+                canActivate: [authGuard],
+                data: { roles: ['RESPONSABLE_LOGISTIQUE'] }
+            },
+            {
+                path: 'logistique/fournisseurs/nouveau',
+                component: FournisseurDetailsComponent,
+                canActivate: [authGuard],
+                data: { roles: ['RESPONSABLE_LOGISTIQUE', 'ADMINISTRATEUR'] }
+            },
+            {
+                path: 'logistique/fournisseurs/:id',
+                component: FournisseurDetailsComponent,
+                canActivate: [authGuard],
+                data: { roles: ['RESPONSABLE_LOGISTIQUE', 'ADMINISTRATEUR'] }
+            },
+            {
+                path: 'logistique/fournisseurs/:id/catalog',
+                component: SupplierCatalogComponent,
+                canActivate: [authGuard],
+                data: { roles: ['RESPONSABLE_LOGISTIQUE'] }
+            },
+
+            {
+                path: 'logistique/commandes',
+                component: CommandeFournisseurListComponent,
+                canActivate: [authGuard],
+                data: { roles: ['RESPONSABLE_LOGISTIQUE'] }
+            },
+            {
+                path: 'logistique/commandes/nouvelle',
+                loadComponent: () => import('./logistique/components/commande-fournisseur-form/commande-fournisseur-form.component').then(m => m.CommandeFournisseurFormComponent),
+                canActivate: [authGuard],
+                data: { roles: ['RESPONSABLE_LOGISTIQUE'] }
+            },
+            {
+                path: 'logistique/commandes/:id',
+                loadComponent: () => import('./logistique/components/commande-fournisseur-form/commande-fournisseur-form.component').then(m => m.CommandeFournisseurFormComponent),
+                canActivate: [authGuard],
+                data: { roles: ['RESPONSABLE_LOGISTIQUE'] }
+            },
+            {
+                path: 'logistique/tracking',
+                component: PriceTrackingComponent,
                 canActivate: [authGuard],
                 data: { roles: ['RESPONSABLE_LOGISTIQUE'] }
             },

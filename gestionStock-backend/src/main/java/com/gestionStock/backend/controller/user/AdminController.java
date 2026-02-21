@@ -51,7 +51,6 @@ public class AdminController {
 				if (id != null && idToRole.containsKey(id)) {
 					kcUser.put("role", idToRole.get(id));
 				} else if (email != null && emailToRole.containsKey(email)) {
-					// Fallback to email matching if ID mismatch (e.g. recreated user)
 					kcUser.put("role", emailToRole.get(email));
 				} else {
 					kcUser.put("role", "AUCUN");
@@ -101,7 +100,6 @@ public class AdminController {
 				}
 			}
 
-			// Assign role in Keycloak
 			try {
 				String kcRole = mapToKeycloakRole(userRole.name());
 				adminService.assignRole(userId, kcRole);
@@ -208,7 +206,6 @@ public class AdminController {
 			});
 
 			try {
-				// Get all current roles
 				List<Map<String, Object>> currentRoles = adminService.getUserRoles(id);
 				List<String> businessRoles = List.of("Administrateur", "Auditeur", "Magasinier",
 						"Responsable logistique");
@@ -270,7 +267,7 @@ public class AdminController {
 				return "Auditeur";
 			case "MAGASINIER":
 				return "Magasinier";
-			case "RESPONSABL_LOGISTIQUE":
+			case "RESPONSABLE_LOGISTIQUE":
 				return "Responsable logistique";
 			default:
 				return roleName;

@@ -1,0 +1,327 @@
+<div class="purchase-order-container">
+    <!-- Barre « Retour à la liste » visible uniquement en vue impression (masquée à l'impression) -->
+    <div class="print-view-toolbar no-print" *ngIf="isPrintView">
+        <button type="button" class="back-link" (click)="goBackToCommandList()">
+            ← Retour à la liste des commandes
+        </button>
+    </div>
+
+    <!-- Header / Status Bar (masqué en vue impression) -->
+    <div class="form-header" *ngIf="!isPrintView">
+        <div class="breadcrumb">
+            <a routerLink="/logistique/commandes">Commandes Fournisseurs</a> /
+            <span>{{ isEditMode ? 'Commande ' + commande.numeroCmd : 'Nouvelle' }}</span>
+            <span *ngIf="commande.createur" class="creator-stamp"> - Créée par: {{ commande.createur.firstName }} {{
+                commande.createur.lastName }}</span>
+        </div>
+
+        <div class="action-bar">
+            <div class="main-actions">
+                <button (click)="save()" class="btn btn-primary" *ngIf="commande.statut === 'EN_ATTENTE'">
+                    {{ isEditMode ? 'SAUVEGARDER' : 'CRÉER' }}
+                </button>
+                <button (click)="confirmCommande()" class="btn btn-secondary" *ngIf="commande.statut === 'EN_ATTENTE'">
+                    CONFIRMER LA COMMANDE
+                </button>
+                <button (click)="printCommande()" class="btn btn-outline" *ngIf="isEditMode">
+                    IMPRIMER
+                </button>
+                <button (click)="cancel()" class="btn btn-outline">ANNULER</button>
+            </div>
+            <div class="status-steps">
+                <div class="step" [class.active]="commande.statut === 'EN_ATTENTE'">En attente</div>
+                <div class="step-arrow"></div>
+                <div class="step" [class.active]="commande.statut === 'RECUE'">Reçu</div>
+                <div class="step-arrow"></div>
+                <div class="step" [class.active]="commande.statut === 'ANNULEE'">Annulée</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="validation-errors" *ngIf="!isPrintView && formSubmitted && (errors | keyvalue).length > 0">
+        <div class="error-title">⚠ Veuillez corriger les erreurs suivantes :</div>
+        <ul>
+            <li *ngFor="let err of errors | keyvalue">{{ err.value }}</li>
+        </ul>
+    </div>
+
+
+    <div class="form-card" *ngIf="!isPrintView">
+        <div class="title-section centered-title">
+            <h1 class="main-title">
+                Commande N°:
+                <span class="order-num-text" *ngIf="commande.numeroCmd !== 0; else newBadge">
+                    {{ commande.numeroCmd }}
+                </span>
+                <ng-template #newBadge>
+                    <span class="badge-new">Nouveau (En attente de génération)</span>
+                </ng-template>
+            </h1>
+        </div>
+
+        <div class="form-grid">
+            <div class="form-column">
+                <div class="form-group" [class.has-error]="errors['fournisseur']">
+                    <label>Fournisseur <span class="required-star">*</span></label>
+                    <div class="input-wrapper">
+                        <div class="searchable-dropdown" (click)="onDropdownClick($event)">
+                            <div class="search-input-wrapper">
+                                <input type="text" [ngModel]="getSupplierDisplayValue()"
+                                    (ngModelChange)="onSupplierSearchChange($event)"
+                                    (click)="toggleSupplierDropdown($event)" placeholder="Choisir un fournisseur..."
+                                    [class.input-error]="errors['fournisseur']" class="form-control">
+                                <button class="btn-goto" *ngIf="commande.fournisseur"
+                                    (click)="goToSupplier(commande.fournisseur.id, $event)">➜</button>
+                            </div>
+
+                            <div class="dropdown-results" *ngIf="showSupplierDropdown">
+                                <div class="results-scroll">
+                                    <div *ngFor="let f of filteredFournisseurs" (click)="selectFournisseur(f)"
+                                        class="result-item">
+                                        <span class="item-name">{{ f.nom }}</span>
+                                        <span class="item-code" *ngIf="f.code">({{ f.code }})</span>
+                                    </div>
+                                    <div class="no-results" *ngIf="filteredFournisseurs.length === 0">
+                                        Aucun fournisseur trouvé
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <i class="icon-help">?</i>
+                    </div>
+                    <div class="field-error" *ngIf="errors['fournisseur']">{{ errors['fournisseur'] }}</div>
+                </div>
+
+                <div class="form-group">
+                    <label>Référence fournisseur</label>
+                    <div class="input-wrapper">
+                        <input type="text" [value]="commande.fournisseur ? commande.fournisseur.code : ''" readonly
+                            class="form-control read-only" placeholder="Code fournisseur">
+                        <i class="icon-help">?</i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-column">
+                <div class="form-group">
+                    <label>Échéance de commande</label>
+                    <div class="input-wrapper">
+                        <input type="datetime-local" [(ngModel)]="commande.dateCmd" name="date" class="form-control">
+                        <i class="icon-help">?</i>
+                    </div>
+                </div>
+                <div class="form-group" [class.has-error]="errors['dateArrivee']">
+                    <label>Arrivée prévue</label>
+                    <div class="input-wrapper">
+                        <input type="date" [(ngModel)]="commande.dateArrivee" name="dateArrivee"
+                            [min]="commande.dateCmd ? commande.dateCmd.substring(0, 10) : ''"
+                            [class.input-error]="errors['dateArrivee']" class="form-control">
+                        <i class="icon-help">?</i>
+                    </div>
+                    <div class="field-error" *ngIf="errors['dateArrivee']">{{ errors['dateArrivee'] }}</div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="tabs-container">
+            <div class="tabs-header">
+                <button [class.active]="activeTab === 'produits'" (click)="activeTab = 'produits'">Produits</button>
+                <button [class.active]="activeTab === 'autres'" (click)="activeTab = 'autres'">Autres
+                    informations</button>
+            </div>
+
+            <div class="tab-content" *ngIf="activeTab === 'produits'">
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>Produit</th>
+                            <th>Quantité</th>
+                            <th>Prix unitaire</th>
+                            <th>Remise</th>
+                            <th>Taxes</th>
+                            <th>Montant</th>
+                            <th width="40"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let ligne of commande.lignes; let i = index">
+                            <td>
+                                <div class="searchable-dropdown" (click)="onDropdownClick($event)">
+                                    <div class="search-input-wrapper">
+                                        <input type="text" [ngModel]="getPieceDisplayValue(i, ligne)"
+                                            (ngModelChange)="onPieceSearchChange($event)"
+                                            (click)="toggleDropdown(i, $event)" placeholder="Ajouter un produit..."
+                                            class="table-input">
+                                        <span class="dropdown-arrow">▼</span>
+                                    </div>
+
+                                    <div class="dropdown-results" *ngIf="openDropdownIndex === i">
+                                        <div class="results-scroll">
+                                            <div *ngFor="let p of filteredPieces" (click)="selectPiece(i, p)"
+                                                class="result-item">
+                                                <span class="item-name">{{ p.designation }}</span>
+                                                <span class="item-ref" *ngIf="p.reference">[{{ p.reference }}]</span>
+                                            </div>
+                                            <div class="no-results" *ngIf="filteredPieces.length === 0">
+                                                Aucun produit trouvé
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <input type="number" [(ngModel)]="ligne.qteCmd" class="table-input text-right">
+                            </td>
+                            <td>
+                                <div class="prix-cell">
+                                    <input type="number" [(ngModel)]="ligne.prixAchat" class="table-input text-right"
+                                        [class.input-error]="formSubmitted && (ligne.prixAchat || 0) === 0 && ligne.piece"
+                                        min="0" step="0.001" placeholder="0.000">
+                                    <span class="prix-zero-badge"
+                                        *ngIf="formSubmitted && (ligne.prixAchat || 0) === 0 && ligne.piece"
+                                        title="Prix manquant">!</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="tax-input-wrapper">
+                                    <input type="number" [(ngModel)]="ligne.remise"
+                                        class="table-input text-right width-40">
+                                    <span class="tax-percent">%</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="tax-input-wrapper">
+                                    <input type="number" [(ngModel)]="ligne.taxe"
+                                        class="table-input text-right width-40">
+                                    <span class="tax-percent">%</span>
+                                </div>
+                            </td>
+                            <td class="text-right">
+                                {{ (ligne.qteCmd * (ligne.prixAchat || 0) * (1 - (ligne.remise || 0)/100)) |
+                                number:'1.3-3' }} DT
+                            </td>
+                            <td>
+                                <button (click)="removeLigne(i)" class="btn-icon">×</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="table-actions">
+                    <button (click)="addLigne()" class="link-btn">Ajouter un produit</button>
+                </div>
+                <div class="field-error" *ngIf="errors['lignes']">{{ errors['lignes'] }}</div>
+            </div>
+
+            <div class="tab-content" *ngIf="activeTab === 'autres'">
+                <div class="form-grid">
+                    <div class="form-column">
+                        <div class="form-group">
+                            <label>Conditions de paiement</label>
+                            <input type="text" class="form-control">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Totals Section -->
+        <div class="footer-section">
+            <div class="totals-area">
+                <div class="total-row">
+                    <span>Montant brut:</span>
+                    <span class="total-value">{{ totalBrut | number:'1.3-3' }} DT</span>
+                </div>
+                <div class="total-row">
+                    <span>Remise:</span>
+                    <span class="total-value">- {{ totalRemise | number:'1.3-3' }} DT</span>
+                </div>
+                <div class="total-row highlight-row">
+                    <span>Montant après remise:</span>
+                    <span class="total-value">{{ totalHT | number:'1.3-3' }} DT</span>
+                </div>
+                <div class="total-row">
+                    <span>Montant taxes:</span>
+                    <span class="total-value">{{ totalTaxe | number:'1.3-3' }} DT</span>
+                </div>
+                <div class="total-row main-total">
+                    <span>Total:</span>
+                    <span class="total-value">{{ totalTTC | number:'1.3-3' }} DT</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="print-only-container" [class.visible-on-screen]="isPrintView">
+        <header class="po-header">
+            <div class="po-company">
+                <strong class="po-company-name">StockMasters S.A.</strong>
+                <span class="po-company-line">Spécialiste de la Gestion de Stock</span>
+            </div>
+            <div class="po-doc-meta">
+                <h1 class="po-doc-title">BON DE COMMANDE</h1>
+                <div class="po-ref">
+                    <span class="po-ref-label">Réf.</span>
+                    <span class="po-ref-value">{{ commande.numeroCmd }}</span>
+                </div>
+                <div class="po-date">Date : {{ commande.dateCmd | date:'dd/MM/yyyy' }}</div>
+            </div>
+        </header>
+
+        <section class="po-parties">
+            <div class="po-party">
+                <div class="po-party-label">Fournisseur</div>
+                <div class="po-party-content">
+                    <strong>{{ commande.fournisseur?.nom }}</strong>
+                    <span *ngIf="commande.fournisseur?.adresse">{{ commande.fournisseur?.adresse }}</span>
+                    <span *ngIf="commande.fournisseur?.tel">Tél. {{ commande.fournisseur?.tel }}</span>
+                    <span *ngIf="commande.fournisseur?.email">{{ commande.fournisseur?.email }}</span>
+                </div>
+            </div>
+            <div class="po-party">
+                <div class="po-party-label">Expédier à</div>
+                <div class="po-party-content">
+                    <strong>StockMasters S.A.</strong>
+                    <span>Zone Industrielle El Agba</span>
+                    <span>Tunis, Tunisie</span>
+                </div>
+            </div>
+        </section>
+
+        <table class="po-table">
+            <thead>
+                <tr>
+                    <th class="po-th-desc">Désignation</th>
+                    <th class="po-th-num">Qté</th>
+                    <th class="po-th-num">Prix unit. (DT)</th>
+                    <th class="po-th-num">Remise %</th>
+                    <th class="po-th-num">Montant HT (DT)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let ligne of commande.lignes">
+                    <td class="po-td-desc">{{ ligne.piece?.designation }}</td>
+                    <td class="po-td-num">{{ ligne.qteCmd }}</td>
+                    <td class="po-td-num">{{ (ligne.prixAchat || 0) | number:'1.3-3' }}</td>
+                    <td class="po-td-num">{{ (ligne.remise || 0) }}%</td>
+                    <td class="po-td-num">{{ (ligne.qteCmd * (ligne.prixAchat || 0) * (1 - (ligne.remise || 0)/100)) | number:'1.3-3' }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <footer class="po-footer">
+            <div class="po-signature">
+                <div class="po-signature-label">Cachet et signature du fournisseur</div>
+                <div class="po-signature-line"></div>
+            </div>
+            <div class="po-totals">
+                <div class="po-totals-row"><span>Total brut</span><span>{{ totalBrut | number:'1.3-3' }} DT</span></div>
+                <div class="po-totals-row"><span>Total remise</span><span>-{{ totalRemise | number:'1.3-3' }} DT</span></div>
+                <div class="po-totals-row"><span>Total HT</span><span>{{ totalHT | number:'1.3-3' }} DT</span></div>
+                <div class="po-totals-row"><span>Total TVA</span><span>{{ totalTaxe | number:'1.3-3' }} DT</span></div>
+                <div class="po-totals-row po-totals-ttc"><span>Total TTC</span><span>{{ totalTTC | number:'1.3-3' }} DT</span></div>
+            </div>
+        </footer>
+    </div>
+</div>

@@ -51,3 +51,39 @@
         transform: translateX(0) scale(1);
     }
 }
+
+/* --- Global Print Resets --- */
+@media print {
+
+    aside.sidebar,
+    header.top-header,
+    .notification-toast,
+    .breadcrumb,
+    .action-bar,
+    .main-actions,
+    .status-steps,
+    .btn,
+    button {
+        display: none !important;
+    }
+
+    .app-wrapper,
+    .main-content,
+    .page-container,
+    .router-content,
+    .purchase-order-container {
+        margin: 0 !important;
+        padding: 0 !important;
+        position: static !important;
+        width: 100% !important;
+        display: block !important;
+        background: white !important;
+        box-shadow: none !important;
+    }
+
+    body {
+        background-color: white !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+}

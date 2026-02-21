@@ -1,0 +1,279 @@
+<div class="odoo-view" [class.embedded]="isEmbedded">
+    <div class="notification-toast" *ngIf="notification" [class.success]="notification.type === 'success'"
+        [class.error]="notification.type === 'error'">
+        <span class="msg">{{ notification.message }}</span>
+        <button class="close-btn" (click)="closeNotification()">✕</button>
+    </div>
+    <div class="odoo-control-panel" *ngIf="!isEmbedded">
+        <div class="breadcrumb-bar">
+            <span class="breadcrumb-item link" (click)="goBack()">Fournisseurs</span>
+            <span class="separator">/</span>
+            <span class="breadcrumb-item active">{{ supplier?.nom || 'Nouveau' }}</span>
+        </div>
+
+        <div class="action-buttons">
+            <button class="btn btn-primary" [class.has-changes]="hasChanges" (click)="saveAll()">
+                Enregistrer dans le catalogue
+            </button>
+            <button class="btn btn-secondary" (click)="goBack()">Annuler</button>
+        </div>
+    </div>
+
+    <div class="odoo-sheet-wrapper" [class.embedded]="isEmbedded">
+        <div class="odoo-sheet" [class.embedded]="isEmbedded">
+            <div class="sheet-header" *ngIf="!isEmbedded">
+                <div class="title-label">Catalogue Fournisseur</div>
+                <h1>{{ supplier?.nom || 'Chargement...' }}</h1>
+            </div>
+
+            <div class="form-grid" *ngIf="!isEmbedded">
+                <div class="form-column">
+                    <div class="form-group">
+                        <label>Fournisseur</label>
+                        <div class="field-value">{{ supplier?.nom }}</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Référence interne</label>
+                        <div class="field-value">{{ supplier?.code }}</div>
+                    </div>
+                </div>
+                <div class="form-column">
+                    <div class="form-group">
+                        <label>Email contact</label>
+                        <div class="field-value">{{ supplier?.email || '—' }}</div>
+                    </div>
+                    <div class="form-group">
+                        <label>Téléphone</label>
+                        <div class="field-value">{{ supplier?.tel || '—' }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tabs-area">
+                <div class="tab-headers" *ngIf="!isEmbedded">
+                    <div class="tab-link active">Articles</div>
+                </div>
+
+                <div class="tab-content">
+                    <div class="odoo-add-line-bar">
+                        <div class="col col-product">
+                            <label class="line-label">Articles</label>
+                            <div class="search-dropdown">
+                                <input type="text" [(ngModel)]="searchTerm" (focus)="showResults = true"
+                                    (blur)="toggleResults(false)" placeholder="Choisir un article..."
+                                    class="odoo-input-line" [class.input-error]="validationErrors.piece">
+                                <div class="results-list" *ngIf="showResults && filteredPieces.length > 0">
+                                    <div class="result-item" *ngFor="let p of filteredPieces"
+                                        (mousedown)="selectPiece(p)">
+                                        <span class="code">[{{ p.codeBarre }}]</span>
+                                        <span class="name">{{ p.designation }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col col-price text-right">
+                            <label class="line-label">Prix Unitaire</label>
+                            <input type="number" [(ngModel)]="newEntry.prixAchat" class="odoo-input-line text-right"
+                                [class.input-error]="validationErrors.prix" min="1.0">
+                        </div>
+                        <div class="col col-discount text-center">
+                            <label class="line-label">Remise %</label>
+                            <input type="number" [(ngModel)]="newEntry.tauxRemise" class="odoo-input-line text-center">
+                        </div>
+                        <div class="col col-qte text-center">
+                            <label class="line-label">Qté Min</label>
+                            <input type="number" [(ngModel)]="newEntry.qteMinACommander"
+                                class="odoo-input-line text-center">
+                        </div>
+                        <div class="col col-date text-center">
+                            <label class="line-label">Début valid.</label>
+                            <input type="date" [(ngModel)]="newEntry.dateDebutValidite" class="odoo-input-line"
+                                [class.input-error]="validationErrors.dates">
+                        </div>
+                        <div class="col col-date text-center">
+                            <label class="line-label">Fin valid.</label>
+                            <input type="date" [(ngModel)]="newEntry.dateFinValidite" class="odoo-input-line"
+                                [class.input-error]="validationErrors.dates">
+                        </div>
+                        <div class="col col-status text-center">
+                            <label class="line-label">Principale</label>
+                            <div class="check-wrapper">
+                                <label class="check-container">
+                                    <input type="checkbox" [(ngModel)]="newEntry.estPrincipale">
+                                    <span class="checkmark"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col col-action">
+                            <button class="btn btn-add-line" (click)="addToLocalList()">
+                                <span class="icon">+</span> AJOUTER
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="line-table-wrapper">
+                        <table class="line-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-product">Produit</th>
+                                    <th class="col-price text-right">Prix Unitaire</th>
+                                    <th class="col-discount text-center">Remise %</th>
+                                    <th class="col-qte text-center">Qté Min</th>
+                                    <th class="col-date text-center">Début valid.</th>
+                                    <th class="col-date text-center">Fin valid.</th>
+                                    <th class="col-status text-center">Statut</th>
+                                    <th class="col-action text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngFor="let item of filteredCatalogItems; let i = index" class="line-row"
+                                    [class.row-new]="item._isNew" [class.row-modified]="item._isModified"
+                                    [class.row-editing]="editingIndex === i">
+
+                                    <ng-container *ngIf="editingIndex !== i">
+                                        <td class="col-product">
+                                            <div class="prod-info">
+                                                <span class="prod-name">{{ item.piece?.designation }}</span>
+                                                <span class="prod-code">{{ item.piece?.codeBarre }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="col-price text-right font-bold" style="color: #3d7a7f;">
+                                            {{ item.prixAchat | number:'1.2-2' }} DT
+                                        </td>
+                                        <td class="col-discount text-center">
+                                            {{ item.tauxRemise }} %
+                                        </td>
+                                        <td class="col-qte text-center">
+                                            {{ item.qteMinACommander }}
+                                        </td>
+                                        <td class="col-date text-center">
+                                            <span class="date-chip" *ngIf="item.dateDebutValidite">
+                                                {{ item.dateDebutValidite | date:'dd/MM/yy' }}
+                                            </span>
+                                            <span *ngIf="!item.dateDebutValidite" class="color-muted">—</span>
+                                        </td>
+                                        <td class="col-date text-center">
+                                            <span class="date-chip" *ngIf="item.dateFinValidite">
+                                                {{ item.dateFinValidite | date:'dd/MM/yy' }}
+                                            </span>
+                                            <span *ngIf="!item.dateFinValidite" class="color-muted">—</span>
+                                        </td>
+                                        <td class="col-status text-center">
+                                            <span class="status-tag" [class.is-primary]="item.estPrincipale">
+                                                {{ item.estPrincipale ? 'Principale' : 'Alternative' }}
+                                            </span>
+                                        </td>
+                                        <td class="col-action text-center">
+                                            <div class="action-cell">
+                                                <button class="btn-icon-edit" (click)="startEditing(i)"
+                                                    title="Modifier">
+                                                    <svg viewBox="0 0 24 24" width="16" height="16"
+                                                        stroke="currentColor" stroke-width="2" fill="none"
+                                                        stroke-linecap="round" stroke-linejoin="round">
+                                                        <path
+                                                            d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7">
+                                                        </path>
+                                                        <path
+                                                            d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4L18.5 2.5z">
+                                                        </path>
+                                                    </svg>
+                                                </button>
+                                                <button class="btn-icon-del" (click)="removeFromLocalList(i)"
+                                                    title="Supprimer">
+                                                    <svg viewBox="0 0 24 24" width="16" height="16"
+                                                        stroke="currentColor" stroke-width="2" fill="none"
+                                                        stroke-linecap="round" stroke-linejoin="round">
+                                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                                        <path
+                                                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                                        </path>
+                                                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                                                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </ng-container>
+
+                                    <ng-container *ngIf="editingIndex === i">
+                                        <td class="col-product">
+                                            <div class="prod-info">
+                                                <span class="prod-name">{{ item.piece?.designation }}</span>
+                                                <span class="prod-code">{{ item.piece?.codeBarre }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="col-price">
+                                            <input type="number" [(ngModel)]="item.prixAchat"
+                                                class="edit-input text-right" (ngModelChange)="markModified(i)"
+                                                min="1.0">
+                                        </td>
+                                        <td class="col-discount">
+                                            <input type="number" [(ngModel)]="item.tauxRemise"
+                                                class="edit-input text-center" (ngModelChange)="markModified(i)">
+                                        </td>
+                                        <td class="col-qte">
+                                            <input type="number" [(ngModel)]="item.qteMinACommander"
+                                                class="edit-input text-center" (ngModelChange)="markModified(i)">
+                                        </td>
+                                        <td class="col-date">
+                                            <input type="date" [(ngModel)]="item.dateDebutValidite" class="edit-input"
+                                                (ngModelChange)="markModified(i)">
+                                        </td>
+                                        <td class="col-date">
+                                            <input type="date" [(ngModel)]="item.dateFinValidite" class="edit-input"
+                                                (ngModelChange)="markModified(i)">
+                                        </td>
+                                        <td class="col-status text-center">
+                                            <label class="check-container">
+                                                <input type="checkbox" [(ngModel)]="item.estPrincipale"
+                                                    (ngModelChange)="markModified(i)">
+                                                <span class="checkmark"></span>
+                                            </label>
+                                        </td>
+                                        <td class="col-action text-center">
+                                            <div class="action-cell">
+                                                <button class="btn-icon-confirm" (click)="confirmEditing(i)"
+                                                    title="Valider">
+                                                    <svg viewBox="0 0 24 24" width="16" height="16"
+                                                        stroke="currentColor" stroke-width="2.5" fill="none"
+                                                        stroke-linecap="round" stroke-linejoin="round">
+                                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                                    </svg>
+                                                </button>
+                                                <button class="btn-icon-cancel" (click)="cancelEditing()"
+                                                    title="Annuler">
+                                                    <svg viewBox="0 0 24 24" width="16" height="16"
+                                                        stroke="currentColor" stroke-width="2.5" fill="none"
+                                                        stroke-linecap="round" stroke-linejoin="round">
+                                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </ng-container>
+                                </tr>
+                                <tr *ngIf="filteredCatalogItems.length === 0">
+                                    <td colspan="8" class="empty-line">Aucun article enregistré.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="summary-area">
+                        <div class="totals">
+                            <div class="total-row">
+                                <span>Nombre d'articles:</span>
+                                <strong>{{ pendingItems.length }}</strong>
+                            </div>
+                            <div class="total-row large">
+                                <span>Sources principales:</span>
+                                <strong>{{ getPrincipalCount() }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

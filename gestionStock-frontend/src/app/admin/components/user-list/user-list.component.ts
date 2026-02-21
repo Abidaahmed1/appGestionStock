@@ -17,7 +17,7 @@ export class UserListComponent implements OnInit {
     showDeleteModal = false;
     showRoleModal = false;
     selectedUser: UserRepresentation | null = null;
-    valideRoles = ['RESPONSABL_LOGISTIQUE', 'AUDITEUR', 'MAGASINIER'];
+    valideRoles = ['RESPONSABLE_LOGISTIQUE', 'AUDITEUR', 'MAGASINIER'];
     userRoles: string[] = [];
     newUser: any = { role: 'MAGASINIER' };
     userToDelete: UserRepresentation | null = null;
@@ -94,7 +94,7 @@ export class UserListComponent implements OnInit {
     }
 
     openCreateModal() {
-        this.newUser = { role: 'MAGASINIER' };
+        this.newUser = { role: 'MAGASINIER', password: '', confirmPassword: '' };
         this.showCreateModal = true;
     }
 
@@ -103,7 +103,7 @@ export class UserListComponent implements OnInit {
     }
 
     createUser() {
-        if (!this.newUser.email) return;
+        if (!this.newUser.email || this.newUser.password !== this.newUser.confirmPassword) return;
 
         const username = this.newUser.username || this.newUser.email;
 
@@ -314,7 +314,7 @@ export class UserListComponent implements OnInit {
         const cleanRole = role.toUpperCase().replace('ROLE_', '');
         switch (cleanRole) {
             case 'ADMINISTRATEUR': return 'Administrateur';
-            case 'RESPONSABL_LOGISTIQUE': return 'Responsable Logistique';
+            case 'RESPONSABLE_LOGISTIQUE': return 'Responsable Logistique';
             case 'AUDITEUR': return 'Auditeur';
             case 'MAGASINIER': return 'Magasinier';
             default: return role.replace('ROLE_', '');

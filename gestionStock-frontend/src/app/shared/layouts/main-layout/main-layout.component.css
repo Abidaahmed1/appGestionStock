@@ -230,3 +230,22 @@
     background: #ff7675;
     color: white;
 }
+
+@media print {
+
+    .sidebar,
+    .top-header,
+    .sidebar-footer {
+        display: none !important;
+    }
+
+    .main-content {
+        overflow: visible !important;
+        display: block !important;
+        height: auto !important;
+    }
+
+    .page-container {
+        padding: 0 !important;
+    }
+}

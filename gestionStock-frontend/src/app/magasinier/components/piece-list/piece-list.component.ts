@@ -81,6 +81,7 @@ export class PieceListComponent implements OnInit {
             prixVente: 0,
             reference: '',
             seuilMinimum: 0,
+            seuilMaximum: 0,
             tauxTVA: 0,
             archivee: false,
             categorie: { nom: '' },

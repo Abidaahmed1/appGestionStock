@@ -1,0 +1,44 @@
+package com.gestionStock.backend.entity.Stock;
+
+import java.beans.Transient;
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
+
+import org.apache.commons.codec.language.bm.Lang;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+
+@Entity
+@ToString(exclude = { "ligneMouvement", "bon" })
+@Getter
+@Setter
+public class MouvementStock {
+	@Id
+	@GeneratedValue(strategy = GenerationType.AUTO)
+	private Long id;
+	private LocalDateTime date;
+	private double montantHTVA;
+	private double montantTTC;
+	@Enumerated(EnumType.STRING)
+	private TypeMouvement typeMouvement;
+	@JsonIgnore
+	@OneToMany(mappedBy = "mouvementStock", cascade = CascadeType.ALL, orphanRemoval = true)
+	private Set<LigneMouvement> ligneMouvement = new HashSet<>();
+	@OneToOne
+	private Bon bon;
+
+}

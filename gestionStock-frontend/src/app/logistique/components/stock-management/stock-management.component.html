@@ -1,0 +1,197 @@
+<div class="stock-container">
+    <div class="notification-toast" *ngIf="notification" [class.success]="notification.type === 'success'"
+        [class.error]="notification.type === 'error'">
+        <span class="msg">{{ notification.message }}</span>
+        <button class="close-btn" (click)="notification = null">✕</button>
+    </div>
+
+    <div class="header-section">
+        <div class="header-left">
+            <h1>
+                <div class="title-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path
+                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                        </path>
+                    </svg>
+                </div>
+                Gestion des Stocks
+            </h1>
+            <div class="search-filter-wrapper">
+                <div class="search-box">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" [(ngModel)]="searchTerm" placeholder="Rechercher un stock...">
+                </div>
+
+            </div>
+        </div>
+        <button class="btn-add" (click)="openCreateModal()" *ngIf="canManage()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Nouveau Stock
+        </button>
+    </div>
+
+    <!-- Low Stock Alerts -->
+    <div class="alert-section" *ngIf="lowStockItems.length > 0">
+        <div class="alert-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
+                </path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <span>{{ lowStockItems.length }} article(s) en stock faible</span>
+        </div>
+    </div>
+
+    <!-- Stock Table -->
+    <div class="table-container">
+        <table class="stock-table">
+            <thead>
+                <tr>
+                    <th>Pièce</th>
+                    <th>Référence</th>
+
+                    <th>Quantité</th>
+                    <th>Type</th>
+                    <th>Seuil Min.</th>
+                    <th>Statut</th>
+                    <th *ngIf="canManage()">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let stock of filteredStocks" [class.low-stock]="stock.quantite < stock.piece?.seuilMinimum">
+                    <td>{{ stock.piece?.designation || 'N/A' }}</td>
+                    <td><code>{{ stock.piece?.reference || 'N/A' }}</code></td>
+
+                    <td class="quantity-cell">
+                        <span class="quantity-badge">{{ stock.quantite }}</span>
+                    </td>
+                    <td>
+                        <span class="type-badge" [class]="stock.type.toLowerCase().replace('_', '-')">
+                            {{ stock.type }}
+                        </span>
+                    </td>
+                    <td>{{ stock.piece?.seuilMinimum || 0 }}</td>
+                    <td>
+                        <span class="status-badge" [class.warning]="stock.quantite < stock.piece?.seuilMinimum"
+                            [class.ok]="stock.quantite >= stock.piece?.seuilMinimum">
+                            {{ stock.quantite < stock.piece?.seuilMinimum ? 'Stock Faible' : 'OK' }} </span>
+                    </td>
+                    <td class="actions-cell" *ngIf="canManage()">
+                        <button class="btn-icon-action edit" (click)="openEditModal(stock)" title="Modifier">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                        </button>
+                        <button class="btn-icon-action delete" (click)="confirmDelete(stock)" title="Supprimer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                </path>
+                            </svg>
+                        </button>
+                    </td>
+                </tr>
+                <tr *ngIf="filteredStocks.length === 0">
+                    <td colspan="7" class="empty-state">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                            </path>
+                        </svg>
+                        <p>Aucun stock trouvé</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<div class="modal-overlay" *ngIf="showCreateModal" (click)="closeCreateModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>{{ selectedStock ? 'Modifier' : 'Nouveau' }} Stock</h2>
+            <button class="btn-icon" (click)="closeCreateModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <form #stockForm="ngForm" (ngSubmit)="stockForm.form.valid && saveStock()" class="modal-form">
+            <div class="form-group">
+                <label>Pièce <span class="required">*</span></label>
+                <select [(ngModel)]="newStock.piece" name="piece" required>
+                    <option [ngValue]="null">Sélectionner une pièce</option>
+                    <option *ngFor="let piece of pieces" [ngValue]="piece">{{ piece.designation }} ({{ piece.reference
+                        }})</option>
+                </select>
+            </div>
+
+
+            <div class="form-group">
+                <label>Quantité <span class="required">*</span></label>
+                <input type="number" [(ngModel)]="newStock.quantite" name="quantite" required min="0">
+            </div>
+
+            <div class="form-group">
+                <label>Type <span class="required">*</span></label>
+                <select [(ngModel)]="newStock.type" name="type" required>
+                    <option value="DISPONIBLE">Disponible</option>
+                    <option value="RESERVE">Réservé</option>
+                    <option value="EN_REAPPROVISIONNEMENT">En Réapprovisionnement</option>
+                    <option value="DEFECTUEUX">Défectueux</option>
+                </select>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-secondary" (click)="closeCreateModal()">Annuler</button>
+                <button type="submit" class="btn-primary" [disabled]="stockForm.invalid">
+                    {{ selectedStock ? 'Mettre à jour' : 'Créer' }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+<div class="modal-overlay delete-modal" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
+    <div class="modal-content small confirm-danger" (click)="$event.stopPropagation()">
+        <div class="confirm-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path
+                    d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" />
+            </svg>
+        </div>
+        <h3>Confirmer la suppression</h3>
+        <p>Êtes-vous sûr de vouloir supprimer cet enregistrement de stock ?</p>
+        <p class="warning-text">Cette action est irréversible.</p>
+
+        <div class="modal-actions">
+            <button class="btn-secondary" (click)="cancelDelete()">Annuler</button>
+            <button class="btn-danger" (click)="deleteStock(itemToDelete.id)">Supprimer</button>
+        </div>
+    </div>
+</div>

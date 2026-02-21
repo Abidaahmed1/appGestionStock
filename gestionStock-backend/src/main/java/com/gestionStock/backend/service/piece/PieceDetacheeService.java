@@ -6,6 +6,9 @@ import com.gestionStock.backend.entity.piece.ProduitFini;
 import com.gestionStock.backend.repository.piece.PieceDetacheeRepository;
 import com.gestionStock.backend.repository.piece.CategorieRepository;
 import com.gestionStock.backend.repository.piece.ProduitFiniRepository;
+import com.gestionStock.backend.entity.Stock.Stock;
+import com.gestionStock.backend.entity.Stock.TypeStock;
+import com.gestionStock.backend.repository.stock.StockRepository;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +26,7 @@ public class PieceDetacheeService {
     private final PieceDetacheeRepository pieceRepo;
     private final CategorieRepository categorieRepo;
     private final ProduitFiniRepository produitRepo;
+    private final StockRepository stockRepo;
 
     public List<PieceDetachee> getAll() {
         return pieceRepo.findAll();
@@ -47,6 +51,12 @@ public class PieceDetacheeService {
 
         PieceDetachee savedPiece = this.pieceRepo.save(piece);
         handleProductAssociations(savedPiece, produitsToAssociate);
+
+        Stock stock = new Stock();
+        stock.setPiece(savedPiece);
+        stock.setQuantite(0);
+        stock.setType(TypeStock.EN_REAPPROVISIONNEMENT);
+        this.stockRepo.save(stock);
 
         return savedPiece;
     }

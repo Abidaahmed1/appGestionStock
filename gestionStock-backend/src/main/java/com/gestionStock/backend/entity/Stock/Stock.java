@@ -1,4 +1,10 @@
-package com.gestionStock.backend.entity.piece;
+package com.gestionStock.backend.entity.Stock;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.gestionStock.backend.entity.piece.PieceDetachee;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
@@ -9,6 +15,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
@@ -19,11 +27,11 @@ import lombok.Setter;
 import lombok.ToString;
 
 @Entity
-@Table(uniqueConstraints = @UniqueConstraint(columnNames = { "PieceDetachee_id", "entrepot_id" }))
+@Table(uniqueConstraints = @UniqueConstraint(columnNames = { "PieceDetachee_id" }))
 @Getter
 @Setter
-@ToString
-@EqualsAndHashCode(of = { "piece", "entrepot" })
+@ToString(exclude = { "ligneMouvement", "piece" })
+@EqualsAndHashCode(of = { "piece" })
 public class Stock {
 	public Stock() {
 	}
@@ -32,16 +40,16 @@ public class Stock {
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private Long id;
 
-	@ManyToOne
+	@OneToOne
 	@JoinColumn(name = "PieceDetachee_id", nullable = false)
 	private PieceDetachee piece;
-
-	@ManyToOne(cascade = { CascadeType.PERSIST, CascadeType.MERGE })
-	@JoinColumn(name = "entrepot_id", nullable = false)
-	private Entrepot entrepot;
 
 	private int quantite;
 
 	@Enumerated(EnumType.STRING)
 	private TypeStock type;
+	@JsonIgnore
+	@OneToMany(mappedBy = "stock", cascade = CascadeType.ALL, orphanRemoval = true)
+	private Set<LigneMouvement> ligneMouvement = new HashSet<>();
+
 }

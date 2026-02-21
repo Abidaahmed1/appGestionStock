@@ -89,6 +89,10 @@
                         <span class="value">{{ piece.seuilMinimum }}</span>
                     </div>
                     <div class="detail-row">
+                        <span class="label">Seuil Max:</span>
+                        <span class="value">{{ piece.seuilMaximum }}</span>
+                    </div>
+                    <div class="detail-row">
                         <span class="label">TVA:</span>
                         <span class="value">{{ piece.tauxTVA }}%</span>
                     </div>
@@ -103,7 +107,7 @@
                     </svg>
                     {{ piece.produitsAssocies.length }} produit{{ piece.produitsAssocies.length > 1 ? 's' : '' }}
                 </button>
-                <span class="price-tag">{{ piece.prixVente | currency:'TND' }}</span>
+                <span class="price-tag">{{ piece.prixVente | number:'1.2-2' }} DT</span>
             </div>
         </div>
     </div>
@@ -316,16 +320,29 @@
                     <h3 class="form-section-title">Prix & Stock</h3>
                     <div class="form-row-2">
                         <div class="form-group piece-form-group">
-                            <label>Prix de vente (TND) <span class="required">*</span></label>
+                            <label>Prix de vente (DT) <span class="required">*</span></label>
                             <div class="control-wrapper">
                                 <input type="number" [(ngModel)]="newPiece.prixVente" name="prixVente" #pa="ngModel"
-                                    required min="0.001" step="0.001" placeholder="0.000">
+                                    required min="0.01" step="0.01" placeholder="0.00">
                                 <span class="error-msg" *ngIf="pa.invalid && pa.touched">
                                     {{ pa.errors?.['required'] ? 'Le prix de vente est obligatoire' : 'Le prix doit être
                                     > 0' }}
                                 </span>
                             </div>
                         </div>
+                        <div class="form-group piece-form-group">
+                            <label>Taux TVA (%) <span class="required">*</span></label>
+                            <div class="control-wrapper">
+                                <input type="number" [(ngModel)]="newPiece.tauxTVA" name="tauxTVA" #tva="ngModel"
+                                    required min="0" max="100" step="0.1" placeholder="19">
+                                <span class="error-msg" *ngIf="tva.invalid && tva.touched">
+                                    {{ tva.errors?.['required'] ? 'Le taux TVA est obligatoire' : 'Le taux doit être
+                                    entre 0 et 100' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-row-2">
                         <div class="form-group piece-form-group">
                             <label>Seuil Minimum <span class="required">*</span></label>
                             <div class="control-wrapper">
@@ -337,16 +354,14 @@
                                 </span>
                             </div>
                         </div>
-                    </div>
-                    <div class="form-row-2">
                         <div class="form-group piece-form-group">
-                            <label>Taux TVA (%) <span class="required">*</span></label>
+                            <label>Seuil Maximum <span class="required">*</span></label>
                             <div class="control-wrapper">
-                                <input type="number" [(ngModel)]="newPiece.tauxTVA" name="tauxTVA" #tva="ngModel"
-                                    required min="0" max="100" step="0.1" placeholder="19">
-                                <span class="error-msg" *ngIf="tva.invalid && tva.touched">
-                                    {{ tva.errors?.['required'] ? 'Le taux TVA est obligatoire' : 'Le taux doit être
-                                    entre 0 et 100' }}
+                                <input type="number" [(ngModel)]="newPiece.seuilMaximum" name="seuilMaximum"
+                                    #smax="ngModel" required min="0" placeholder="0">
+                                <span class="error-msg" *ngIf="smax.invalid && smax.touched">
+                                    {{ smax.errors?.['required'] ? 'Le seuil max est obligatoire' : 'Le seuil ne peut
+                                    pas être négatif' }}
                                 </span>
                             </div>
                         </div>
@@ -693,8 +708,7 @@
                     </div>
                 </div>
             </div>
-            <div class="associated-empty"
-                *ngIf="selectedPieceForProducts && filteredAssociatedProducts.length === 0">
+            <div class="associated-empty" *ngIf="selectedPieceForProducts && filteredAssociatedProducts.length === 0">
                 <p>Aucun produit trouvé</p>
             </div>
         </div>

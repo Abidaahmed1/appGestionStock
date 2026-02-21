@@ -21,7 +21,7 @@ public class PieceDetacheeController {
     private final ImageService imageService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'MAGASINIER', 'RESPONSABLE_LOGISTIQUE')")
     public List<PieceDetachee> getAll() {
         return pieceService.findByActive();
     }
