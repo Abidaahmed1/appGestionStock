@@ -53,7 +53,6 @@
         </div>
     </div>
 
-    <!-- Panneau Filtre avancé -->
     <div class="advanced-filter-panel" *ngIf="showAdvancedFilter" (click)="$event.stopPropagation()">
         <div class="advanced-filter-header">
             <span class="advanced-filter-title">Filtres avancés</span>
@@ -142,13 +141,13 @@
                     </td>
                     <td *ngIf="isColumnVisible('statut')" class="actions-td" (click)="onActionsCellClick($event)">
                         <div class="list-actions">
-                            <!-- RECUE ou ANNULEE : uniquement Imprimer -->
+
                             <ng-container *ngIf="cmd.statut === 'RECUE' || cmd.statut === 'ANNULEE'">
                                 <button type="button" class="btn-action btn-action--print" (click)="printCommande(cmd, $event)" title="Imprimer la commande">
                                     <span class="btn-action__text">Imprimer</span>
                                 </button>
                             </ng-container>
-                            <!-- EN_ATTENTE : Recevoir, Annuler et Imprimer -->
+                            
                             <ng-container *ngIf="cmd.statut === 'EN_ATTENTE'">
                                 <button type="button" class="btn-action btn-action--receive" (click)="onRecevoirClick(cmd, $event)" title="Marquer comme reçue">
                                     <span class="btn-action__text">Recevoir</span>

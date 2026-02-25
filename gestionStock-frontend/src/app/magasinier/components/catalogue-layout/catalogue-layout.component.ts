@@ -22,8 +22,13 @@ export class CatalogueLayoutComponent implements OnInit {
     searchTerm: string = '';
     searchCategory: string = 'all';
     notification: { type: 'success' | 'error', message: string } | null = null;
-    selectedPiece: PieceDetachee | null = null;
-    selectedProduit: ProduitFini | null = null;
+    showAdvancedFilters: boolean = false;
+    filterStockStatus: string = 'all';
+    filterCategory: string = 'all';
+    minPrice: number | null = null;
+    maxPrice: number | null = null;
+    categories: string[] = [];
+    filterPieceSearch: string = '';
 
     constructor(
         private magasinierService: MagasinierService,
@@ -40,7 +45,8 @@ export class CatalogueLayoutComponent implements OnInit {
         this.magasinierService.getPieces().subscribe({
             next: (data) => {
                 this.pieces = data;
-                this.filteredPieces = data;
+                this.extractCategories();
+                this.filterItems();
             },
             error: (err) => console.error('Error loading pieces:', err)
         });
@@ -48,18 +54,34 @@ export class CatalogueLayoutComponent implements OnInit {
         this.magasinierService.getProduits().subscribe({
             next: (data) => {
                 this.produits = data;
-                this.filteredProduits = data;
+                this.filterItems();
             },
             error: (err) => console.error('Error loading produits:', err)
         });
     }
 
+    extractCategories(): void {
+        const cats = new Set(this.pieces.map(p => p.categorie?.nom).filter(n => !!n));
+        this.categories = Array.from(cats as Set<string>).sort();
+    }
+
     switchTab(tab: 'pieces' | 'produits'): void {
         this.activeTab = tab;
-        this.selectedPiece = null;
-        this.selectedProduit = null;
-        this.searchTerm = '';
+        this.resetFilters();
         this.filterItems();
+    }
+
+    resetFilters(): void {
+        this.searchTerm = '';
+        this.filterStockStatus = 'all';
+        this.filterCategory = 'all';
+        this.minPrice = null;
+        this.maxPrice = null;
+        this.filterPieceSearch = '';
+    }
+
+    toggleAdvancedFilters(): void {
+        this.showAdvancedFilters = !this.showAdvancedFilters;
     }
 
     filterItems(): void {
@@ -67,36 +89,62 @@ export class CatalogueLayoutComponent implements OnInit {
 
         if (this.activeTab === 'pieces') {
             this.filteredPieces = this.pieces.filter(piece => {
-                if (this.searchCategory === 'all') {
-                    return piece.designation.toLowerCase().includes(term) ||
-                        piece.reference.toLowerCase().includes(term) ||
-                        piece.codeBarre.toLowerCase().includes(term);
+                // Search term filter
+                let matchesSearch = true;
+                if (term) {
+                    if (this.searchCategory === 'all') {
+                        matchesSearch = piece.designation.toLowerCase().includes(term) ||
+                            piece.reference.toLowerCase().includes(term) ||
+                            (piece.codeBarre?.toLowerCase().includes(term) || false);
+                    } else if (this.searchCategory === 'designation') {
+                        matchesSearch = piece.designation.toLowerCase().includes(term);
+                    } else if (this.searchCategory === 'code') {
+                        matchesSearch = piece.reference.toLowerCase().includes(term) ||
+                            (piece.codeBarre?.toLowerCase().includes(term) || false);
+                    }
                 }
-                if (this.searchCategory === 'designation') return piece.designation.toLowerCase().includes(term);
-                if (this.searchCategory === 'code') return piece.reference.toLowerCase().includes(term) || piece.codeBarre.toLowerCase().includes(term);
+
+                if (!matchesSearch) return false;
+
+                const stock = this.getTotalStock(piece);
+                if (this.filterStockStatus === 'available' && stock <= 0) return false;
+                if (this.filterStockStatus === 'low' && (stock <= 0 || stock >= piece.seuilMinimum)) return false;
+                if (this.filterStockStatus === 'out' && stock > 0) return false;
+
+                if (this.filterCategory !== 'all' && piece.categorie?.nom !== this.filterCategory) return false;
+
+                if (this.minPrice !== null && (piece.prixVente || 0) < this.minPrice) return false;
+                if (this.maxPrice !== null && (piece.prixVente || 0) > this.maxPrice) return false;
+
                 return true;
             });
         } else {
+            const pSearch = this.filterPieceSearch.toLowerCase();
             this.filteredProduits = this.produits.filter(produit => {
-                if (this.searchCategory === 'all') {
-                    return produit.designation.toLowerCase().includes(term) ||
-                        produit.code.toLowerCase().includes(term);
+                let matchesSearch = true;
+                if (term) {
+                    if (this.searchCategory === 'all') {
+                        matchesSearch = produit.designation.toLowerCase().includes(term) ||
+                            produit.code.toLowerCase().includes(term);
+                    } else if (this.searchCategory === 'designation') {
+                        matchesSearch = produit.designation.toLowerCase().includes(term);
+                    } else if (this.searchCategory === 'code') {
+                        matchesSearch = produit.code.toLowerCase().includes(term);
+                    }
                 }
-                if (this.searchCategory === 'designation') return produit.designation.toLowerCase().includes(term);
-                if (this.searchCategory === 'code') return produit.code.toLowerCase().includes(term);
+
+                if (!matchesSearch) return false;
+
+                if (pSearch) {
+                    return produit.pieces?.some(p =>
+                        p.designation.toLowerCase().includes(pSearch) ||
+                        p.reference.toLowerCase().includes(pSearch)
+                    ) || false;
+                }
+
                 return true;
             });
         }
-    }
-
-    selectPiece(piece: PieceDetachee): void {
-        this.selectedPiece = this.selectedPiece?.id === piece.id ? null : piece;
-        this.selectedProduit = null;
-    }
-
-    selectProduit(produit: ProduitFini): void {
-        this.selectedProduit = this.selectedProduit?.id === produit.id ? null : produit;
-        this.selectedPiece = null;
     }
 
     getImageUrl(url: string | null | undefined): string {
@@ -130,5 +178,14 @@ export class CatalogueLayoutComponent implements OnInit {
                 this.notification = null;
             }, 3000);
         }
+    }
+
+    getTotalStock(piece: PieceDetachee): number {
+        return piece.stock?.quantite || 0;
+    }
+
+    getStockStatus(piece: PieceDetachee): string {
+        const status = piece.stock?.type || 'INCONNU';
+        return status.replace(/_/g, ' ');
     }
 }

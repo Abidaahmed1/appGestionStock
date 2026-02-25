@@ -1,5 +1,7 @@
 package com.gestionStock.backend.service.piece;
 
+import com.gestionStock.backend.exceptions.ProduitException;
+
 import com.gestionStock.backend.entity.piece.ProduitFini;
 import com.gestionStock.backend.entity.piece.PieceDetachee;
 import com.gestionStock.backend.repository.piece.ProduitFiniRepository;
@@ -23,6 +25,9 @@ public class ProduitFiniService {
     }
 
     public ProduitFini save(ProduitFini produit) {
+        if (produitRepo.existsByCode(produit.getCode())) {
+            throw new ProduitException("Un produit avec ce code existe déjà.");
+        }
         return produitRepo.save(produit);
     }
 
@@ -36,7 +41,7 @@ public class ProduitFiniService {
                 produit.getPieces().stream().allMatch(PieceDetachee::isArchivee);
 
         if (!allPiecesArchived) {
-            throw new IllegalStateException(
+            throw new ProduitException(
                     "Impossible d'archiver ce produit car il possède des pièces associées qui ne sont pas encore archivées.");
         }
 
@@ -45,11 +50,14 @@ public class ProduitFiniService {
     }
 
     public ProduitFini update(Long id, ProduitFini produit) {
-        if (produitRepo.existsById(id)) {
-            produit.setId(id);
-            return produitRepo.save(produit);
+        ProduitFini existing = produitRepo.findById(id).orElseThrow(() -> new ProduitException("Produit non trouvé"));
+
+        if (!existing.getCode().equals(produit.getCode()) && produitRepo.existsByCode(produit.getCode())) {
+            throw new ProduitException("Un autre produit utilise déjà ce code.");
         }
-        return null;
+
+        produit.setId(id);
+        return produitRepo.save(produit);
     }
 
     public ProduitFini updateImageUrl(Long id, String imageUrl) {

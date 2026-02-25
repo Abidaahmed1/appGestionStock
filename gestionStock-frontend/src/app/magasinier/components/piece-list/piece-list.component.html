@@ -34,6 +34,14 @@
                     <option value="codeBarre">Code Barre</option>
                     <option value="produit">Produit Associé</option>
                 </select>
+                <button class="btn-filter-toggle" [class.active]="showAdvancedFilters" (click)="toggleAdvancedFilters()"
+                    title="Filtres avancés">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    Filtres
+                </button>
             </div>
         </div>
         <button class="btn-add" (click)="openCreateModal()" *ngIf="canManage()">
@@ -44,6 +52,41 @@
             </svg>
             Nouvelle Pièce
         </button>
+    </div>
+
+    <div class="advanced-filter-panel" *ngIf="showAdvancedFilters">
+        <div class="filter-grid">
+            <div class="filter-col">
+                <label>Catégorie</label>
+                <select [(ngModel)]="filterCategory">
+                    <option value="all">Toutes les catégories</option>
+                    <option *ngFor="let cat of categories" [value]="cat.nom">{{ cat.nom }}</option>
+                </select>
+            </div>
+            <div class="filter-col">
+                <label>État du Stock</label>
+                <select [(ngModel)]="filterStockStatus">
+                    <option value="all">Tous les états</option>
+                    <option value="ok">En Stock (Normal)</option>
+                    <option value="low">Seuil Critique</option>
+                    <option value="out">Rupture de Stock</option>
+                </select>
+            </div>
+            <div class="filter-col">
+                <label>Prix Minimum (DT)</label>
+                <input type="number" [(ngModel)]="filterMinPrice" placeholder="0.00">
+            </div>
+            <div class="filter-col">
+                <label>Prix Maximum (DT)</label>
+                <input type="number" [(ngModel)]="filterMaxPrice" placeholder="999.99">
+            </div>
+            <div class="filter-col actions-col">
+                <label>&nbsp;</label>
+                <button class="btn-reset" (click)="resetFilters()">
+                    Réinitialiser
+                </button>
+            </div>
+        </div>
     </div>
 
     <div class="loading-spinner-container" *ngIf="loading">
@@ -201,9 +244,11 @@
                             <label>Référence <span class="required">*</span></label>
                             <div class="control-wrapper">
                                 <input type="text" [(ngModel)]="newPiece.reference" name="reference" #ref="ngModel"
-                                    required placeholder="Ex: REF-001">
-                                <span class="error-msg" *ngIf="ref.invalid && ref.touched">La référence est
-                                    obligatoire</span>
+                                    required pattern="^REF-.*" placeholder="Ex: REF-001">
+                                <span class="error-msg" *ngIf="ref.invalid && ref.touched">
+                                    <span *ngIf="ref.errors?.['required']">La référence est obligatoire</span>
+                                    <span *ngIf="ref.errors?.['pattern']">La référence doit commencer par REF-</span>
+                                </span>
                             </div>
                         </div>
                         <div class="form-group piece-form-group">
@@ -225,10 +270,11 @@
                             </div>
                         </div>
                         <div class="form-group piece-form-group">
-                            <label>Catégorie</label>
+                            <label>Catégorie <span class="required">*</span></label>
                             <div class="custom-picker" #categoryPicker>
                                 <div class="selected-display" *ngIf="newPiece.categorie?.nom"
-                                    (click)="toggleCategorySelector($event)">
+                                    (click)="toggleCategorySelector($event)"
+                                    [class.input-error]="pieceForm.submitted && !newPiece.categorie?.nom">
                                     <span class="value">{{ newPiece.categorie?.nom }}</span>
                                     <span class="picker-badge" *ngIf="newPiece.categorie?.code">{{
                                         newPiece.categorie?.code }}</span>
@@ -282,6 +328,9 @@
                                         </div>
                                     </div>
                                 </div>
+                                <span class="error-msg"
+                                    *ngIf="pieceForm.submitted && (!newPiece.categorie || !newPiece.categorie.nom)"
+                                    style="display: block; margin-top: 5px;">La catégorie est obligatoire</span>
                             </div>
                         </div>
                     </div>
@@ -323,7 +372,7 @@
                             <label>Prix de vente (DT) <span class="required">*</span></label>
                             <div class="control-wrapper">
                                 <input type="number" [(ngModel)]="newPiece.prixVente" name="prixVente" #pa="ngModel"
-                                    required min="0.01" step="0.01" placeholder="0.00">
+                                    required min="1" step="1" placeholder="1">
                                 <span class="error-msg" *ngIf="pa.invalid && pa.touched">
                                     {{ pa.errors?.['required'] ? 'Le prix de vente est obligatoire' : 'Le prix doit être
                                     > 0' }}
@@ -334,7 +383,7 @@
                             <label>Taux TVA (%) <span class="required">*</span></label>
                             <div class="control-wrapper">
                                 <input type="number" [(ngModel)]="newPiece.tauxTVA" name="tauxTVA" #tva="ngModel"
-                                    required min="0" max="100" step="0.1" placeholder="19">
+                                    required min="0" max="100" step="1" placeholder="19">
                                 <span class="error-msg" *ngIf="tva.invalid && tva.touched">
                                     {{ tva.errors?.['required'] ? 'Le taux TVA est obligatoire' : 'Le taux doit être
                                     entre 0 et 100' }}
@@ -630,9 +679,11 @@
                             <label>Code Produit <span class="required">*</span></label>
                             <div class="control-wrapper">
                                 <input type="text" [(ngModel)]="newProduct.code" name="prodCode" #pc="ngModel" required
-                                    placeholder="Ex: PROD-100">
-                                <span class="error-msg" *ngIf="pc.invalid && pc.touched">Le code produit est
-                                    obligatoire</span>
+                                    pattern="^PF-.*" placeholder="Ex: PF-100">
+                                <span class="error-msg" *ngIf="pc.invalid && pc.touched">
+                                    <span *ngIf="pc.errors?.['required']">Le code produit est obligatoire</span>
+                                    <span *ngIf="pc.errors?.['pattern']">Le code doit commencer par PF-</span>
+                                </span>
                             </div>
                         </div>
 

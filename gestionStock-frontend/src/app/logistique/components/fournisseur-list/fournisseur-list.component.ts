@@ -26,6 +26,32 @@ export class FournisseurListComponent implements OnInit {
     private cdr = inject(ChangeDetectorRef);
     private router = inject(Router);
 
+    showAdvancedFilter = false;
+    showOptionsMenu = false;
+
+    columns = [
+        { key: 'code', label: 'Code', visible: true, canToggle: true },
+        { key: 'nom', label: 'Fournisseur', visible: true, canToggle: true },
+        { key: 'email', label: 'Email', visible: true, canToggle: true },
+        { key: 'tel', label: 'Téléphone', visible: true, canToggle: true },
+        { key: 'adresse', label: 'Adresse', visible: true, canToggle: true }
+    ];
+
+    toggleAdvancedFilter() {
+        this.showAdvancedFilter = !this.showAdvancedFilter;
+        if (this.showAdvancedFilter) this.showOptionsMenu = false;
+    }
+
+    toggleOptionsMenu(event: Event) {
+        event.stopPropagation();
+        this.showOptionsMenu = !this.showOptionsMenu;
+        if (this.showOptionsMenu) this.showAdvancedFilter = false;
+    }
+
+    isColumnVisible(key: string): boolean {
+        return this.columns.find(c => c.key === key)?.visible ?? true;
+    }
+
     constructor(private logistiqueService: LogistiqueService) { }
 
     ngOnInit() {
@@ -113,9 +139,19 @@ export class FournisseurListComponent implements OnInit {
         const term = this.searchTerm.toLowerCase();
         return this.fournisseurs.filter(f =>
             f.code?.toLowerCase().includes(term) ||
+            f.nom?.toLowerCase().includes(term) ||
             f.email?.toLowerCase().includes(term) ||
             f.tel?.includes(term)
         );
+    }
+
+    getFournisseurInitials(fournisseur: Fournisseur): string {
+        if (!fournisseur || !fournisseur.nom) return '?';
+        const parts = fournisseur.nom.trim().split(' ');
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[1][0]).toUpperCase();
+        }
+        return fournisseur.nom.substring(0, 1).toUpperCase();
     }
 
     openCatalog(fournisseur: Fournisseur) {

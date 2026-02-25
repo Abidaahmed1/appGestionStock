@@ -47,20 +47,32 @@ public class UserService {
 	}
 
 	public User provisionUserIfNeeded(String id, String firstName, String lastName, String email, Role role) {
-		return userRepository.findByEmail(email).map(user -> {
-			user.setFirstName(firstName);
-			user.setLastName(lastName);
-			user.setRole(role);
-			return userRepository.save(user);
-		}).orElseGet(() -> {
-			User user = new User();
-			user.setId(id);
+		return userRepository.findById(id).map(user -> {
 			user.setFirstName(firstName);
 			user.setLastName(lastName);
 			user.setEmail(email);
-			user.setRole(role);
-			user.setActive(true);
+			if (user.getRole() == null) {
+				user.setRole(role);
+			}
 			return userRepository.save(user);
+		}).orElseGet(() -> {
+			return userRepository.findByEmail(email).map(user -> {
+				user.setFirstName(firstName);
+				user.setLastName(lastName);
+				if (user.getRole() == null) {
+					user.setRole(role);
+				}
+				return userRepository.save(user);
+			}).orElseGet(() -> {
+				User user = new User();
+				user.setId(id);
+				user.setFirstName(firstName);
+				user.setLastName(lastName);
+				user.setEmail(email);
+				user.setRole(role);
+				user.setActive(true);
+				return userRepository.save(user);
+			});
 		});
 	}
 

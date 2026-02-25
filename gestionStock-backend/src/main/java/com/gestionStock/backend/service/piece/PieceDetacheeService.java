@@ -1,5 +1,7 @@
 package com.gestionStock.backend.service.piece;
 
+import com.gestionStock.backend.exceptions.PieceException;
+
 import com.gestionStock.backend.entity.piece.PieceDetachee;
 import com.gestionStock.backend.entity.piece.Categorie;
 import com.gestionStock.backend.entity.piece.ProduitFini;
@@ -8,7 +10,10 @@ import com.gestionStock.backend.repository.piece.CategorieRepository;
 import com.gestionStock.backend.repository.piece.ProduitFiniRepository;
 import com.gestionStock.backend.entity.Stock.Stock;
 import com.gestionStock.backend.entity.Stock.TypeStock;
+import com.gestionStock.backend.entity.notification.NotificationType;
+import com.gestionStock.backend.entity.user.Role;
 import com.gestionStock.backend.repository.stock.StockRepository;
+import com.gestionStock.backend.service.notification.NotificationService;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,6 +32,7 @@ public class PieceDetacheeService {
     private final CategorieRepository categorieRepo;
     private final ProduitFiniRepository produitRepo;
     private final StockRepository stockRepo;
+    private final NotificationService notificationService;
 
     public List<PieceDetachee> getAll() {
         return pieceRepo.findAll();
@@ -38,10 +44,10 @@ public class PieceDetacheeService {
 
     public PieceDetachee addPiece(PieceDetachee piece) {
         if (this.pieceRepo.existsByCodeBarre(piece.getCodeBarre())) {
-            throw new RuntimeException("Une pièce avec ce code barre existe déjà.");
+            throw new PieceException("Une pièce avec ce code barre existe déjà.");
         }
         if (this.pieceRepo.existsByReference(piece.getReference())) {
-            throw new RuntimeException("Une pièce avec cette référence existe déjà.");
+            throw new PieceException("Une pièce avec cette référence existe déjà.");
         }
 
         handleCategory(piece);
@@ -55,8 +61,16 @@ public class PieceDetacheeService {
         Stock stock = new Stock();
         stock.setPiece(savedPiece);
         stock.setQuantite(0);
-        stock.setType(TypeStock.EN_REAPPROVISIONNEMENT);
-        this.stockRepo.save(stock);
+        stock.setType(TypeStock.RUPTURE_STOCK);
+        stock = this.stockRepo.save(stock);
+
+        notificationService.createNotificationForRoles(
+                "Nouvelle pièce en rupture de stock",
+                "La nouvelle pièce détachée '" + savedPiece.getDesignation()
+                        + "' a été créée avec un stock initial de 0.",
+                NotificationType.RUPTURE_STOCK,
+                List.of(Role.RESPONSABLE_LOGISTIQUE, Role.AUDITEUR),
+                stock.getId());
 
         return savedPiece;
     }
@@ -83,17 +97,32 @@ public class PieceDetacheeService {
         if (existingPiece == null)
             return null;
 
-        piece.setId(id);
-
         PieceDetachee pieceWithSameRef = pieceRepo.findByReference(piece.getReference());
         if (pieceWithSameRef != null && !pieceWithSameRef.getId().equals(id)) {
-            throw new RuntimeException("Une autre pièce utilise déjà cette référence.");
+            throw new PieceException("Une autre pièce utilise déjà cette référence.");
+        }
+
+        PieceDetachee pieceWithSameCode = pieceRepo.findByCodeBarre(piece.getCodeBarre());
+        if (pieceWithSameCode != null && !pieceWithSameCode.getId().equals(id)) {
+            throw new PieceException("Une autre pièce utilise déjà ce code barre.");
+        }
+
+        existingPiece.setCodeBarre(piece.getCodeBarre());
+        existingPiece.setDesignation(piece.getDesignation());
+        existingPiece.setPrixVente(piece.getPrixVente());
+        existingPiece.setReference(piece.getReference());
+        existingPiece.setSeuilMinimum(piece.getSeuilMinimum());
+        existingPiece.setSeuilMaximum(piece.getSeuilMaximum());
+        existingPiece.setTauxTVA(piece.getTauxTVA());
+        existingPiece.setArchivee(piece.isArchivee());
+        if (piece.getImageUrl() != null) {
+            existingPiece.setImageUrl(piece.getImageUrl());
         }
 
         handleCategory(piece);
+        existingPiece.setCategorie(piece.getCategorie());
 
         Set<ProduitFini> produitsToAssociate = piece.getProduitsAssocies();
-        piece.setProduitsAssocies(new HashSet<>());
 
         Set<Long> newProductIds = produitsToAssociate == null ? Set.of()
                 : produitsToAssociate.stream()
@@ -101,14 +130,18 @@ public class PieceDetacheeService {
                         .map(ProduitFini::getId)
                         .collect(Collectors.toSet());
 
+        // Remove associations that are no longer present
         for (ProduitFini prod : new HashSet<>(existingPiece.getProduitsAssocies())) {
             if (prod.getId() != null && !newProductIds.contains(prod.getId())) {
                 prod.getPieces().remove(existingPiece);
+                existingPiece.getProduitsAssocies().remove(prod);
                 produitRepo.save(prod);
             }
         }
 
-        PieceDetachee savedPiece = pieceRepo.save(piece);
+        // Save the managed entity (no detached object — avoids UniqueConstraint on
+        // Stock)
+        PieceDetachee savedPiece = pieceRepo.save(existingPiece);
         handleProductAssociations(savedPiece, produitsToAssociate);
 
         return pieceRepo.findById(id).orElse(savedPiece);

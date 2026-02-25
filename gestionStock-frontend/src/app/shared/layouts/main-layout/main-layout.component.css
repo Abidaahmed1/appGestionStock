@@ -126,6 +126,12 @@
     font-weight: 600;
 }
 
+.header-actions-group {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
 .user-profile {
     display: flex;
     align-items: center;

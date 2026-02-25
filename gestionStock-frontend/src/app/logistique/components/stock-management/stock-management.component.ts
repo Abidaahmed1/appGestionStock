@@ -6,6 +6,8 @@ import { LogistiqueService } from '../../services/logistique.service';
 import { Stock } from '../../models/logistique.models';
 import { MagasinierService } from '../../../magasinier/services/magasinier.service';
 
+import { Router } from '@angular/router';
+
 @Component({
     selector: 'app-stock-management',
     standalone: true,
@@ -17,18 +19,33 @@ export class StockManagementComponent implements OnInit {
     stocks: Stock[] = [];
     pieces: any[] = [];
     lowStockItems: Stock[] = [];
-    showCreateModal = false;
-    selectedStock: Stock | null = null;
-    newStock: Stock = this.initNewStock();
+
     notification: { message: string, type: 'success' | 'error' } | null = null;
     searchTerm: string = '';
+    selectedType: string = '';
+    selectedStatus: string = '';
     userRoles: string[] = [];
     showDeleteConfirm = false;
     itemToDelete: any = null;
+    showOptionsMenu = false;
+    showAdvancedFilter = false;
+
+    filterMinQty: number | null = null;
+    filterMaxQty: number | null = null;
+
+    columns = [
+        { key: 'designation', label: 'Pièce', visible: true, canToggle: false },
+        { key: 'reference', label: 'Référence', visible: false, canToggle: true },
+        { key: 'quantite', label: 'Quantité', visible: true, canToggle: true },
+        { key: 'type', label: 'Type', visible: true, canToggle: true },
+        { key: 'seuilMin', label: 'Seuil Min.', visible: true, canToggle: true },
+        { key: 'seuilMax', label: 'Seuil Max.', visible: true, canToggle: true }
+    ];
 
     private keycloak = inject(KeycloakService);
     private platformId = inject(PLATFORM_ID);
     private cdr = inject(ChangeDetectorRef);
+    private router = inject(Router);
 
     constructor(
         private logistiqueService: LogistiqueService,
@@ -41,6 +58,13 @@ export class StockManagementComponent implements OnInit {
             this.loadStocks();
             this.loadPieces();
             this.loadLowStockItems();
+
+            if (typeof window !== 'undefined') {
+                window.addEventListener('click', () => {
+                    this.showOptionsMenu = false;
+                    this.cdr.detectChanges();
+                });
+            }
             this.cdr.detectChanges();
         }
     }
@@ -55,12 +79,16 @@ export class StockManagementComponent implements OnInit {
         return this.hasRole('MAGASINIER') || this.hasRole('ADMINISTRATEUR');
     }
 
-    initNewStock(): Stock {
-        return {
-            piece: null,
-            quantite: 0,
-            type: 'DISPONIBLE' as any
-        };
+    isLogistique(): boolean {
+        return this.hasRole('RESPONSABLE_LOGISTIQUE');
+    }
+
+    showActions(): boolean {
+        return this.canManage() || this.isLogistique();
+    }
+
+    openNewBon(): void {
+        this.router.navigate(['/magasinier/bons/nouveau']);
     }
 
     loadStocks(): void {
@@ -101,50 +129,7 @@ export class StockManagementComponent implements OnInit {
     }
 
 
-    openCreateModal(): void {
-        this.selectedStock = null;
-        this.newStock = this.initNewStock();
-        this.showCreateModal = true;
-        this.cdr.detectChanges();
-    }
 
-    openEditModal(stock: Stock): void {
-        this.selectedStock = stock;
-        this.newStock = { ...stock };
-        this.showCreateModal = true;
-        this.cdr.detectChanges();
-    }
-
-    closeCreateModal(): void {
-        this.showCreateModal = false;
-        this.cdr.detectChanges();
-    }
-
-    saveStock(): void {
-        if (this.selectedStock && this.selectedStock.id) {
-            this.logistiqueService.updateStock(this.selectedStock.id, this.newStock).subscribe({
-                next: () => {
-                    this.notify('Stock mis à jour', 'success');
-                    this.loadStocks();
-                    this.closeCreateModal();
-                },
-                error: () => {
-                    this.notify('Erreur lors de la mise à jour', 'error');
-                }
-            });
-        } else {
-            this.logistiqueService.createStock(this.newStock).subscribe({
-                next: () => {
-                    this.notify('Stock créé', 'success');
-                    this.loadStocks();
-                    this.closeCreateModal();
-                },
-                error: () => {
-                    this.notify('Erreur lors de la création', 'error');
-                }
-            });
-        }
-    }
 
     confirmDelete(stock: Stock): void {
         this.itemToDelete = stock;
@@ -183,11 +168,75 @@ export class StockManagementComponent implements OnInit {
     }
 
     get filteredStocks() {
-        if (!this.searchTerm) return this.stocks;
-        const term = this.searchTerm.toLowerCase();
-        return this.stocks.filter(s =>
-            s.piece?.designation?.toLowerCase().includes(term) ||
-            s.piece?.reference?.toLowerCase().includes(term)
-        );
+        return this.stocks.filter(s => {
+            const matchesText = !this.searchTerm ||
+                s.piece?.designation?.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+                s.piece?.reference?.toLowerCase().includes(this.searchTerm.toLowerCase());
+
+            const matchesType = !this.selectedType || s.type === this.selectedType;
+
+            const isLow = s.quantite < (s.piece?.seuilMinimum || 0);
+            const isRupture = s.quantite <= 0;
+
+            const matchesStatus = !this.selectedStatus ||
+                (this.selectedStatus === 'LOW' && isLow) ||
+                (this.selectedStatus === 'OK' && !isLow) ||
+                (this.selectedStatus === 'RUPTURE' && isRupture);
+
+            const matchesMinQty = this.filterMinQty === null || s.quantite >= this.filterMinQty;
+            const matchesMaxQty = this.filterMaxQty === null || s.quantite <= this.filterMaxQty;
+
+            return matchesText && matchesType && matchesStatus && matchesMinQty && matchesMaxQty;
+        });
+    }
+
+    toggleAdvancedFilter() {
+        this.showAdvancedFilter = !this.showAdvancedFilter;
+        this.cdr.detectChanges();
+    }
+
+    resetAdvancedFilter() {
+        this.filterMinQty = null;
+        this.filterMaxQty = null;
+        this.selectedType = '';
+        this.selectedStatus = '';
+        this.searchTerm = '';
+        this.cdr.detectChanges();
+    }
+
+    hasActiveAdvancedFilter(): boolean {
+        return !!(this.filterMinQty !== null || this.filterMaxQty !== null || this.selectedType || this.selectedStatus);
+    }
+
+    passerCommande(stock: Stock) {
+        // Préparer un brouillon de commande avec cette pièce
+        const draftCommande = {
+            dateCmd: new Date().toISOString(),
+            statut: 'EN_ATTENTE' as any,
+            lignes: [{
+                piece: stock.piece,
+                qteCmd: stock.piece.seuilMinimum ? (stock.piece.seuilMinimum * 2) : 10, // Suggestion par défaut
+                prixAchat: 0
+            }]
+        };
+
+        this.logistiqueService.commandeDraft = draftCommande as any;
+        this.router.navigate(['/logistique/commandes/nouvelle']);
+    }
+
+    getStockTypeClass(type: string): string {
+        return type ? type.toLowerCase().replace(/_/g, '-') : '';
+    }
+
+    toggleOptionsMenu(event: MouseEvent) {
+        event.stopPropagation();
+        this.showOptionsMenu = !this.showOptionsMenu;
+        this.cdr.detectChanges();
+    }
+
+    isColumnVisible(key: string): boolean {
+        if (!this.columns) return true;
+        const col = this.columns.find(c => c.key === key);
+        return col ? col.visible : true;
     }
 }

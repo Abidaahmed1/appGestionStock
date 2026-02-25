@@ -6,7 +6,9 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface ProduitFiniRepository extends JpaRepository<ProduitFini,Long> {
+public interface ProduitFiniRepository extends JpaRepository<ProduitFini, Long> {
 	List<ProduitFini> findByEstArchiveeFalse();
+
+	boolean existsByCode(String code);
 
 }

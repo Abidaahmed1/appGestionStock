@@ -29,6 +29,12 @@ public class PieceFournisseurController {
         return service.getByFournisseur(fournisseurId);
     }
 
+    @GetMapping("/pieces")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE')")
+    public List<PieceFournisseur> getByPieces(@RequestParam List<Long> ids) {
+        return service.getByPieceIds(ids);
+    }
+
     @PostMapping
     @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE')")
     public ResponseEntity<PieceFournisseur> save(@RequestBody PieceFournisseur pieceFournisseur) {

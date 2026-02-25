@@ -6,7 +6,6 @@
     top: 2rem !important;
     right: 2rem !important;
     z-index: 20000 !important;
-    /* Higher than any modale (9999) */
     padding: 1.25rem 1.75rem !important;
     border-radius: 16px !important;
     background: #ffffff !important;
@@ -29,7 +28,6 @@
 .notification-toast.error {
     border-left-color: #ef4444 !important;
     background: #fffafa !important;
-    /* Slight red tint for errors */
 }
 
 /* Ensure the message content is clear */

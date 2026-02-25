@@ -78,7 +78,8 @@
                         </div>
                         <div class="col col-discount text-center">
                             <label class="line-label">Remise %</label>
-                            <input type="number" [(ngModel)]="newEntry.tauxRemise" class="odoo-input-line text-center">
+                            <input type="number" [(ngModel)]="newEntry.tauxRemise" class="odoo-input-line text-center"
+                                [class.input-error]="validationErrors.tauxRemise">
                         </div>
                         <div class="col col-qte text-center">
                             <label class="line-label">Qté Min</label>

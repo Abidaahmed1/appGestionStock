@@ -31,6 +31,13 @@ export class ProduitListComponent implements OnInit {
     selectedProductForPieces: ProduitFini | null = null;
     associatedPiecesSearchTerm: string = '';
 
+    // Advanced Filters State
+    showAdvancedFilters = false;
+    minPrice: number | null = null;
+    maxPrice: number | null = null;
+    sortBy: string = 'name_asc';
+    selectedCategory: string = 'all';
+
     private keycloak = inject(KeycloakService);
     private platformId = inject(PLATFORM_ID);
     private cdr = inject(ChangeDetectorRef);
@@ -87,13 +94,13 @@ export class ProduitListComponent implements OnInit {
         }
     }
 
-    private doUpload(file: File, id: number): void {
+    private doUpload(file: File, id: number, successMessage: string = 'Image mise à jour'): void {
         const formData = new FormData();
         formData.append('file', file);
 
         this.magasinierService.uploadProduitImage(id, formData).subscribe({
             next: (updatedProduit) => {
-                this.notify('Image mise à jour', 'success');
+                this.notify(successMessage, 'success');
                 this.loadProduits();
                 if (this.selectedProduit?.id === id) {
                     this.selectedProduit = updatedProduit;
@@ -147,7 +154,7 @@ export class ProduitListComponent implements OnInit {
             this.magasinierService.updateProduit(this.selectedProduit.id, this.newProduit).subscribe({
                 next: (saved) => {
                     if (this.selectedFile && saved.id) {
-                        this.doUpload(this.selectedFile, saved.id);
+                        this.doUpload(this.selectedFile, saved.id, 'Produit mis à jour');
                     } else {
                         this.notify('Produit mis à jour', 'success');
                         this.loadProduits();
@@ -165,7 +172,7 @@ export class ProduitListComponent implements OnInit {
             this.magasinierService.createProduit(this.newProduit).subscribe({
                 next: (saved) => {
                     if (this.selectedFile && saved.id) {
-                        this.doUpload(this.selectedFile, saved.id);
+                        this.doUpload(this.selectedFile, saved.id, 'Produit créé');
                     } else {
                         this.notify('Produit créé', 'success');
                         this.loadProduits();
@@ -278,17 +285,72 @@ export class ProduitListComponent implements OnInit {
     }
 
     get filteredAssociatedPieces(): PieceDetachee[] {
-        const pieces = this.selectedProductForPieces?.pieces || [];
-        if (!this.associatedPiecesSearchTerm) {
-            return pieces;
+        let pieces = [...(this.selectedProductForPieces?.pieces || [])];
+
+        // Search term filter
+        if (this.associatedPiecesSearchTerm) {
+            const term = this.associatedPiecesSearchTerm.toLowerCase();
+            pieces = pieces.filter(p =>
+                (p.designation || '').toLowerCase().includes(term) ||
+                (p.reference || '').toLowerCase().includes(term) ||
+                (p.codeBarre || '').toString().toLowerCase().includes(term)
+            );
         }
-        const term = this.associatedPiecesSearchTerm.toLowerCase();
-        return pieces.filter(p => {
-            const designation = (p.designation || '').toLowerCase();
-            const reference = (p.reference || '').toLowerCase();
-            const codeBarre = (p.codeBarre || '').toString().toLowerCase();
-            return designation.includes(term) || reference.includes(term) || codeBarre.includes(term);
+
+        // Price range filter
+        if (this.minPrice !== null) {
+            pieces = pieces.filter(p => p.prixVente >= (this.minPrice || 0));
+        }
+        if (this.maxPrice !== null) {
+            pieces = pieces.filter(p => p.prixVente <= (this.maxPrice || Infinity));
+        }
+
+        // Category filter
+        if (this.selectedCategory !== 'all') {
+            pieces = pieces.filter(p => p.categorie?.nom === this.selectedCategory);
+        }
+
+        // Sorting logic
+        pieces.sort((a, b) => {
+            switch (this.sortBy) {
+                case 'name_asc':
+                    return (a.designation || '').localeCompare(b.designation || '');
+                case 'name_desc':
+                    return (b.designation || '').localeCompare(a.designation || '');
+                case 'price_asc':
+                    return (a.prixVente || 0) - (b.prixVente || 0);
+                case 'price_desc':
+                    return (b.prixVente || 0) - (a.prixVente || 0);
+                case 'ref_asc':
+                    return (a.reference || '').localeCompare(b.reference || '');
+                default:
+                    return 0;
+            }
         });
+
+        return pieces;
+    }
+
+    get uniqueCategories(): string[] {
+        const cats = new Set<string>();
+        this.selectedProductForPieces?.pieces?.forEach(p => {
+            if (p.categorie?.nom) cats.add(p.categorie.nom);
+        });
+        return Array.from(cats);
+    }
+
+    toggleAdvancedFilters(): void {
+        this.showAdvancedFilters = !this.showAdvancedFilters;
+        this.cdr.detectChanges();
+    }
+
+    resetFilters(): void {
+        this.associatedPiecesSearchTerm = '';
+        this.minPrice = null;
+        this.maxPrice = null;
+        this.sortBy = 'name_asc';
+        this.selectedCategory = 'all';
+        this.cdr.detectChanges();
     }
 
     closeAssociatedPiecesModal(): void {

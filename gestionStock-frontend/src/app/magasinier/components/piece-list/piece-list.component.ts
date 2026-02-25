@@ -45,6 +45,12 @@ export class PieceListComponent implements OnInit {
     selectedPieceForProducts: PieceDetachee | null = null;
     associatedProductsSearchTerm: string = '';
 
+    showAdvancedFilters = false;
+    filterCategory: string = 'all';
+    filterStockStatus: string = 'all';
+    filterMinPrice: number | null = null;
+    filterMaxPrice: number | null = null;
+
     private keycloak = inject(KeycloakService);
     private platformId = inject(PLATFORM_ID);
     private cdr = inject(ChangeDetectorRef);
@@ -109,13 +115,13 @@ export class PieceListComponent implements OnInit {
         }
     }
 
-    private doUpload(file: File, id: number): void {
+    private doUpload(file: File, id: number, successMessage: string = 'Image mise à jour'): void {
         const formData = new FormData();
         formData.append('file', file);
 
         this.magasinierService.uploadPieceImage(id, formData).subscribe({
             next: (updatedPiece) => {
-                this.notify('Image mise à jour', 'success');
+                this.notify(successMessage, 'success');
                 this.loadPieces();
                 if (this.selectedPiece?.id === id) {
                     this.selectedPiece = updatedPiece;
@@ -423,6 +429,11 @@ export class PieceListComponent implements OnInit {
             return;
         }
 
+        if (!pieceData.categorie || !pieceData.categorie.nom || pieceData.categorie.nom.trim() === '') {
+            this.notify('La sélection d\'une catégorie est obligatoire', 'error');
+            return;
+        }
+
         if (pieceData.categorie && pieceData.categorie.nom && !pieceData.categorie.code) {
             pieceData.categorie.code = 'CAT_' + pieceData.categorie.nom.toUpperCase().replace(/\s+/g, '_');
         }
@@ -431,7 +442,7 @@ export class PieceListComponent implements OnInit {
             this.magasinierService.updatePiece(this.selectedPiece.id, pieceData).subscribe({
                 next: (saved) => {
                     if (this.selectedFile && saved.id) {
-                        this.doUpload(this.selectedFile, saved.id);
+                        this.doUpload(this.selectedFile, saved.id, 'Pièce mise à jour');
                     } else {
                         this.notify('Pièce mise à jour', 'success');
                         this.loadPieces();
@@ -447,7 +458,7 @@ export class PieceListComponent implements OnInit {
             this.magasinierService.createPiece(pieceData).subscribe({
                 next: (saved) => {
                     if (this.selectedFile && saved.id) {
-                        this.doUpload(this.selectedFile, saved.id);
+                        this.doUpload(this.selectedFile, saved.id, 'Pièce créée');
                     } else {
                         this.notify('Pièce créée', 'success');
                         this.loadPieces();
@@ -520,42 +531,16 @@ export class PieceListComponent implements OnInit {
         return url;
     }
 
-    get filteredPieces() {
-        if (!this.searchTerm) return this.pieces;
-        const term = this.searchTerm.toLowerCase();
-        return this.pieces.filter(p => {
-            const designation = (p.designation || '').toLowerCase();
-            const reference = (p.reference || '').toLowerCase();
-            const codeBarre = (p.codeBarre || '').toString().toLowerCase();
-
-            if (this.searchCategory === 'all') {
-                const matchesBasic = designation.includes(term) ||
-                    reference.includes(term) ||
-                    codeBarre.includes(term);
-                const matchesProduct = p.produitsAssocies?.some(prod =>
-                    (prod.designation || '').toLowerCase().includes(term) ||
-                    (prod.code || '').toLowerCase().includes(term)
-                );
-                return matchesBasic || !!matchesProduct;
-            }
-            if (this.searchCategory === 'reference') return reference.includes(term);
-            if (this.searchCategory === 'designation') return designation.includes(term);
-            if (this.searchCategory === 'codeBarre') return codeBarre.includes(term);
-            if (this.searchCategory === 'produit') {
-                return !!p.produitsAssocies?.some(prod =>
-                    (prod.designation || '').toLowerCase().includes(term) ||
-                    (prod.code || '').toLowerCase().includes(term)
-                );
-            }
-            return true;
-        });
+    closeAssociatedProductsModal(): void {
+        this.showAssociatedProductsModal = false;
+        this.selectedPieceForProducts = null;
+        this.associatedProductsSearchTerm = '';
     }
 
     triggerChangeDetection(): void {
         this.cdr.detectChanges();
     }
 
-    // Associated Products Methods
     showAssociatedProducts(piece: PieceDetachee): void {
         this.selectedPieceForProducts = piece;
         this.showAssociatedProductsModal = true;
@@ -574,9 +559,74 @@ export class PieceListComponent implements OnInit {
         });
     }
 
-    closeAssociatedProductsModal(): void {
-        this.showAssociatedProductsModal = false;
-        this.selectedPieceForProducts = null;
-        this.associatedProductsSearchTerm = '';
+    toggleAdvancedFilters(): void {
+        this.showAdvancedFilters = !this.showAdvancedFilters;
+        this.cdr.detectChanges();
+    }
+
+    resetFilters(): void {
+        this.searchTerm = '';
+        this.searchCategory = 'all';
+        this.filterCategory = 'all';
+        this.filterStockStatus = 'all';
+        this.filterMinPrice = null;
+        this.filterMaxPrice = null;
+        this.cdr.detectChanges();
+    }
+
+    get filteredPieces() {
+        let results = this.pieces;
+
+        if (this.searchTerm) {
+            const term = this.searchTerm.toLowerCase();
+            results = results.filter(p => {
+                const designation = (p.designation || '').toLowerCase();
+                const reference = (p.reference || '').toLowerCase();
+                const codeBarre = (p.codeBarre || '').toString().toLowerCase();
+
+                if (this.searchCategory === 'all') {
+                    const matchesBasic = designation.includes(term) ||
+                        reference.includes(term) ||
+                        codeBarre.includes(term);
+                    const matchesProduct = p.produitsAssocies?.some(prod =>
+                        (prod.designation || '').toLowerCase().includes(term) ||
+                        (prod.code || '').toLowerCase().includes(term)
+                    );
+                    return matchesBasic || !!matchesProduct;
+                }
+                if (this.searchCategory === 'reference') return reference.includes(term);
+                if (this.searchCategory === 'designation') return designation.includes(term);
+                if (this.searchCategory === 'codeBarre') return codeBarre.includes(term);
+                if (this.searchCategory === 'produit') {
+                    return !!p.produitsAssocies?.some(prod =>
+                        (prod.designation || '').toLowerCase().includes(term) ||
+                        (prod.code || '').toLowerCase().includes(term)
+                    );
+                }
+                return true;
+            });
+        }
+
+        if (this.filterCategory !== 'all') {
+            results = results.filter(p => p.categorie?.nom === this.filterCategory);
+        }
+        if (this.filterStockStatus !== 'all') {
+            results = results.filter(p => {
+                const totalStock = p.stock?.quantite || 0;
+                if (this.filterStockStatus === 'out') return totalStock <= 0;
+                if (this.filterStockStatus === 'low') return totalStock < (p.seuilMinimum || 0) && totalStock > 0;
+                if (this.filterStockStatus === 'ok') return totalStock >= (p.seuilMinimum || 0);
+                return true;
+            });
+        }
+
+        if (this.filterMinPrice !== null) {
+            results = results.filter(p => (p.prixVente || 0) >= (this.filterMinPrice || 0));
+        }
+        if (this.filterMaxPrice !== null) {
+            results = results.filter(p => (p.prixVente || 0) <= (this.filterMaxPrice || 0));
+        }
+
+        return results;
     }
 }

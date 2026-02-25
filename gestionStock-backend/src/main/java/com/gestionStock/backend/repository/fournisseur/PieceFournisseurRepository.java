@@ -11,7 +11,7 @@ import java.util.Optional;
 public interface PieceFournisseurRepository extends JpaRepository<PieceFournisseur, Long> {
     List<PieceFournisseur> findByFournisseurId(Long fournisseurId);
 
-    List<PieceFournisseur> findByPieceId(Long pieceId);
+    List<PieceFournisseur> findByPieceIdIn(List<Long> pieceIds);
 
     Optional<PieceFournisseur> findByPieceIdAndFournisseurId(Long pieceId, Long fournisseurId);
 }

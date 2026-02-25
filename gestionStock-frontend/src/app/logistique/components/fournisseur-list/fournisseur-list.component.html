@@ -1,132 +1,155 @@
-<div class="container">
+<div class="commandes-container">
+    <div class="header">
+        <div class="header-left">
+            <h1>Gestion des Fournisseurs</h1>
+            <div class="breadcrumb">
+                <span>Logistique</span> / <span>Fournisseurs</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <button class="btn-new" (click)="openCreateModal()" *ngIf="canManage()">NOUVEAU</button>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
     <div class="notification-toast" *ngIf="notification" [class.success]="notification.type === 'success'"
         [class.error]="notification.type === 'error'">
         <span class="msg">{{ notification.message }}</span>
         <button class="close-btn" (click)="notification = null">✕</button>
     </div>
 
-    <div class="header-section">
-        <div class="header-left">
-            <h1>
-                <div class="title-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
-                </div>
-                Gestion des Fournisseurs
-            </h1>
+    <div class="toolbar">
+        <div class="toolbar-left">
             <div class="search-box">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-                <input type="text" [(ngModel)]="searchTerm" placeholder="Rechercher un fournisseur...">
+                <span class="search-icon" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                </span>
+                <input type="text" [(ngModel)]="searchTerm" placeholder="Rechercher par code, nom, email, téléphone..."
+                    autocomplete="off">
             </div>
         </div>
-        <button class="btn-add" (click)="openCreateModal()" *ngIf="canManage()">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            Nouveau Fournisseur
-        </button>
+        <div class="toolbar-right">
+            <div class="view-options">
+                <button type="button" class="icon-btn icon-btn-filter" (click)="toggleAdvancedFilter()"
+                    [class.active]="showAdvancedFilter" title="Filtre avancé">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    <span class="filter-btn-label">Filtre avancé</span>
+                </button>
+                <div class="options-wrapper">
+                    <button type="button" class="icon-btn icon-btn-settings" (click)="toggleOptionsMenu($event)"
+                        title="Options d’affichage">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path
+                                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                            </path>
+                        </svg>
+                    </button>
+                    <div class="options-menu" *ngIf="showOptionsMenu" (click)="$event.stopPropagation()">
+                        <div class="menu-item" *ngFor="let col of columns">
+                            <label *ngIf="col.canToggle">
+                                <input type="checkbox" [(ngModel)]="col.visible">
+                                {{ col.label }}
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="table-container" *ngIf="filteredFournisseurs.length > 0">
-        <table class="stock-table fournisseur-table">
+    <div class="advanced-filter-panel" *ngIf="showAdvancedFilter" (click)="$event.stopPropagation()">
+        <div class="advanced-filter-header">
+            <span class="advanced-filter-title">Filtres avancés</span>
+        </div>
+        <div class="advanced-filter-grid">
+            <div class="filter-group">
+                <label>Nom ou Code</label>
+                <input type="text" [(ngModel)]="searchTerm" class="filter-input" placeholder="Filtrer par texte...">
+            </div>
+        </div>
+    </div>
+
+    <div class="table-card odoo-style">
+        <table *ngIf="filteredFournisseurs.length > 0">
             <thead>
                 <tr>
-                    <th>Fournisseur</th>
-                    <th>Adresse</th>
-                    <th>Email</th>
-                    <th>Téléphone</th>
-                    <th class="text-right" style="width: 160px;" *ngIf="canManage()">Actions</th>
+                    <th class="checkbox-cell"><input type="checkbox"></th>
+                    <th *ngIf="isColumnVisible('code')">CODE</th>
+                    <th *ngIf="isColumnVisible('nom')">FOURNISSEUR</th>
+                    <th *ngIf="isColumnVisible('email')">EMAIL</th>
+                    <th *ngIf="isColumnVisible('tel')">TÉLÉPHONE</th>
+                    <th *ngIf="isColumnVisible('adresse')">ADRESSE</th>
+                    <th class="text-right">ACTIONS</th>
                 </tr>
             </thead>
             <tbody>
-                <tr *ngFor="let fournisseur of filteredFournisseurs">
-                    <td>
-                        <div class="supplier-cell">
-                            <div class="supplier-name">{{ fournisseur.nom }}</div>
-                            <div class="supplier-code">{{ fournisseur.code }}</div>
+                <tr *ngFor="let fournisseur of filteredFournisseurs" (click)="openEditModal(fournisseur)">
+                    <td class="checkbox-cell" (click)="$event.stopPropagation()"><input type="checkbox"></td>
+                    <td class="ref-col" *ngIf="isColumnVisible('code')">{{ fournisseur.code }}</td>
+                    <td *ngIf="isColumnVisible('nom')" class="buyer-col">
+                        <div class="buyer-badge" *ngIf="fournisseur.nom">
+                            <span class="initial" [style.background-color]="'#3d7a7f'">{{
+                                getFournisseurInitials(fournisseur) }}</span>
+                            <span class="name">{{ fournisseur.nom }}</span>
                         </div>
                     </td>
-                    <td class="truncate">{{ fournisseur.adresse }}</td>
-                    <td class="truncate">{{ fournisseur.email }}</td>
-                    <td>{{ fournisseur.tel }}</td>
-                    <td class="actions-cell" *ngIf="canManage()">
-                        <button class="btn-icon-action edit" (click)="openEditModal(fournisseur)" title="Modifier">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                        </button>
-                        <button class="btn-icon-action catalog" (click)="openCatalog(fournisseur)" title="Catalogue">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                            </svg>
-                        </button>
-                        <button class="btn-icon-action delete" (click)="confirmDelete(fournisseur)" title="Archiver">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path
-                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
-                                </path>
-                            </svg>
-                        </button>
+                    <td *ngIf="isColumnVisible('email')">{{ fournisseur.email || '-' }}</td>
+                    <td *ngIf="isColumnVisible('tel')">{{ fournisseur.tel || '-' }}</td>
+                    <td class="text-muted" *ngIf="isColumnVisible('adresse')">{{ fournisseur.adresse || '-' }}</td>
+                    <td class="actions-td" (click)="$event.stopPropagation()">
+                        <div class="list-actions">
+                            <button type="button" class="btn-action btn-action--print"
+                                (click)="openEditModal(fournisseur)" title="Modifier">
+                                <span class="btn-action__text">MODIFIER</span>
+                            </button>
+                            <button type="button" class="btn-action btn-action--print"
+                                (click)="openCatalog(fournisseur)" title="Catalogue">
+                                <span class="btn-action__text">CATALOGUE</span>
+                            </button>
+                            <button type="button" class="btn-action btn-action--cancel"
+                                (click)="confirmDelete(fournisseur)" title="Supprimer">
+                                <span class="btn-action__text">SUPPRIMER</span>
+                            </button>
+                        </div>
                     </td>
                 </tr>
             </tbody>
         </table>
-    </div>
 
-    <div class="empty-state" *ngIf="filteredFournisseurs.length === 0">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-        </svg>
-        <p>Aucun fournisseur trouvé</p>
-        <button class="btn-add outline" (click)="openCreateModal()" *ngIf="canManage()">
-            Ajouter un Fournisseur
-        </button>
+        <div class="empty-state" *ngIf="filteredFournisseurs.length === 0">
+            <p *ngIf="!searchTerm.trim()">Aucun fournisseur trouvé</p>
+            <p *ngIf="searchTerm.trim()">Aucun résultat pour « {{ searchTerm.trim() }} »</p>
+            <button class="btn-new" (click)="openCreateModal()" *ngIf="canManage()">
+                AJOUTER UN FOURNISSEUR
+            </button>
+        </div>
     </div>
 </div>
 
-
-
-<!-- Delete Confirmation Modal -->
-<div class="modal-overlay delete-modal" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
+<!-- Modal Suppression -->
+<div class="modal-overlay" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
     <div class="modal-content small confirm-danger" (click)="$event.stopPropagation()">
-        <div class="confirm-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path
-                    d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" />
+        <div class="confirm-icon cancel">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
             </svg>
         </div>
-        <h3>Confirmer l'archivage</h3>
-        <p>Êtes-vous sûr de vouloir archiver le fournisseur <strong>{{ itemToDelete?.code }}</strong> ?</p>
-        <p class="warning-text">Cette action peut être inversée.</p>
-
+        <h3>Confirmer la suppression</h3>
+        <p>Voulez-vous vraiment supprimer le fournisseur <strong>{{ itemToDelete?.code }}</strong> ?</p>
+        <p class="warning-text">Cette action est irréversible.</p>
         <div class="modal-actions">
-            <button class="btn-secondary" (click)="cancelDelete()">Annuler</button>
-            <button class="btn-danger" (click)="deleteFournisseur(itemToDelete.id)">Archiver</button>
+            <button type="button" class="btn-secondary" (click)="cancelDelete()">Annuler</button>
+            <button type="button" class="btn-danger" (click)="deleteFournisseur(itemToDelete.id)">Confirmer la
+                suppression</button>
         </div>
     </div>
 </div>

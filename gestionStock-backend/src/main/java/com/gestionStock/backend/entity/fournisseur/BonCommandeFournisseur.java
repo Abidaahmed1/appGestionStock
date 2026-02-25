@@ -36,7 +36,7 @@ public class BonCommandeFournisseur {
 	private Long numeroCmd;
 	private LocalDateTime dateCmd;
 	private LocalDate dateArrivee;
-	
+
 	@ManyToOne
 	private User createur;
 	@ManyToOne

@@ -26,6 +26,7 @@ public class LigneMouvement {
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private Long id;
+	@com.fasterxml.jackson.annotation.JsonBackReference
 	@ManyToOne
 	@JoinColumn(name = "mouvement_id", nullable = false)
 	private MouvementStock mouvementStock;

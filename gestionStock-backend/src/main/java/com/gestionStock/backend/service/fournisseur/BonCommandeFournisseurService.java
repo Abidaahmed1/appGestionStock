@@ -1,35 +1,59 @@
 package com.gestionStock.backend.service.fournisseur;
 
-import com.gestionStock.backend.entity.Stock.Stock;
-import com.gestionStock.backend.entity.Stock.TypeStock;
-import com.gestionStock.backend.entity.fournisseur.BonCommandeFournisseur;
-import com.gestionStock.backend.entity.fournisseur.StatutCommande;
-import com.gestionStock.backend.exceptions.FournisseurException;
-import com.gestionStock.backend.repository.fournisseur.BonCommandeFournisseurRepository;
-import com.gestionStock.backend.repository.stock.StockRepository;
-import com.gestionStock.backend.service.user.UserService;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
-import lombok.AllArgsConstructor;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
+import com.gestionStock.backend.entity.Stock.TypeStock;
+import com.gestionStock.backend.entity.fournisseur.BonCommandeFournisseur;
+import com.gestionStock.backend.entity.fournisseur.LigneCommande;
+import com.gestionStock.backend.entity.fournisseur.StatutCommande;
+import com.gestionStock.backend.entity.notification.NotificationType;
+import com.gestionStock.backend.entity.user.Role;
+import com.gestionStock.backend.entity.user.User;
+import com.gestionStock.backend.exceptions.FournisseurException;
+import com.gestionStock.backend.repository.fournisseur.BonCommandeFournisseurRepository;
+import com.gestionStock.backend.service.notification.NotificationService;
+import com.gestionStock.backend.service.user.UserService;
+import com.gestionStock.backend.repository.stock.StockRepository;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
+import com.gestionStock.backend.entity.Stock.Stock;
+import lombok.AllArgsConstructor;
 
 @Service
 @AllArgsConstructor
 @Transactional
 public class BonCommandeFournisseurService {
 
+    private static final Object NUMERO_CMD_LOCK = new Object();
+
     private final BonCommandeFournisseurRepository repository;
-    private final StockRepository stockRepo;
+    private final BonCommandeFournisseurPersistHelper persistHelper;
     private final UserService userService;
+    private final NotificationService notificationService;
+    private final StockRepository stockRepo;
 
     public List<BonCommandeFournisseur> getAll() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
+            String userId = jwt.getSubject();
+
+            boolean isAdmin = auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRATEUR"));
+
+            if (isAdmin) {
+                return repository.findAll();
+            } else {
+                return repository.findByCreateurId(userId);
+            }
+        }
         return repository.findAll();
     }
 
@@ -38,7 +62,28 @@ public class BonCommandeFournisseurService {
                 .orElseThrow(() -> new EntityNotFoundException("Bon de commande non trouvé"));
     }
 
-    private long generateNumeroCmd() {
+    private static boolean isUniquenessConstraintViolation(Throwable t) {
+        for (Throwable x = t; x != null; x = x.getCause()) {
+            if (x instanceof DataIntegrityViolationException) {
+                return true;
+            }
+            String name = x.getClass().getSimpleName();
+            if (name.contains("ConstraintViolation") || name.contains("DataIntegrity")) {
+                return true;
+            }
+            String msg = x.getMessage();
+            if (msg != null) {
+                String m = msg.toLowerCase();
+                if (m.contains("unique") || m.contains("duplicate") || m.contains("constraint")
+                        || m.contains("violation")) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private long generateNumeroCmd(long minExclusive) {
         LocalDate now = LocalDate.now();
         String aa = String.valueOf(now.getYear()).substring(2);
         String mm = String.format("%02d", now.getMonthValue());
@@ -47,14 +92,18 @@ public class BonCommandeFournisseurService {
         long rangeEnd = Long.parseLong(aa + mm + "99999");
 
         Long maxExisting = repository.findMaxNumeroCmdBetween(rangeStart, rangeEnd);
-        if (maxExisting == null) {
-            return rangeStart;
+        long next = maxExisting == null ? rangeStart : (maxExisting + 1);
+        if (minExclusive > 0 && next <= minExclusive) {
+            next = minExclusive + 1;
         }
-        long next = maxExisting + 1;
         if (next > rangeEnd) {
             throw new FournisseurException("Plafond de commandes atteint pour ce mois (" + aa + "-" + mm + ").");
         }
         return next;
+    }
+
+    private long generateNumeroCmd() {
+        return generateNumeroCmd(0L);
     }
 
     private void validateBon(BonCommandeFournisseur bon) {
@@ -82,50 +131,149 @@ public class BonCommandeFournisseurService {
     public BonCommandeFournisseur save(BonCommandeFournisseur bon) {
         validateBon(bon);
 
-        if (bon.getId() == null) {
+        boolean isNew = bon.getId() == null || Long.valueOf(0L).equals(bon.getId());
+        if (isNew) {
+            bon.setId(null);
+        }
+
+        if (isNew) {
             bon.setDateCmd(LocalDateTime.now());
-            bon.setNumeroCmd(generateNumeroCmd());
+            synchronized (NUMERO_CMD_LOCK) {
+                bon.setNumeroCmd(generateNumeroCmd());
+            }
             if (bon.getStatut() == null) {
                 bon.setStatut(StatutCommande.EN_ATTENTE);
             }
-            // Enregistrer le créateur de la commande
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
                 String userId = jwt.getSubject();
-                userService.getUserById(userId).ifPresent(bon::setCreateur);
+                String firstName = jwt.getClaimAsString("given_name");
+                String lastName = jwt.getClaimAsString("family_name");
+                String email = jwt.getClaimAsString("email");
+
+                if (firstName == null)
+                    firstName = "Utilisateur";
+                if (lastName == null)
+                    lastName = "Inconnu";
+
+                User creator = userService.provisionUserIfNeeded(userId, firstName, lastName, email,
+                        Role.RESPONSABLE_LOGISTIQUE);
+                bon.setCreateur(creator);
             }
         }
 
         if (bon.getLignes() != null) {
-            bon.getLignes().forEach(ligne -> ligne.setBonCommandeFournisseur(bon));
+
+            if (isNew) {
+                bon.getLignes().forEach(ligne -> ligne.setId(null));
+            }
+
+            java.util.Map<Long, LigneCommande> mergedMap = new java.util.HashMap<>();
+            for (LigneCommande ligne : bon.getLignes()) {
+                if (ligne.getPiece() != null && ligne.getPiece().getId() != null) {
+                    Long pieceId = ligne.getPiece().getId();
+                    if (mergedMap.containsKey(pieceId)) {
+                        LigneCommande existing = mergedMap.get(pieceId);
+                        existing.setQteCmd(existing.getQteCmd() + ligne.getQteCmd());
+                    } else {
+                        mergedMap.put(pieceId, ligne);
+                    }
+                }
+            }
+            bon.setLignes(new java.util.ArrayList<>(mergedMap.values()));
+            bon.getLignes().forEach(ligne -> {
+                ligne.setBonCommandeFournisseur(bon);
+                if (isNew) {
+                    ligne.setId(null);
+                }
+            });
         }
 
-        return repository.save(bon);
+        BonCommandeFournisseur savedBon;
+        if (isNew) {
+            final int maxAttempts = 3;
+            savedBon = null;
+            for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+                try {
+                    savedBon = persistHelper.persist(bon);
+                    break;
+                } catch (Exception e) {
+                    if (!isUniquenessConstraintViolation(e) || attempt == maxAttempts) {
+                        throw e;
+                    }
+
+                    bon.setId(null);
+                    if (bon.getLignes() != null) {
+                        bon.getLignes().forEach(ligne -> ligne.setId(null));
+                    }
+
+                    long lastNumero = Optional.ofNullable(bon.getNumeroCmd()).orElse(0L);
+                    synchronized (NUMERO_CMD_LOCK) {
+                        bon.setNumeroCmd(generateNumeroCmd(lastNumero));
+                    }
+                    System.err.println("[BonCommandeFournisseur] Conflit d'unicité (tentative " + attempt + "/"
+                            + maxAttempts + "), retry avec numeroCmd=" + bon.getNumeroCmd());
+                }
+            }
+            if (savedBon == null) {
+                throw new IllegalStateException("Persist failed after retries");
+            }
+        } else {
+            savedBon = repository.save(bon);
+        }
+
+        if (isNew) {
+            try {
+                String nrCmdStr = savedBon.getNumeroCmd() != null ? savedBon.getNumeroCmd().toString() : "N/A";
+                String createurNom = "";
+                if (savedBon.getCreateur() != null) {
+                    createurNom = " par " + savedBon.getCreateur().getFirstName() + " "
+                            + savedBon.getCreateur().getLastName();
+                }
+                String msg = "Un nouveau bon de commande (N° " + nrCmdStr + ") a été passé avec succès" + createurNom
+                        + ".";
+                notificationService.createNotificationForRoles(
+                        "NOUVELLE COMMANDE",
+                        msg,
+                        NotificationType.INFO,
+                        List.of(Role.AUDITEUR, Role.MAGASINIER, Role.RESPONSABLE_LOGISTIQUE, Role.ADMINISTRATEUR),
+                        null);
+            } catch (Exception e) {
+                System.err.println("Erreur lors de l'envoi de la notification : " + e.getMessage());
+            }
+
+            if (savedBon.getLignes() != null) {
+                for (LigneCommande ligne : savedBon.getLignes()) {
+                    if (ligne.getPiece() != null && ligne.getPiece().getId() != null) {
+                        List<Stock> stocks = stockRepo
+                                .findByPieceId(ligne.getPiece().getId());
+                        if (stocks.isEmpty()) {
+                            Stock newStock = new Stock();
+                            newStock.setPiece(ligne.getPiece());
+                            newStock.setQuantite(0);
+                            newStock.setType(TypeStock.EN_REAPPROVISIONNEMENT);
+                            stockRepo.save(newStock);
+                        } else {
+                            for (Stock stock : stocks) {
+                                stock.setType(TypeStock.EN_REAPPROVISIONNEMENT);
+                                stockRepo.save(stock);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return savedBon;
     }
 
     public BonCommandeFournisseur update(Long id, BonCommandeFournisseur bon) {
         BonCommandeFournisseur existing = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Bon de commande non trouvé"));
 
-        validateBon(bon);
+        boolean newlyReceived = existing.getStatut() != StatutCommande.RECUE && bon.getStatut() == StatutCommande.RECUE;
 
-        if (bon.getStatut() == StatutCommande.RECUE && existing.getStatut() != StatutCommande.RECUE) {
-            if (bon.getLignes() != null) {
-                bon.getLignes().forEach(ligne -> {
-                    if (ligne.getPiece() != null) {
-                        List<Stock> stocks = stockRepo.findByPieceId(ligne.getPiece().getId());
-                        if (!stocks.isEmpty()) {
-                            Stock s = stocks.get(0);
-                            s.setQuantite(s.getQuantite() + ligne.getQteCmd());
-                            if (s.getType() == TypeStock.EN_REAPPROVISIONNEMENT) {
-                                s.setType(TypeStock.DISPONIBLE);
-                            }
-                            stockRepo.save(s);
-                        }
-                    }
-                });
-            }
-        }
+        validateBon(bon);
 
         bon.setId(id);
         bon.setNumeroCmd(existing.getNumeroCmd());
@@ -136,7 +284,25 @@ public class BonCommandeFournisseurService {
             bon.getLignes().forEach(ligne -> ligne.setBonCommandeFournisseur(bon));
         }
 
-        return repository.save(bon);
+        BonCommandeFournisseur savedBon = repository.save(bon);
+
+        if (newlyReceived) {
+            try {
+                String nrCmdStr = savedBon.getNumeroCmd() != null ? savedBon.getNumeroCmd().toString() : "N/A";
+                String msg = "La commande de réapprovisionnement (N° " + nrCmdStr
+                        + ") a été réceptionnée.  Vous pouvez procéder à l'entrée en stock.";
+                notificationService.createNotificationForRoles(
+                        "COMMANDE REÇUE",
+                        msg,
+                        NotificationType.SUCCESS,
+                        List.of(Role.MAGASINIER, Role.RESPONSABLE_LOGISTIQUE, Role.ADMINISTRATEUR),
+                        null);
+            } catch (Exception e) {
+                System.err.println("Erreur lors de l'envoi de la notification de réception : " + e.getMessage());
+            }
+        }
+
+        return savedBon;
     }
 
     public void delete(Long id) {

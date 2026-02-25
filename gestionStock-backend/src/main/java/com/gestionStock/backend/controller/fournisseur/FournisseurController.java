@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -32,22 +33,14 @@ public class FournisseurController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE')")
-    public ResponseEntity<?> create(@RequestBody Fournisseur fournisseur) {
-        try {
-            return ResponseEntity.ok(fournisseurService.save(fournisseur));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<Fournisseur> create(@Valid @RequestBody Fournisseur fournisseur) {
+        return ResponseEntity.ok(fournisseurService.save(fournisseur));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE')")
-    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Fournisseur fournisseur) {
-        try {
-            return ResponseEntity.ok(fournisseurService.update(id, fournisseur));
-        } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<Fournisseur> update(@PathVariable Long id, @Valid @RequestBody Fournisseur fournisseur) {
+        return ResponseEntity.ok(fournisseurService.update(id, fournisseur));
     }
 
     @DeleteMapping("/{id}")

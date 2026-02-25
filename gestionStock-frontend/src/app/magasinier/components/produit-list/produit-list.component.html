@@ -172,9 +172,11 @@
                             <label>Code Produit <span class="required">*</span></label>
                             <div class="control-wrapper">
                                 <input type="text" [(ngModel)]="newProduit.code" name="code" #c="ngModel" required
-                                    placeholder="Ex: PROD-100">
-                                <span class="error-msg" *ngIf="c.invalid && c.touched">Le code produit est
-                                    obligatoire</span>
+                                    pattern="^PF-.*" placeholder="Ex: PF-100">
+                                <span class="error-msg" *ngIf="c.invalid && c.touched">
+                                    <span *ngIf="c.errors?.['required']">Le code produit est obligatoire</span>
+                                    <span *ngIf="c.errors?.['pattern']">Le code doit commencer par PF-</span>
+                                </span>
                             </div>
                         </div>
 
@@ -235,10 +237,73 @@
             </button>
         </div>
         <div class="associated-modal-body">
-            <div class="associated-search">
-                <input type="text" class="associated-search-input" [(ngModel)]="associatedPiecesSearchTerm"
-                    (ngModelChange)="triggerChangeDetection()" placeholder="Rechercher une pièce associée...">
+            <!-- Advanced Header Actions -->
+            <div class="associated-actions-bar">
+                <div class="associated-search-wrapper">
+                    <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" class="associated-search-input" [(ngModel)]="associatedPiecesSearchTerm"
+                        (ngModelChange)="triggerChangeDetection()" placeholder="Nom, référence, code barre...">
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn-filter-toggle" [class.active]="showAdvancedFilters"
+                        (click)="toggleAdvancedFilters()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                        Filtres {{ showAdvancedFilters ? '▲' : '▼' }}
+                    </button>
+                    <button class="btn-reset" (click)="resetFilters()" title="Réinitialiser">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 4v6h-6"></path>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
+
+            <!-- Expandable Filter Panel -->
+            <div class="advanced-filter-panel" *ngIf="showAdvancedFilters">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label>Prix (DTN)</label>
+                        <div class="range-inputs">
+                            <input type="number" [(ngModel)]="minPrice" placeholder="Min"
+                                (ngModelChange)="triggerChangeDetection()">
+                            <span>-</span>
+                            <input type="number" [(ngModel)]="maxPrice" placeholder="Max"
+                                (ngModelChange)="triggerChangeDetection()">
+                        </div>
+                    </div>
+
+                    <div class="filter-group" *ngIf="uniqueCategories.length > 0">
+                        <label>Catégorie</label>
+                        <select [(ngModel)]="selectedCategory" (ngModelChange)="triggerChangeDetection()">
+                            <option value="all">Toutes les catégories</option>
+                            <option *ngFor="let cat of uniqueCategories" [value]="cat">{{ cat }}</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label>Trier par</label>
+                        <select [(ngModel)]="sortBy" (ngModelChange)="triggerChangeDetection()">
+                            <option value="name_asc">Nom (A-Z)</option>
+                            <option value="name_desc">Nom (Z-A)</option>
+                            <option value="price_asc">Prix croissant</option>
+                            <option value="price_desc">Prix décroissant</option>
+                            <option value="ref_asc">Référence</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <div class="associated-grid">
                 <div class="associated-card" *ngFor="let piece of filteredAssociatedPieces">
                     <div class="associated-card-image">
@@ -253,7 +318,8 @@
                 </div>
             </div>
             <div class="associated-empty" *ngIf="selectedProductForPieces && filteredAssociatedPieces.length === 0">
-                <p>Aucune pièce trouvée</p>
+                <div class="associated-empty-icon">🔍</div>
+                <p>Aucune pièce ne correspond à vos filtres</p>
             </div>
         </div>
     </div>

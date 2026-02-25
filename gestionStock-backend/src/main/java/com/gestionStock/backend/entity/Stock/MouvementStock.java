@@ -4,10 +4,7 @@ import java.beans.Transient;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
-
 import org.apache.commons.codec.language.bm.Lang;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
@@ -35,7 +32,7 @@ public class MouvementStock {
 	private double montantTTC;
 	@Enumerated(EnumType.STRING)
 	private TypeMouvement typeMouvement;
-	@JsonIgnore
+	@com.fasterxml.jackson.annotation.JsonManagedReference
 	@OneToMany(mappedBy = "mouvementStock", cascade = CascadeType.ALL, orphanRemoval = true)
 	private Set<LigneMouvement> ligneMouvement = new HashSet<>();
 	@OneToOne

@@ -8,7 +8,6 @@ import com.gestionStock.backend.entity.Stock.Stock;
 import com.gestionStock.backend.entity.Stock.TypeStock;
 import com.gestionStock.backend.entity.piece.PieceDetachee;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -37,16 +36,19 @@ public class LigneCommande {
 	private Long id;
 	@Min(value = 0, message = "Le prix d'achat ne peut pas être négatif")
 	private double prixAchat;
-	
+
 	@Min(value = 1, message = "La quantité doit être au moins de 1")
 	private int qteCmd;
+
+	private double taxe = 19.0;
+	private double remise = 0.0;
 	@ManyToOne
 	@JoinColumn(name = "piece_id", nullable = false)
 	@NotNull(message = "Le produit est obligatoire")
 	private PieceDetachee piece;
 
 	@JsonIgnore
-	@ManyToOne(cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+	@ManyToOne
 	@JoinColumn(name = "commande_id", nullable = false)
 	private BonCommandeFournisseur bonCommandeFournisseur;
 }

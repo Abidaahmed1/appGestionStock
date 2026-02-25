@@ -34,7 +34,6 @@ export class CommandeFournisseurListComponent implements OnInit {
     showOptionsMenu = false;
     showAdvancedFilter = false;
 
-    /** Filtre avancé */
     filterStatut: string = '';
     filterFournisseurId: number | null = null;
     filterDateFrom: string = '';
@@ -116,7 +115,6 @@ export class CommandeFournisseurListComponent implements OnInit {
         this.router.navigate(['/logistique/commandes', id]);
     }
 
-    /** Ouvre la commande en vue impression (détail + impression). */
     printCommande(cmd: BonCommandeFournisseur, event: MouseEvent) {
         event.stopPropagation();
         event.preventDefault();
@@ -151,7 +149,6 @@ export class CommandeFournisseurListComponent implements OnInit {
         event.preventDefault();
     }
 
-    /** Ouvre le modal de confirmation pour Recevoir. */
     onRecevoirClick(commande: BonCommandeFournisseur, event: MouseEvent) {
         event.stopPropagation();
         event.preventDefault();
@@ -160,7 +157,6 @@ export class CommandeFournisseurListComponent implements OnInit {
         this.cdr.detectChanges();
     }
 
-    /** Ouvre le modal de confirmation pour Annuler. */
     onAnnulerClick(commande: BonCommandeFournisseur, event: MouseEvent) {
         event.stopPropagation();
         event.preventDefault();
@@ -224,13 +220,11 @@ export class CommandeFournisseurListComponent implements OnInit {
         this.pendingAction = null;
     }
 
-    /** Bouton « Annuler » du modal : ferme sans exécuter l'action. */
     onModalAnnuler() {
         this.closeConfirmModal();
         this.cdr.detectChanges();
     }
 
-    /** Bouton « Confirmer » du modal : exécute l'action (Recevoir ou Annuler). */
     onModalConfirmer() {
         this.executeAction();
         this.cdr.detectChanges();
@@ -352,14 +346,12 @@ export class CommandeFournisseurListComponent implements OnInit {
         return user.firstName.charAt(0).toUpperCase();
     }
 
-    /** Libellé affiché : seuls EN_ATTENTE, RECUE, ANNULEE sont utilisés. */
     getStatutLabel(statut: StatutCommande): string {
         if (statut === StatutCommande.RECUE) return 'Reçue';
         if (statut === StatutCommande.ANNULEE) return 'Annulée';
-        return 'En attente'; // EN_ATTENTE et tout autre statut (BROUILLON, VALIDEE, etc.)
+        return 'En attente'; 
     }
 
-    /** Classe CSS pour le pill : en_attente | recue | annulee */
     getStatutClass(statut: StatutCommande): string {
         if (statut === StatutCommande.RECUE) return 'recue';
         if (statut === StatutCommande.ANNULEE) return 'annulee';

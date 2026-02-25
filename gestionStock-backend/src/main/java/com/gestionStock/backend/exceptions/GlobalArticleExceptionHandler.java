@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-import jakarta.persistence.EntityNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -15,6 +14,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+
+import jakarta.persistence.EntityNotFoundException;
 
 @RestControllerAdvice
 public class GlobalArticleExceptionHandler extends ResponseEntityExceptionHandler {
@@ -38,16 +39,30 @@ public class GlobalArticleExceptionHandler extends ResponseEntityExceptionHandle
 		return new ResponseEntity<>(erreur, HttpStatus.BAD_REQUEST);
 	}
 
-	// 400 – Règles métier fournisseur (prix = 0, dates incohérentes, etc.)
+	// 400 – Règles métier fournisseur
 	@ExceptionHandler(FournisseurException.class)
 	public ResponseEntity<Erreur> handleFournisseurException(FournisseurException ex) {
 		Erreur e = new Erreur(LocalDateTime.now(), ex.getMessage(), HttpStatus.BAD_REQUEST.value());
 		return new ResponseEntity<>(e, HttpStatus.BAD_REQUEST);
 	}
 
+	// 400 – Règles métier pièces détachées
+	@ExceptionHandler(PieceException.class)
+	public ResponseEntity<Erreur> handlePieceException(PieceException ex) {
+		Erreur e = new Erreur(LocalDateTime.now(), ex.getMessage(), HttpStatus.BAD_REQUEST.value());
+		return new ResponseEntity<>(e, HttpStatus.BAD_REQUEST);
+	}
+
+	// 400 – Règles métier produits finis
+	@ExceptionHandler(ProduitException.class)
+	public ResponseEntity<Erreur> handleProduitException(ProduitException ex) {
+		Erreur e = new Erreur(LocalDateTime.now(), ex.getMessage(), HttpStatus.BAD_REQUEST.value());
+		return new ResponseEntity<>(e, HttpStatus.BAD_REQUEST);
+	}
+
 	// 400 – Autres violations de règles métier génériques
-	@ExceptionHandler(IllegalArgumentException.class)
-	public ResponseEntity<Erreur> handleIllegalArgument(IllegalArgumentException ex) {
+	@ExceptionHandler({ IllegalArgumentException.class, IllegalStateException.class })
+	public ResponseEntity<Erreur> handleBusinessRules(RuntimeException ex) {
 		Erreur e = new Erreur(LocalDateTime.now(), ex.getMessage(), HttpStatus.BAD_REQUEST.value());
 		return new ResponseEntity<>(e, HttpStatus.BAD_REQUEST);
 	}
@@ -62,8 +77,14 @@ public class GlobalArticleExceptionHandler extends ResponseEntityExceptionHandle
 	// 409 – Contrainte d'unicité violée (doublon en BDD)
 	@ExceptionHandler(DataIntegrityViolationException.class)
 	public ResponseEntity<Erreur> handleDataIntegrity(DataIntegrityViolationException ex) {
-		String message = "Un enregistrement avec ces données existe déjà (contrainte d'unicité).";
-		Erreur e = new Erreur(LocalDateTime.now(), message, HttpStatus.CONFLICT.value());
+		String message = "Un enregistrement avec ces données existe déjà (contrainte d'unicité). Veuillez réessayer.";
+		Map<String, String> details = new HashMap<>();
+		String cause = ex.getRootCause() != null ? ex.getRootCause().getMessage() : ex.getMessage();
+		if (cause != null && !cause.isBlank()) {
+			details.put("cause", cause);
+		}
+		Erreur e = new Erreur(LocalDateTime.now(), message, details.isEmpty() ? null : details,
+				HttpStatus.CONFLICT.value());
 		return new ResponseEntity<>(e, HttpStatus.CONFLICT);
 	}
 

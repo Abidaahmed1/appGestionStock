@@ -17,7 +17,7 @@
                         <path d="M6 15h12" />
                     </svg>
                 </div>
-                Catalogue d'Inventaire
+                Catalogue Général
             </h1>
             <div class="search-box">
                 <div class="search-input-wrapper">
@@ -34,6 +34,14 @@
                     <option value="designation">Désignation</option>
                     <option value="code">Code/Réf</option>
                 </select>
+                <button class="filter-toggle-btn" [class.active]="showAdvancedFilters" (click)="toggleAdvancedFilters()"
+                    title="Filtres avancés">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    <span>Filtres</span>
+                </button>
             </div>
         </div>
 
@@ -47,139 +55,161 @@
         </div>
     </div>
 
-    <!-- Content Area -->
-    <div class="catalog-container">
-        <div class="catalog-main">
-            <div class="items-grid-wrapper">
-                <div class="card-grid" *ngIf="activeTab === 'pieces'">
-                    <div class="item-card-premium" *ngFor="let piece of filteredPieces"
-                        [class.selected]="selectedPiece?.id === piece.id" (click)="selectPiece(piece)">
-                        <div class="card-visual">
-                            <img [src]="getImageUrl(piece.imageUrl)"
-                                onerror="this.onerror=null;this.src='assets/images/default-piece.svg'">
-                            <div class="card-badges">
-                                <span class="badge-status" [class.archived]="piece.archivee">
-                                    {{ piece.archivee ? 'Archivé' : 'Disponible' }}
-                                </span>
+    <div class="advanced-filters-panel" [class.show]="showAdvancedFilters">
+        <div class="filters-grid">
+            <div class="filter-group" *ngIf="activeTab === 'pieces'">
+                <label>Catégorie</label>
+                <select [(ngModel)]="filterCategory" (change)="filterItems()">
+                    <option value="all">Toutes les catégories</option>
+                    <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+                </select>
+            </div>
+
+            <div class="filter-group" *ngIf="activeTab === 'pieces'">
+                <label>État du Stock</label>
+                <select [(ngModel)]="filterStockStatus" (change)="filterItems()">
+                    <option value="all">Tous les états</option>
+                    <option value="available">Disponible</option>
+                    <option value="low">Stock Faible</option>
+                    <option value="out">Rupture de Stock</option>
+                </select>
+            </div>
+
+            <div class="filter-group" *ngIf="activeTab === 'pieces'">
+                <label>Prix (Min - Max)</label>
+                <div class="range-inputs">
+                    <input type="number" [(ngModel)]="minPrice" (input)="filterItems()" placeholder="Min DT">
+                    <span class="range-sep">-</span>
+                    <input type="number" [(ngModel)]="maxPrice" (input)="filterItems()" placeholder="Max DT">
+                </div>
+            </div>
+
+            <div class="filter-group" *ngIf="activeTab === 'produits'">
+                <label>Contient la pièce</label>
+                <input type="text" [(ngModel)]="filterPieceSearch" (input)="filterItems()"
+                    placeholder="Désignation ou réf. pièce...">
+            </div>
+
+            <div class="filter-actions">
+                <button class="btn-reset-filters" (click)="resetFilters(); filterItems()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                    </svg>
+                    Réinitialiser
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="catalog-content-wrapper">
+        <div class="items-container" *ngIf="activeTab === 'pieces'">
+            <div class="catalog-card-sober" *ngFor="let piece of filteredPieces">
+                <div class="card-image">
+                    <img [src]="getImageUrl(piece.imageUrl)"
+                        onerror="this.onerror=null;this.src='assets/images/default-piece.svg'">
+                </div>
+                <div class="card-details">
+                    <div class="details-header">
+                        <div class="type-tag">{{ piece.categorie?.nom || 'Pièce' }}</div>
+                        <div class="stock-pill" [ngClass]="{
+                            'pill-ok': getTotalStock(piece) >= piece.seuilMinimum,
+                            'pill-low': getTotalStock(piece) > 0 && getTotalStock(piece) < piece.seuilMinimum,
+                            'pill-out': getTotalStock(piece) === 0
+                        }">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="m7.5 4.27 9 5.15" />
+                                <path
+                                    d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                                <path d="m3.3 7 8.7 5 8.7-5" />
+                                <path d="M12 22V12" />
+                            </svg>
+                            <span>{{ getTotalStock(piece) }}</span>
+                        </div>
+                    </div>
+                    <div class="details-main">
+                        <h3 class="item-name">{{ piece.designation }}</h3>
+                        <p class="item-ref">Référence: <span>{{ piece.reference }}</span></p>
+                    </div>
+                    <div class="details-stats">
+                        <div class="stat-row">
+                            <div class="stat-header">
+                                <span class="stat-label">Stock / Capacité Max</span>
+                                <span class="stat-value">{{ getTotalStock(piece) }} / {{ piece.seuilMaximum || '∞'
+                                    }}</span>
+                            </div>
+                            <div class="stat-bar-bg">
+                                <div class="stat-bar-fill"
+                                    [style.width.%]="piece.seuilMaximum ? (getTotalStock(piece) / piece.seuilMaximum) * 100 : 0"
+                                    [ngClass]="{'fill-low': getTotalStock(piece) < piece.seuilMinimum}"></div>
                             </div>
                         </div>
-                        <div class="card-info">
-                            <span class="category-tag">{{ piece.categorie?.nom || 'Pièce' }}</span>
-                            <h3 class="item-title">{{ piece.designation }}</h3>
-                            <div class="item-meta">
-                                <span class="ref">REF: {{ piece.reference }}</span>
-                                <span class="price-val" *ngIf="piece.prixVente">{{ piece.prixVente | number:'1.2-2'
-                                    }} DT</span>
+                        <div class="threshold-info">
+                            <div class="threshold-item">
+                                <span class="t-label">Seuil Min:</span>
+                                <span class="t-value" [class.warning]="getTotalStock(piece) < piece.seuilMinimum">{{
+                                    piece.seuilMinimum }}</span>
+                            </div>
+                            <div class="threshold-divider"></div>
+                            <div class="threshold-item">
+                                <span class="t-label">Seuil Max:</span>
+                                <span class="t-value">{{ piece.seuilMaximum }}</span>
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <div class="card-grid" *ngIf="activeTab === 'produits'">
-                    <div class="item-card-premium" *ngFor="let produit of filteredProduits"
-                        [class.selected]="selectedProduit?.id === produit.id" (click)="selectProduit(produit)">
-                        <div class="card-visual">
-                            <img [src]="getImageUrl(produit.imageUrl)"
-                                onerror="this.onerror=null;this.src='assets/images/default-produit.svg'">
-                            <div class="card-badges">
-                                <span class="badge-status" [class.archived]="produit.estArchivee">
-                                    {{ produit.estArchivee ? 'Archivé' : 'Actif' }}
-                                </span>
-                            </div>
-                        </div>
-                        <div class="card-info">
-                            <span class="category-tag">Produit Fini</span>
-                            <h3 class="item-title">{{ produit.designation }}</h3>
-                            <div class="item-meta">
-                                <span class="code">{{ produit.code }}</span>
-                                <span class="components-count" *ngIf="produit.pieces">
-                                    {{ produit.pieces.length }} composants
-                                </span>
-                            </div>
+                    <div class="card-footer-sober">
+                        <div class="price-tag" *ngIf="piece.prixVente">{{ piece.prixVente | number:'1.2-2' }} DT</div>
+                        <div class="status-badge" [attr.data-status]="getStockStatus(piece)">
+                            {{ getStockStatus(piece) | titlecase }}
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Details Showcase (Right Side) -->
-        <div class="showcase-panel">
-            <div class="showcase-content" *ngIf="selectedPiece || selectedProduit">
-                <div class="showcase-scrollable">
-                    <button class="panel-close-btn" (click)="selectedPiece = null; selectedProduit = null">✕</button>
-
-                    <div class="hero-image-container">
-                        <img [src]="getImageUrl(selectedPiece?.imageUrl || selectedProduit?.imageUrl)"
-                            [alt]="selectedPiece?.designation || selectedProduit?.designation"
-                            onerror="this.onerror=null;this.src='assets/images/default-piece.svg'">
-                    </div>
-
-                    <div class="details-text-area">
-                        <div class="showcase-header">
-                            <span class="showcase-pill">{{ selectedPiece ? 'Pièce Détachée' : 'Produit Fini' }}</span>
-                            <h2>{{ selectedPiece?.designation || selectedProduit?.designation }}</h2>
-                            <p class="showcase-id">
-                                <span class="label">IDENTIFIANT :</span>
-                                <span class="id-value">{{ selectedPiece?.reference || selectedProduit?.code }}</span>
-                            </p>
+        <div class="items-container" *ngIf="activeTab === 'produits'">
+            <div class="catalog-card-sober" *ngFor="let produit of filteredProduits">
+                <div class="card-image">
+                    <img [src]="getImageUrl(produit.imageUrl)"
+                        onerror="this.onerror=null;this.src='assets/images/default-produit.svg'">
+                </div>
+                <div class="card-details">
+                    <div class="details-header">
+                        <div class="type-tag">Produit Fini</div>
+                        <div class="components-pill" *ngIf="produit.pieces && produit.pieces.length > 0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="m2 7 10 5 10-5-10-5Z" />
+                                <path d="m2 12 10 5 10-5" />
+                                <path d="m2 17 10 5 10-5" />
+                            </svg>
+                            <span>{{ produit.pieces.length }} pièces</span>
                         </div>
-
-                        <div class="data-section">
-                            <div class="data-group">
-                                <h3>Données Techniques</h3>
-                                <div class="data-grid">
-                                    <div class="data-item">
-                                        <span class="d-label">Code Barre</span>
-                                        <span class="d-value">{{ selectedPiece?.codeBarre || 'N/A' }}</span>
-                                    </div>
-                                    <div class="data-item">
-                                        <span class="d-label">Catégorie</span>
-                                        <span class="d-value">{{ selectedPiece?.categorie?.nom || 'Standard' }}</span>
-                                    </div>
-                                    <div class="data-item">
-                                        <span class="d-label">Seuil Min</span>
-                                        <span class="d-value">{{ selectedPiece?.seuilMinimum }}</span>
-                                    </div>
-                                    <div class="data-item">
-                                        <span class="d-label">Seuil Max</span>
-                                        <span class="d-value">{{ selectedPiece?.seuilMaximum }}</span>
-                                    </div>
-                                    <div class="data-item price-item" *ngIf="selectedPiece?.prixVente">
-                                        <span class="d-label">Prix unitaire</span>
-                                        <span class="d-value large">{{ selectedPiece?.prixVente | number:'1.2-2'
-                                            }} DT</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="data-group" *ngIf="selectedProduit?.pieces?.length">
-                                <h3>Nomenclature ({{ selectedProduit?.pieces?.length }})</h3>
-                                <div class="components-stack">
-                                    <div class="comp-item" *ngFor="let p of selectedProduit?.pieces">
-                                        <div class="comp-dot"></div>
-                                        <span class="comp-name">{{ p.designation }}</span>
-                                        <span class="comp-ref">{{ p.reference }}</span>
-                                    </div>
-                                </div>
-                            </div>
+                    </div>
+                    <div class="details-main">
+                        <h3 class="item-name">{{ produit.designation }}</h3>
+                        <p class="item-ref">Code: <span>{{ produit.code }}</span></p>
+                    </div>
+                    <div class="card-footer-sober">
+                        <div class="status-indicator">
+                            <span class="status-label">{{ produit.estArchivee ? 'Archivé' : 'Actif' }}</span>
+                            <div class="dot" [class.dot-archived]="produit.estArchivee"></div>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
 
-
-            <div class="panel-empty-state" *ngIf="!selectedPiece && !selectedProduit">
-                <div class="visual-placeholder">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.5">
-                        <path d="M21 7.5L12 3L3 7.5V16.5L12 21L21 16.5V7.5Z" />
-                        <path d="M12 3V12" />
-                        <path d="M12 12L3 7.5" />
-                        <path d="M12 12L21 7.5" />
-                    </svg>
-                </div>
-                <h4>Sélection Catalogue</h4>
-                <p>Parcourez la liste à gauche pour afficher les caractéristiques détaillées</p>
-            </div>
+        <div class="catalog-empty"
+            *ngIf="(activeTab === 'pieces' && filteredPieces.length === 0) || (activeTab === 'produits' && filteredProduits.length === 0)">
+            <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" fill="none" stroke-width="1.5">
+                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <p>Aucun article trouvé dans le catalogue.</p>
         </div>
     </div>
 </div>

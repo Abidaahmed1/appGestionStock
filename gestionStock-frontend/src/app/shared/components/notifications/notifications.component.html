@@ -1,0 +1,52 @@
+<div class="notifications-wrapper">
+
+
+
+
+    <div class="notification-trigger" (click)="toggleDropdown()">
+        <div class="icon-cnt">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+            </svg>
+            <span class="badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+        </div>
+    </div>
+
+    <div class="notifications-dropdown" *ngIf="showDropdown">
+        <div class="dropdown-header">
+            <div class="header-tabs">
+                <span class="active-tab">Notifications</span>
+                <span>Actions</span>
+            </div>
+            <button class="mark-all-btn" (click)="markAllAsRead()">Marquer tout comme lu</button>
+        </div>
+
+        <div class="notifications-list">
+            <div class="empty-state" *ngIf="notifications.length === 0">
+                <div class="empty-icon">🔔</div>
+                <p>Aucune notification pour le moment</p>
+            </div>
+
+            <div class="notification-item" *ngFor="let n of notifications" [class.unread]="!n.lu"
+                (click)="markAsRead(n)">
+                <div class="item-icon" [ngClass]="n.type">
+                    {{ getTypeIcon(n.type) }}
+                </div>
+                <div class="item-content">
+                    <div class="item-header">
+                        <span class="item-title">{{ n.titre }}</span>
+                        <span class="item-date">{{ n.date | date:'dd MMM, HH:mm' }}</span>
+                    </div>
+                    <p class="item-msg">{{ n.message }}</p>
+                </div>
+                <div class="unread-dot" *ngIf="!n.lu"></div>
+            </div>
+        </div>
+
+        <div class="dropdown-footer">
+            <a href="#">Voir toutes les notifications</a>
+        </div>
+    </div>
+</div>

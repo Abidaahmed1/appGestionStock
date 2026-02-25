@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -48,14 +49,14 @@ public class PieceDetacheeController {
 
     @PostMapping
     @PreAuthorize("hasRole('MAGASINIER')")
-    public ResponseEntity<PieceDetachee> create(@RequestBody PieceDetachee piece) {
+    public ResponseEntity<PieceDetachee> create(@Valid @RequestBody PieceDetachee piece) {
         PieceDetachee saved = pieceService.addPiece(piece);
         return ResponseEntity.ok(saved);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('MAGASINIER')")
-    public ResponseEntity<PieceDetachee> update(@PathVariable Long id, @RequestBody PieceDetachee piece) {
+    public ResponseEntity<PieceDetachee> update(@PathVariable Long id, @Valid @RequestBody PieceDetachee piece) {
         return ResponseEntity.ok(pieceService.update(id, piece));
     }
 

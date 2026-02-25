@@ -44,7 +44,6 @@ body {
     min-height: 100vh;
 }
 
-/* Hide the realm name (e.g. "myrealm") and the entire header area */
 #kc-header,
 #kc-page-title {
     display: none !important;
@@ -54,7 +53,6 @@ body {
     background: transparent;
 }
 
-/* Card Styling */
 .card-pf {
     background: var(--card-bg) !important;
     border: 1px solid var(--border-color) !important;

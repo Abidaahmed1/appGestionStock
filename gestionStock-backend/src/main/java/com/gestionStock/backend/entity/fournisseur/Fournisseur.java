@@ -1,5 +1,10 @@
 package com.gestionStock.backend.entity.fournisseur;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+
 import java.util.HashSet;
 import java.util.Set;
 
@@ -25,10 +30,24 @@ public class Fournisseur {
 
 	private Long id;
 	private boolean archivee = false;
+
+	@NotBlank(message = "L'adresse est obligatoire")
 	private String adresse;
+
+	@NotBlank(message = "Le code fournisseur est obligatoire")
+	@Size(min = 2, max = 20, message = "Le code doit contenir entre 2 et 20 caractères")
+	@Pattern(regexp = "^FOUR-.*", message = "Le code fournisseur doit commencer par FOUR-")
 	private String code;
+
+	@NotBlank(message = "Le nom du fournisseur est obligatoire")
 	private String nom;
+
+	@NotBlank(message = "L'email est obligatoire")
+	@Email(message = "Le format de l'email est invalide")
 	private String email;
+
+	@NotBlank(message = "Le numéro de téléphone est obligatoire")
+	@Size(min = 8, max = 8, message = "Le numéro de téléphone doit contenir 8 chiffres")
 	private String tel;
 
 	@JsonIgnore

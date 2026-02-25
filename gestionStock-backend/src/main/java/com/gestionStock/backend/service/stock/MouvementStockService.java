@@ -21,6 +21,7 @@ public class MouvementStockService {
 
     private final MouvementStockRepository mouvementRepo;
     private final StockRepository stockRepo;
+    private final com.gestionStock.backend.repository.stock.BonRepository bonRepo;
 
     public List<MouvementStock> getAll() {
         return mouvementRepo.findAll();
@@ -44,11 +45,76 @@ public class MouvementStockService {
             mouvement.setDate(LocalDateTime.now());
         }
 
-        // Calculate totals from ligne mouvements
         double totalHTVA = 0;
         double totalTTC = 0;
 
         if (mouvement.getLigneMouvement() != null) {
+            if (mouvement.getTypeMouvement() != null && mouvement.getTypeMouvement().name().contains("RETOUR") &&
+                    mouvement.getBon() != null && mouvement.getBon().getBonOrigine() != null) {
+
+                Long originId = mouvement.getBon().getBonOrigine().getId();
+                com.gestionStock.backend.entity.Stock.Bon bonOrigine = bonRepo.findById(originId).orElse(null);
+
+                if (bonOrigine != null && bonOrigine.getMouvement() != null) {
+                    java.util.List<com.gestionStock.backend.entity.Stock.Bon> otherReturns = bonRepo
+                            .findByBonOrigineId(originId);
+
+                    for (LigneMouvement newLine : mouvement.getLigneMouvement()) {
+                        if (newLine.getStock() != null && newLine.getStock().getPiece() != null) {
+                            Long pieceId = newLine.getStock().getPiece().getId();
+
+                            // 1. Calculer la quantité initiale sortie/entrée
+                            int originalQty = 0;
+                            String pieceName = newLine.getStock().getPiece().getDesignation();
+
+                            for (LigneMouvement originLine : bonOrigine.getMouvement().getLigneMouvement()) {
+                                if (originLine.getStock() != null && originLine.getStock().getPiece() != null &&
+                                        originLine.getStock().getPiece().getId().equals(pieceId)) {
+                                    originalQty += originLine.getQuantite();
+                                    if (pieceName == null || pieceName.isEmpty()) {
+                                        pieceName = originLine.getStock().getPiece().getDesignation();
+                                    }
+                                }
+                            }
+
+                            if (originalQty == 0) {
+                                throw new IllegalArgumentException(
+                                        "La pièce '" + (pieceName != null ? pieceName : pieceId)
+                                                + "' ne fait pas partie du document d'origine.");
+                            }
+
+                            // 2. Calculer la quantité déjà retournée (hors bon actuel)
+                            int alreadyReturnedQty = 0;
+                            for (com.gestionStock.backend.entity.Stock.Bon otherReturn : otherReturns) {
+                                if (mouvement.getBon().getId() != null
+                                        && mouvement.getBon().getId().equals(otherReturn.getId()))
+                                    continue;
+
+                                if (otherReturn.getMouvement() != null) {
+                                    for (LigneMouvement existingLine : otherReturn.getMouvement().getLigneMouvement()) {
+                                        if (existingLine.getStock() != null
+                                                && existingLine.getStock().getPiece() != null &&
+                                                existingLine.getStock().getPiece().getId().equals(pieceId)) {
+                                            alreadyReturnedQty += existingLine.getQuantite();
+                                        }
+                                    }
+                                }
+                            }
+
+                            // 3. Valider la limite
+                            if (alreadyReturnedQty + newLine.getQuantite() > originalQty) {
+                                int remaining = originalQty - alreadyReturnedQty;
+                                String finalName = pieceName != null ? pieceName : "Inconnue (ID: " + pieceId + ")";
+                                throw new IllegalArgumentException("Quantité de retour excessive pour '" +
+                                        finalName +
+                                        "'. Reste possible : " + remaining + " (Déjà retourné : " + alreadyReturnedQty
+                                        + "/" + originalQty + ").");
+                            }
+                        }
+                    }
+                }
+            }
+
             for (LigneMouvement ligne : mouvement.getLigneMouvement()) {
                 ligne.setMouvementStock(mouvement);
                 double ligneHTVA = ligne.getPrixHTVA() * ligne.getQuantite();
@@ -56,7 +122,6 @@ public class MouvementStockService {
                 totalHTVA += ligneHTVA;
                 totalTTC += ligneTTC;
 
-                // Update stock quantities based on movement type
                 updateStockQuantity(ligne, mouvement.getTypeMouvement());
             }
         }
@@ -83,22 +148,55 @@ public class MouvementStockService {
     }
 
     private void updateStockQuantity(LigneMouvement ligne, TypeMouvement typeMouvement) {
-        Stock stock = ligne.getStock();
-        if (stock == null)
+        if (typeMouvement == null) {
+            return;
+        }
+        Stock incomingStock = ligne.getStock();
+        if (incomingStock == null || incomingStock.getPiece() == null)
             return;
 
-        int currentQuantity = stock.getQuantite();
-        int changeQuantity = ligne.getQuantite();
+        Long pieceId = incomingStock.getPiece().getId();
+        if (pieceId == null)
+            return;
 
-        // Determine if this is an entry or exit movement
-        boolean isEntry = typeMouvement.name().startsWith("ENTREE");
+        Stock existingStock = stockRepo.findByPieceId(pieceId).stream().findFirst().orElse(null);
 
-        if (isEntry) {
-            stock.setQuantite(currentQuantity + changeQuantity);
-        } else {
-            stock.setQuantite(currentQuantity - changeQuantity);
+        if (existingStock == null) {
+            existingStock = new Stock();
+            existingStock.setPiece(incomingStock.getPiece());
+            existingStock.setQuantite(0);
+            existingStock.setType(com.gestionStock.backend.entity.Stock.TypeStock.DISPONIBLE);
         }
 
-        stockRepo.save(stock);
+        int currentQuantity = existingStock.getQuantite();
+        int changeQuantity = ligne.getQuantite();
+
+        boolean isEntry = (typeMouvement == TypeMouvement.ENTREE_RECEPTION ||
+                typeMouvement == TypeMouvement.ENTREE_RETOUR);
+
+        boolean isExit = (typeMouvement == TypeMouvement.SORTIE_VENTE ||
+                typeMouvement == TypeMouvement.SORTIE_PERTE ||
+                typeMouvement == TypeMouvement.SORTIE_MAINTENANCE ||
+                typeMouvement == TypeMouvement.SORTIE_RETOUR);
+
+        if (isEntry) {
+            existingStock.setQuantite(currentQuantity + changeQuantity);
+        } else if (isExit || typeMouvement.name().startsWith("SORTIE")) {
+            int newQuantity = currentQuantity - changeQuantity;
+            if (newQuantity < 0) {
+                throw new IllegalStateException(
+                        "Stock insuffisant pour la pièce ID " + pieceId +
+                                " (disponible: " + currentQuantity + ", demandé: " + changeQuantity + ")");
+            }
+            existingStock.setQuantite(newQuantity);
+        }
+
+        if (existingStock.getQuantite() <= 0) {
+            existingStock.setType(com.gestionStock.backend.entity.Stock.TypeStock.RUPTURE_STOCK);
+        } else {
+            existingStock.setType(com.gestionStock.backend.entity.Stock.TypeStock.DISPONIBLE);
+        }
+
+        ligne.setStock(stockRepo.save(existingStock));
     }
 }

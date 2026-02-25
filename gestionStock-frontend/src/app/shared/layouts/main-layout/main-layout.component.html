@@ -86,10 +86,10 @@
 
             </ng-container>
 
-            <ng-container *ngIf="hasRole('ROLE_MAGASINIER')">
+            <ng-container *ngIf="hasRole('ROLE_MAGASINIER')  || hasRole('ROLE_RESPONSABLE_LOGISTIQUE')">
                 <div class="nav-section-title">Catalogue</div>
                 <a routerLink="/magasinier/catalogue" class="nav-item" routerLinkActive="active"
-                    *ngIf="hasRole('ROLE_MAGASINIER')">
+                    *ngIf="hasRole('ROLE_MAGASINIER') || hasRole('ROLE_RESPONSABLE_LOGISTIQUE')">
                     <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                         stroke-linejoin="round">
@@ -129,7 +129,7 @@
             </ng-container>
 
             <a routerLink="/magasinier/stocks" class="nav-item" routerLinkActive="active"
-                *ngIf="hasRole('ROLE_MAGASINIER')">
+                *ngIf="hasRole('ROLE_MAGASINIER') || hasRole('ROLE_RESPONSABLE_LOGISTIQUE') || hasRole('ROLE_ADMINISTRATEUR')">
                 <svg class="icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                     fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path
@@ -178,12 +178,17 @@
     <main class="main-content">
         <header class="top-header">
             <div class="breadcrumb">Application / <span class="current">Aperçu</span></div>
-            <div class="user-profile">
-                <div class="user-details">
-                    <span class="user-name">{{ username() }}</span>
-                    <span class="user-role">{{ getDisplayRole() }}</span>
+
+            <div class="header-actions-group">
+                <app-notifications></app-notifications>
+
+                <div class="user-profile">
+                    <div class="user-details">
+                        <span class="user-name">{{ username() }}</span>
+                        <span class="user-role">{{ getDisplayRole() }}</span>
+                    </div>
+                    <div class="avatar">{{ username().substring(0,1).toUpperCase() }}</div>
                 </div>
-                <div class="avatar">{{ username().substring(0,1).toUpperCase() }}</div>
             </div>
         </header>
 

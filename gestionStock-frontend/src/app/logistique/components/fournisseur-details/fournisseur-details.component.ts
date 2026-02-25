@@ -85,15 +85,39 @@ export class FournisseurDetailsComponent implements OnInit {
         if (!this.fournisseur.code) {
             this.validationErrors.code = true;
             hasErrors = true;
+        } else if (!this.fournisseur.code.startsWith('FOUR-')) {
+            this.validationErrors.codePattern = true;
+            hasErrors = true;
+        }
+        if (!this.fournisseur.tel) {
+            this.validationErrors.tel = true;
+            hasErrors = true;
+        } else if (this.fournisseur.tel.length !== 8) {
+            this.validationErrors.telLength = true;
+            hasErrors = true;
         }
 
-        if (this.fournisseur.email && !this.fournisseur.email.includes('@')) {
+        if (!this.fournisseur.email) {
+            this.validationErrors.email = true;
+            hasErrors = true;
+        } else if (this.fournisseur.email && !this.fournisseur.email.includes('@')) {
             this.notify('Format d\'e-mail invalide', 'error');
             return;
         }
 
+        if (!this.fournisseur.adresse) {
+            this.validationErrors.adresse = true;
+            hasErrors = true;
+        }
+
         if (hasErrors) {
-            this.notify('Veuillez remplir les champs obligatoires (Nom et Référence)', 'error');
+            let errorMsg = 'Veuillez remplir les champs obligatoires.';
+            if (this.validationErrors.telLength) {
+                errorMsg = 'Le numéro de téléphone doit contenir exactement 8 chiffres.';
+            } else if (this.validationErrors.codePattern) {
+                errorMsg = 'Le code du fournisseur doit commencer par FOUR-';
+            }
+            this.notify(errorMsg, 'error');
             return;
         }
 
@@ -128,7 +152,15 @@ export class FournisseurDetailsComponent implements OnInit {
                 }
             },
             error: (err) => {
-                const msg = err.error?.message || (typeof err.error === 'string' ? err.error : null) || 'Erreur lors de l\'enregistrement';
+                let msg = err.error?.message || 'Erreur lors de l\'enregistrement';
+                if (err.error?.details) {
+                    const detailsStr = Object.values(err.error.details).join(', ');
+                    if (detailsStr) {
+                        msg = msg + ': ' + detailsStr;
+                    }
+                } else if (typeof err.error === 'string') {
+                    msg = err.error;
+                }
                 this.notify(msg, 'error');
             }
         });

@@ -169,6 +169,11 @@ export class LogistiqueService {
         return this.http.get<any[]>(`${this.baseUrl}/piece-fournisseur/fournisseur/${fournisseurId}`);
     }
 
+    getPieceFournisseursByPieces(pieceIds: number[]): Observable<any[]> {
+        const params = new HttpParams().set('ids', pieceIds.join(','));
+        return this.http.get<any[]>(`${this.baseUrl}/piece-fournisseur/pieces`, { params });
+    }
+
     savePieceFournisseur(pieceFournisseur: any): Observable<any> {
         return this.http.post<any>(`${this.baseUrl}/piece-fournisseur`, pieceFournisseur);
     }

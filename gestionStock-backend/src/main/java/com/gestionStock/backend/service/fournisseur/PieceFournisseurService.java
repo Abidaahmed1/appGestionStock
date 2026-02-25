@@ -26,6 +26,10 @@ public class PieceFournisseurService {
         return repository.findByFournisseurId(fournisseurId);
     }
 
+    public List<PieceFournisseur> getByPieceIds(List<Long> pieceIds) {
+        return repository.findByPieceIdIn(pieceIds);
+    }
+
     public PieceFournisseur save(PieceFournisseur pieceFournisseur) {
         Optional<PieceFournisseur> existing = repository.findByPieceIdAndFournisseurId(
                 pieceFournisseur.getPiece().getId(),

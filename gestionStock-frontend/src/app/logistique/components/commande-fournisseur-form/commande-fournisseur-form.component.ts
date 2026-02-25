@@ -23,7 +23,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
 
   commande: BonCommandeFournisseur = {
     numeroCmd: 0,
-    dateCmd: '', // Will be initialized in ngOnInit or init
+    dateCmd: '',
     fournisseur: null as any,
     statut: StatutCommande.EN_ATTENTE,
     lignes: []
@@ -32,6 +32,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
   fournisseurs: Fournisseur[] = [];
   pieces: any[] = [];
   pieceFournisseurs: PieceFournisseur[] = [];
+  allPieceFournisseurs: PieceFournisseur[] = [];
 
   activeTab: 'produits' | 'autres' = 'produits';
   isEditMode = false;
@@ -48,7 +49,6 @@ export class CommandeFournisseurFormComponent implements OnInit {
   supplierSearchText: string = '';
   filteredFournisseurs: Fournisseur[] = [];
 
-  /** Vue ouverte uniquement pour impression (paramètre print=1) : retour à la liste après impression/annulation. */
   isPrintView = false;
   private afterPrintListener: (() => void) | null = null;
 
@@ -57,16 +57,13 @@ export class CommandeFournisseurFormComponent implements OnInit {
       this.loadFournisseurs();
       this.loadPieces();
 
-      // Check for a temporary draft (if returning from Supplier details)
       if (this.logistiqueService.commandeDraft) {
         this.commande = this.logistiqueService.commandeDraft;
         if (this.commande.fournisseur?.id) {
           this.loadPieceFournisseurs(this.commande.fournisseur.id);
         }
-        // Don't clear it yet, we might need it if the user navigates back again
       }
 
-      // Load all orders to calculate the next sequence number correctly
       this.logistiqueService.getAllCommandesFournisseurs().subscribe(data => {
         this.commandes = data;
 
@@ -74,7 +71,6 @@ export class CommandeFournisseurFormComponent implements OnInit {
         if (id && id !== 'nouvelle') {
           const numericId = parseInt(id, 10);
           if (!isNaN(numericId)) {
-            // If we have a draft and it matches the ID, we already loaded it
             if (this.isEditMode && this.commande.id === numericId) {
               // Already loaded from draft
             } else {
@@ -146,9 +142,15 @@ export class CommandeFournisseurFormComponent implements OnInit {
         if (this.commande.fournisseur?.id) {
           this.loadPieceFournisseurs(this.commande.fournisseur.id);
         }
+        if (this.commande.lignes) {
+          this.commande.lignes.forEach(l => {
+            if (l.taxe === undefined || l.taxe === null) l.taxe = 19;
+            if (l.remise === undefined || l.remise === null) l.remise = 0;
+          });
+        }
         this.loading = false;
         this.cdr.detectChanges();
-        if (this.route.snapshot.queryParamMap.get('print') === '1') {
+        if (this.route.snapshot.queryParamMap.get('print') === '1' && this.commande.statut !== StatutCommande.ANNULEE) {
           this.isPrintView = true;
           this.cdr.detectChanges();
           setTimeout(() => {
@@ -170,12 +172,38 @@ export class CommandeFournisseurFormComponent implements OnInit {
   loadPieceFournisseurs(fournisseurId: number) {
     this.logistiqueService.getPieceFournisseursByFournisseur(fournisseurId).subscribe(data => {
       this.pieceFournisseurs = data;
+      this.updateLinesFromCatalog();
     });
+  }
+
+  updateLinesFromCatalog() {
+    if (!this.commande.lignes || !this.pieceFournisseurs || this.pieceFournisseurs.length === 0) return;
+
+    const now = new Date();
+    this.commande.lignes.forEach(ligne => {
+      if (ligne.piece) {
+        const catalogEntry = this.pieceFournisseurs.find(pf =>
+          pf.piece.id === ligne.piece.id &&
+          (!pf.dateDebutValidite || new Date(pf.dateDebutValidite) <= now) &&
+          (!pf.dateFinValidite || new Date(pf.dateFinValidite) >= now)
+        );
+
+        if (catalogEntry) {
+          // On met à jour le prix et la remise seulement si c'est une commande en attente
+          if (this.isEditable) {
+            ligne.prixAchat = catalogEntry.prixAchat;
+            ligne.remise = catalogEntry.tauxRemise || 0;
+            ligne.taxe = 19;
+          }
+        }
+      }
+    });
+    this.cdr.detectChanges();
   }
 
   addLigne() {
     if (!this.commande.lignes) this.commande.lignes = [];
-    this.commande.lignes.push({ piece: null, qteCmd: 1, prixAchat: 0, taxe: 19, remise: 0 });
+    this.commande.lignes.push({ piece: null, qteCmd: 1, prixAchat: 1, taxe: 19, remise: 0 });
     this.cdr.detectChanges();
   }
 
@@ -184,8 +212,12 @@ export class CommandeFournisseurFormComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
-  // Searchable Dropdown methods
+  get isEditable(): boolean {
+    return this.commande.statut === StatutCommande.EN_ATTENTE;
+  }
+
   toggleDropdown(index: number, event: Event) {
+    if (!this.isEditable) return;
     event.stopPropagation();
     if (this.openDropdownIndex === index) {
       this.closeDropdown();
@@ -212,7 +244,6 @@ export class CommandeFournisseurFormComponent implements OnInit {
   selectPiece(index: number, piece: any) {
     if (!this.commande.lignes) return;
 
-    // Check for duplicates (backend has unique constraint on piece_id + commande_id)
     const existingIndex = this.commande.lignes.findIndex((l, idx) => l.piece?.id === piece.id && idx !== index);
     if (existingIndex !== -1) {
       this.commande.lignes[existingIndex].qteCmd += this.commande.lignes[index].qteCmd;
@@ -224,26 +255,31 @@ export class CommandeFournisseurFormComponent implements OnInit {
     const ligne = this.commande.lignes[index];
     ligne.piece = piece;
 
-    // Auto-fill price and tax if exists in supplier catalog
-    if (this.commande.fournisseur) {
-      const now = new Date();
-      const catalogEntry = this.pieceFournisseurs.find(pf =>
-        pf.piece.id === piece.id &&
-        (!pf.dateDebutValidite || new Date(pf.dateDebutValidite) <= now) &&
-        (!pf.dateFinValidite || new Date(pf.dateFinValidite) >= now)
-      );
+    ligne.qteCmd = this.calculateRecommendedQuantity(piece);
 
-      if (catalogEntry) {
-        ligne.prixAchat = catalogEntry.prixAchat;
-        ligne.taxe = 19;
-        ligne.remise = catalogEntry.tauxRemise || 0;
-      } else {
-        ligne.taxe = 19;
-        ligne.remise = 0;
-      }
+    if (this.commande.fournisseur) {
+      this.updateLinesFromCatalog();
     }
 
     this.closeDropdown();
+  }
+
+  calculateRecommendedQuantity(piece: any): number {
+    if (!piece || !piece.seuilMaximum) return 1;
+
+
+    const currentStock = piece.stock?.quantite || 0;
+
+    const pendingQtyInOtherOrders = this.commandes
+      .filter(c => c.statut === StatutCommande.EN_ATTENTE && c.id !== this.commande.id)
+      .reduce((total, c) => {
+        const pieceLines = c.lignes?.filter(l => (l.piece?.id || l.piece) === piece.id) || [];
+        return total + pieceLines.reduce((sum, l) => sum + (l.qteCmd || 0), 0);
+      }, 0);
+
+    const recommended = piece.seuilMaximum - (currentStock + pendingQtyInOtherOrders);
+
+    return recommended > 0 ? recommended : 0;
   }
 
   closeDropdown() {
@@ -261,8 +297,8 @@ export class CommandeFournisseurFormComponent implements OnInit {
     event.stopPropagation();
   }
 
-  // Supplier Searchable Dropdown
   toggleSupplierDropdown(event: Event) {
+    if (!this.isEditable) return;
     event.stopPropagation();
     this.showSupplierDropdown = !this.showSupplierDropdown;
     if (this.showSupplierDropdown) {
@@ -287,9 +323,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
     this.commande.fournisseur = f;
     this.showSupplierDropdown = false;
 
-    // Auto-fill order date to current date
     const now = new Date();
-    // Format for datetime-local: YYYY-MM-DDTHH:mm
     const year = now.getFullYear();
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
     const day = now.getDate().toString().padStart(2, '0');
@@ -297,7 +331,6 @@ export class CommandeFournisseurFormComponent implements OnInit {
     const minutes = now.getMinutes().toString().padStart(2, '0');
     this.commande.dateCmd = `${year}-${month}-${day}T${hours}:${minutes}`;
 
-    // Load supplier catalog for this specific fournisseur
     if (f.id) {
       this.loadPieceFournisseurs(f.id);
     }
@@ -307,12 +340,10 @@ export class CommandeFournisseurFormComponent implements OnInit {
     if (id === undefined) return;
     event.preventDefault();
     event.stopPropagation();
-    // Save current state as draft
     this.logistiqueService.commandeDraft = this.commande;
     this.router.navigate(['/logistique/fournisseurs', id]);
   }
 
-  // Helper methods for template bindings to avoid NG5002 error
   getSupplierDisplayValue(): string {
     return this.showSupplierDropdown ? this.supplierSearchText : (this.commande.fournisseur ? this.commande.fournisseur.nom : '');
   }
@@ -358,6 +389,36 @@ export class CommandeFournisseurFormComponent implements OnInit {
     return this.totalHT + this.totalTaxe;
   }
 
+  loadComparisonData() {
+    const pieceIds = this.commande.lignes?.map(l => l.piece?.id).filter(id => id !== undefined) as number[];
+    if (pieceIds && pieceIds.length > 0) {
+      this.logistiqueService.getPieceFournisseursByPieces(pieceIds).subscribe(data => {
+        const orderDate = this.commande.dateCmd ? new Date(this.commande.dateCmd) : new Date();
+        this.allPieceFournisseurs = data.filter(pf => {
+          const start = pf.dateDebutValidite ? new Date(pf.dateDebutValidite) : null;
+          const end = pf.dateFinValidite ? new Date(pf.dateFinValidite) : null;
+          return (!start || start <= orderDate) && (!end || end >= orderDate);
+        }).sort((a, b) => {
+          if (a.estPrincipale && !b.estPrincipale) return -1;
+          if (!a.estPrincipale && b.estPrincipale) return 1;
+          return (a.prixAchat || 0) - (b.prixAchat || 0); // Then by price
+        });
+        this.cdr.detectChanges();
+      });
+    }
+  }
+
+  getComparisonForPiece(pieceId: number): PieceFournisseur[] {
+    return this.allPieceFournisseurs.filter(pf => pf.piece.id === pieceId);
+  }
+
+  switchTab(tab: 'produits' | 'autres') {
+    this.activeTab = tab;
+    if (tab === 'autres') {
+      this.loadComparisonData();
+    }
+  }
+
   validate(): boolean {
     this.errors = {};
     this.formSubmitted = true;
@@ -366,7 +427,6 @@ export class CommandeFournisseurFormComponent implements OnInit {
       this.errors['fournisseur'] = 'Le fournisseur est obligatoire.';
     }
 
-    // Validation croisée des dates
     if (this.commande.dateArrivee && this.commande.dateCmd) {
       const dateCmd = new Date(this.commande.dateCmd);
       const dateArrivee = new Date(this.commande.dateArrivee);
@@ -383,14 +443,35 @@ export class CommandeFournisseurFormComponent implements OnInit {
         if (!ligne.piece) {
           this.errors[`ligne_${i}_piece`] = `Ligne ${i + 1} : sélectionnez un produit.`;
         }
-        if (ligne.qteCmd < 1) {
-          this.errors[`ligne_${i}_qte`] = `Ligne ${i + 1} : la quantité doit être ≥ 1.`;
-        }
         if ((ligne.prixAchat || 0) < 0) {
           this.errors[`ligne_${i}_prix`] = `Ligne ${i + 1} : le prix ne peut pas être négatif.`;
         }
         if ((ligne.prixAchat || 0) === 0 && ligne.piece) {
           this.errors[`ligne_${i}_prix_zero`] = `Ligne ${i + 1} (${ligne.piece?.designation}) : le prix unitaire est à 0 DT, veuillez le saisir.`;
+        }
+
+
+        if (ligne.piece && ligne.piece.seuilMaximum) {
+          const currentStock = ligne.piece.stock?.quantite || 0;
+          const pendingQty = this.commandes
+            .filter(c => c.statut === StatutCommande.EN_ATTENTE && c.id !== this.commande.id)
+            .reduce((total, c) => {
+              const pieceLines = c.lignes?.filter(l => (l.piece?.id || l.piece) === ligne.piece.id) || [];
+              return total + pieceLines.reduce((sum, l) => sum + (l.qteCmd || 0), 0);
+            }, 0);
+
+          const alreadyReachedMax = (currentStock + pendingQty) >= ligne.piece.seuilMaximum;
+
+          if (alreadyReachedMax) {
+            this.errors[`ligne_${i}_qte`] = `Ligne ${i + 1} : Stock maximum (${ligne.piece.seuilMaximum}) déjà atteint ou dépassé. Vous ne pouvez pas commander ce produit actuellement.`;
+          } else if (ligne.qteCmd < 1) {
+            this.errors[`ligne_${i}_qte`] = `Ligne ${i + 1} : la quantité doit être ≥ 1.`;
+          } else if (currentStock + pendingQty + ligne.qteCmd > ligne.piece.seuilMaximum) {
+            const availableSpace = ligne.piece.seuilMaximum - (currentStock + pendingQty);
+            this.errors[`ligne_${i}_max`] = `Ligne ${i + 1} : le seuil maximum (${ligne.piece.seuilMaximum}) sera dépassé. Capacité restante (stock + autres commandes) : ${availableSpace}.`;
+          }
+        } else if (ligne.qteCmd < 1) {
+          this.errors[`ligne_${i}_qte`] = `Ligne ${i + 1} : la quantité doit être ≥ 1.`;
         }
       });
     }
@@ -399,8 +480,9 @@ export class CommandeFournisseurFormComponent implements OnInit {
   }
 
   save() {
+    if (!this.isEditable) return;
+
     if (!this.validate()) {
-      // Scroll to top to show errors
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -412,8 +494,10 @@ export class CommandeFournisseurFormComponent implements OnInit {
 
     const onError = (err: any) => {
       if (err.status === 400 && err.error) {
-        // Backend validation errors: map field names to messages
         this.errors = err.error;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (err.status === 409) {
+        this.errors['global'] = err.error?.message || 'Un enregistrement avec ces données existe déjà (contrainte d\'unicité). Vérifiez la liste des commandes ou réessayez.';
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         this.errors['global'] = 'Une erreur est survenue. Veuillez réessayer.';
@@ -433,11 +517,21 @@ export class CommandeFournisseurFormComponent implements OnInit {
   }
 
   confirmCommande() {
+    if (!this.isEditable) return;
     this.commande.statut = StatutCommande.EN_ATTENTE;
     this.save();
   }
 
+  annulerCommande() {
+    if (!this.isEditable) return;
+    if (confirm('Êtes-vous sûr de vouloir annuler cette commande ? Cette action est irréversible.')) {
+      this.commande.statut = StatutCommande.ANNULEE;
+      this.save();
+    }
+  }
+
   printCommande() {
+    if (this.commande.statut === StatutCommande.ANNULEE) return;
     window.print();
   }
 
@@ -446,7 +540,6 @@ export class CommandeFournisseurFormComponent implements OnInit {
     this.router.navigate(['/logistique/commandes']);
   }
 
-  /** Retour à la liste des commandes (après impression ou annulation, ou clic sur le bouton). */
   goBackToCommandList() {
     if (this.afterPrintListener) {
       window.removeEventListener('afterprint', this.afterPrintListener);

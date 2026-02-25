@@ -11,13 +11,17 @@ import java.util.Optional;
 
 @Repository
 public interface BonRepository extends JpaRepository<Bon, Long> {
-    Optional<Bon> findByNumeroBon(Long numeroBon);
+    Optional<Bon> findByNumeroBon(String numeroBon);
 
     List<Bon> findByTypeBon(TypeBon typeBon);
 
     List<Bon> findByDateBetween(LocalDate startDate, LocalDate endDate);
 
-    List<Bon> findByCreateurId(Long createurId);
+    @org.springframework.data.jpa.repository.Query("SELECT b.numeroBon FROM Bon b WHERE b.numeroBon LIKE :prefix% ORDER BY b.numeroBon DESC")
+    java.util.List<String> findNumeroBonByPrefix(
+            @org.springframework.web.bind.annotation.RequestParam("prefix") String prefix);
 
-    boolean existsByNumeroBon(Long numeroBon);
+    boolean existsByNumeroBon(String numeroBon);
+
+    java.util.List<Bon> findByBonOrigineId(Long bonOrigineId);
 }

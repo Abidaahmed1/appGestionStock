@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -46,13 +47,13 @@ public class ProduitFiniController {
 
     @PostMapping
     @PreAuthorize("hasRole('MAGASINIER')")
-    public ResponseEntity<ProduitFini> create(@RequestBody ProduitFini produit) {
+    public ResponseEntity<ProduitFini> create(@Valid @RequestBody ProduitFini produit) {
         return ResponseEntity.ok(produitService.save(produit));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('MAGASINIER')")
-    public ResponseEntity<ProduitFini> update(@PathVariable Long id, @RequestBody ProduitFini produit) {
+    public ResponseEntity<ProduitFini> update(@PathVariable Long id, @Valid @RequestBody ProduitFini produit) {
         return ResponseEntity.ok(produitService.update(id, produit));
     }
 

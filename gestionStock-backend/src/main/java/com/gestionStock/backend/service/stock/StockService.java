@@ -3,6 +3,9 @@ package com.gestionStock.backend.service.stock;
 import com.gestionStock.backend.entity.Stock.Stock;
 import com.gestionStock.backend.entity.Stock.TypeStock;
 import com.gestionStock.backend.repository.stock.StockRepository;
+import com.gestionStock.backend.entity.notification.NotificationType;
+import com.gestionStock.backend.service.notification.NotificationService;
+import com.gestionStock.backend.entity.user.Role;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
@@ -17,6 +20,7 @@ import java.util.Optional;
 public class StockService {
 
     private final StockRepository stockRepo;
+    private final NotificationService notificationService;
 
     public List<Stock> getAll() {
         return stockRepo.findAll();
@@ -49,10 +53,14 @@ public class StockService {
                 if (stock.getType() != null) {
                     s.setType(stock.getType());
                 }
-                return stockRepo.save(s);
+                Stock saved = stockRepo.save(s);
+                checkStockAndNotify(saved);
+                return saved;
             }
         }
-        return stockRepo.save(stock);
+        Stock saved = stockRepo.save(stock);
+        checkStockAndNotify(saved);
+        return saved;
     }
 
     public Stock update(Long id, Stock stock) {
@@ -60,7 +68,9 @@ public class StockService {
             throw new EntityNotFoundException("Stock non trouvé");
         }
         stock.setId(id);
-        return stockRepo.save(stock);
+        Stock saved = stockRepo.save(stock);
+        checkStockAndNotify(saved);
+        return saved;
     }
 
     public void delete(Long id) {
@@ -73,6 +83,41 @@ public class StockService {
     public Stock updateQuantity(Long id, int newQuantity) {
         Stock stock = getById(id);
         stock.setQuantite(newQuantity);
-        return stockRepo.save(stock);
+        Stock saved = stockRepo.save(stock);
+        checkStockAndNotify(saved);
+        return saved;
+    }
+
+    private void checkStockAndNotify(Stock stock) {
+        if (stock.getPiece() == null)
+            return;
+
+        int qte = stock.getQuantite();
+        int min = stock.getPiece().getSeuilMinimum();
+        String designation = stock.getPiece().getDesignation();
+        TypeStock previousType = stock.getType();
+
+        if (qte == 0) {
+            stock.setType(TypeStock.RUPTURE_STOCK);
+            if (previousType != TypeStock.RUPTURE_STOCK) {
+                String msg = "Rupture de stock totale pour : " + designation;
+                notificationService.createNotificationForRoles("RUPTURE DE STOCK", msg, NotificationType.RUPTURE_STOCK,
+                        List.of(Role.RESPONSABLE_LOGISTIQUE, Role.AUDITEUR, Role.MAGASINIER), stock.getId());
+                stockRepo.save(stock);
+            }
+        } else if (qte <= min) {
+            stock.setType(TypeStock.RESERVE);
+            if (previousType != TypeStock.RESERVE) {
+                String msg = "Niveau de stock critique pour : " + designation + " (" + qte + " restants)";
+                notificationService.createNotificationForRoles("STOCK CRITIQUE", msg, NotificationType.WARNING,
+                        List.of(Role.RESPONSABLE_LOGISTIQUE, Role.AUDITEUR, Role.MAGASINIER), stock.getId());
+                stockRepo.save(stock);
+            }
+        } else {
+            stock.setType(TypeStock.DISPONIBLE);
+            if (previousType != TypeStock.DISPONIBLE) {
+                stockRepo.save(stock);
+            }
+        }
     }
 }

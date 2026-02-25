@@ -3,10 +3,12 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { KeycloakService } from 'keycloak-angular';
 
+import { NotificationsComponent } from '../../components/notifications/notifications.component';
+
 @Component({
     selector: 'app-main-layout',
     standalone: true,
-    imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+    imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, NotificationsComponent],
     templateUrl: './main-layout.component.html',
     styleUrls: ['./main-layout.component.css']
 })

@@ -31,7 +31,7 @@ export const routes: Routes = [
                 path: 'magasinier/catalogue',
                 component: CatalogueLayoutComponent,
                 canActivate: [authGuard],
-                data: { roles: ['MAGASINIER'] }
+                data: { roles: ['MAGASINIER', 'RESPONSABLE_LOGISTIQUE'] }
             },
             {
                 path: 'magasinier/pieces',
@@ -49,13 +49,25 @@ export const routes: Routes = [
                 path: 'magasinier/stocks',
                 component: StockManagementComponent,
                 canActivate: [authGuard],
-                data: { roles: ['MAGASINIER'] }
+                data: { roles: ['MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'ADMINISTRATEUR'] }
             },
             {
                 path: 'magasinier/bons',
                 component: BonListComponent,
                 canActivate: [authGuard],
-                data: { roles: ['MAGASINIER'] }
+                data: { roles: ['MAGASINIER', 'ADMINISTRATEUR'] }
+            },
+            {
+                path: 'magasinier/bons/nouveau',
+                loadComponent: () => import('./magasinier/components/bon-form/bon-form.component').then(m => m.BonFormComponent),
+                canActivate: [authGuard],
+                data: { roles: ['MAGASINIER', 'ADMINISTRATEUR'] }
+            },
+            {
+                path: 'magasinier/bons/:id',
+                loadComponent: () => import('./magasinier/components/bon-form/bon-form.component').then(m => m.BonFormComponent),
+                canActivate: [authGuard],
+                data: { roles: ['MAGASINIER', 'ADMINISTRATEUR'] }
             },
             {
                 path: 'logistique/fournisseurs',

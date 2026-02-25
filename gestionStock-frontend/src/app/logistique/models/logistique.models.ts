@@ -19,6 +19,7 @@ export enum TypeMouvement {
     SORTIE_VENTE = 'SORTIE_VENTE',
     SORTIE_PERTE = 'SORTIE_PERTE',
     SORTIE_MAINTENANCE = 'SORTIE_MAINTENANCE',
+    SORTIE_RETOUR = 'SORTIE_RETOUR',
     ENTREE_RETOUR = 'ENTREE_RETOUR',
     ENTREE_RECEPTION = 'ENTREE_RECEPTION'
 }
@@ -32,11 +33,13 @@ export enum TypeStock {
 
 export interface Bon {
     id?: number;
-    numeroBon: number;
+    numeroBon: string;
     date: string;
     typeBon: TypeBon;
+    bonOrigine?: Bon;
     fournisseur?: Fournisseur;
     createur?: any;
+    mouvement?: MouvementStock;
 }
 
 export interface Stock {
@@ -54,7 +57,6 @@ export interface LigneMouvement {
     tauxTVA: number;
 }
 
-/** Statuts de commande fournisseur : EN_ATTENTE, RECUE, ANNULEE uniquement. */
 export enum StatutCommande {
     EN_ATTENTE = 'EN_ATTENTE',
     RECUE = 'RECUE',

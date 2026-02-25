@@ -184,7 +184,6 @@
     opacity: 0.5;
 }
 
-/* Modal and Notification styles */
 .produit-modal-overlay {
     backdrop-filter: blur(4px);
     animation: modalFadeIn 0.25s ease-out;
@@ -472,7 +471,6 @@
     }
 }
 
-/* --- Delete Confirmation Styles --- */
 .confirm-danger {
     text-align: center;
     padding: 1.5rem !important;

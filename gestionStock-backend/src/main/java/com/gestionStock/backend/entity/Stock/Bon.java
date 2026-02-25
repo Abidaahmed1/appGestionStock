@@ -1,12 +1,11 @@
 package com.gestionStock.backend.entity.Stock;
 
 import java.time.LocalDate;
-import java.util.Set;
 
 import com.gestionStock.backend.entity.fournisseur.Fournisseur;
-import com.gestionStock.backend.entity.piece.PieceDetachee;
 import com.gestionStock.backend.entity.user.User;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -31,11 +30,15 @@ public class Bon {
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private Long id;
 	private LocalDate date;
-	private Long numeroBon;
+	@Column(unique = true, nullable = false)
+	private String numeroBon;
 	@Enumerated(EnumType.STRING)
 	private TypeBon typeBon;
-	@OneToOne(mappedBy = "bon")
-
+	@ManyToOne
+	@JoinColumn(name = "bon_origine_id")
+	private Bon bonOrigine;
+	@com.fasterxml.jackson.annotation.JsonIgnoreProperties("bon")
+	@OneToOne(mappedBy = "bon", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
 	private MouvementStock mouvement;
 	@ManyToOne
 	private User createur;

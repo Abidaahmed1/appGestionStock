@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { KeycloakService } from 'keycloak-angular';
 import { LogistiqueService } from '../../../logistique/services/logistique.service';
 import { Bon, TypeBon, Fournisseur } from '../../../logistique/models/logistique.models';
+import { Router } from '@angular/router';
 
 @Component({
     selector: 'app-bon-list',
@@ -20,15 +21,37 @@ export class BonListComponent implements OnInit {
     newBon: Bon = this.initNewBon();
     notification: { message: string, type: 'success' | 'error' } | null = null;
     searchTerm: string = '';
-    selectedType: TypeBon | null = null;
+
+
+    showOptionsMenu = false;
+    showAdvancedFilter = false;
     userRoles: string[] = [];
     showDeleteConfirm = false;
     itemToDelete: any = null;
     TypeBon = TypeBon;
 
+    filterType: TypeBon | null = null;
+    filterFournisseurId: number | null = null;
+    filterDateFrom: string = '';
+    filterDateTo: string = '';
+    filterMontantMin: number | null = null;
+    filterMontantMax: number | null = null;
+
+    columns = [
+        { label: 'Référence', key: 'numeroBon', visible: true, canToggle: false },
+        { label: 'Type Bon', key: 'type', visible: false, canToggle: true },
+        { label: 'Mouvement', key: 'typeMouvement', visible: true, canToggle: true },
+        { label: 'Fournisseur', key: 'fournisseur', visible: false, canToggle: true },
+        { label: 'Créateur', key: 'createur', visible: true, canToggle: true },
+        { label: 'Date', key: 'date', visible: true, canToggle: true },
+        { label: 'Montant HT', key: 'montantHT', visible: false, canToggle: true },
+        { label: 'Montant TTC', key: 'montantTTC', visible: true, canToggle: true }
+    ];
+
     private keycloak = inject(KeycloakService);
     private platformId = inject(PLATFORM_ID);
     private cdr = inject(ChangeDetectorRef);
+    private router = inject(Router);
 
     constructor(private logistiqueService: LogistiqueService) { }
 
@@ -53,7 +76,7 @@ export class BonListComponent implements OnInit {
 
     initNewBon(): Bon {
         return {
-            numeroBon: 0,
+            numeroBon: '',
             date: new Date().toISOString().split('T')[0],
             typeBon: TypeBon.ENTREE
         };
@@ -83,54 +106,19 @@ export class BonListComponent implements OnInit {
         });
     }
 
-    onTypeFilterChange(): void {
-        this.loadBons();
-    }
-
     openCreateModal(): void {
-        this.selectedBon = null;
-        this.newBon = this.initNewBon();
-        this.showCreateModal = true;
-        this.cdr.detectChanges();
+        this.router.navigate(['/magasinier/bons/nouveau']);
     }
 
     openEditModal(bon: Bon): void {
-        this.selectedBon = bon;
-        this.newBon = { ...bon };
-        this.showCreateModal = true;
-        this.cdr.detectChanges();
+        this.router.navigate(['/magasinier/bons', bon.id]);
     }
 
-    closeCreateModal(): void {
-        this.showCreateModal = false;
-        this.cdr.detectChanges();
-    }
-
-    saveBon(): void {
-        if (this.selectedBon && this.selectedBon.id) {
-            this.logistiqueService.updateBon(this.selectedBon.id, this.newBon).subscribe({
-                next: () => {
-                    this.notify('Bon mis à jour', 'success');
-                    this.loadBons();
-                    this.closeCreateModal();
-                },
-                error: (err: any) => {
-                    const msg = err.error?.message || err.error || 'Erreur lors de la mise à jour';
-                    this.notify(msg, 'error');
-                }
-            });
-        } else {
-            this.logistiqueService.createBon(this.newBon).subscribe({
-                next: () => {
-                    this.notify('Bon créé', 'success');
-                    this.loadBons();
-                    this.closeCreateModal();
-                },
-                error: (err: any) => {
-                    const msg = err.error?.message || err.error || 'Erreur lors de la création';
-                    this.notify(msg, 'error');
-                }
-            });
+    printBon(bon: Bon, event: MouseEvent): void {
+        event.stopPropagation();
+        event.preventDefault();
+        if (bon.id != null) {
+            this.router.navigate(['/magasinier/bons', bon.id], { queryParams: { print: '1' } });
         }
     }
 
@@ -159,33 +147,90 @@ export class BonListComponent implements OnInit {
         });
     }
 
-    notify(message: string, type: 'success' | 'error'): void {
-        this.notification = { message, type };
+    toggleOptionsMenu(event: MouseEvent) {
+        event.stopPropagation();
+        this.showOptionsMenu = !this.showOptionsMenu;
+    }
+
+    toggleAdvancedFilter() {
+        this.showAdvancedFilter = !this.showAdvancedFilter;
         this.cdr.detectChanges();
-        if (isPlatformBrowser(this.platformId)) {
-            setTimeout(() => {
-                this.notification = null;
-                this.cdr.detectChanges();
-            }, 5000);
+    }
+
+    resetAdvancedFilter() {
+        this.filterType = null;
+        this.filterFournisseurId = null;
+        this.filterDateFrom = '';
+        this.filterDateTo = '';
+        this.filterMontantMin = null;
+        this.filterMontantMax = null;
+        this.cdr.detectChanges();
+    }
+
+    hasActiveAdvancedFilter(): boolean {
+        return !!(
+            this.filterType ||
+            this.filterFournisseurId != null ||
+            this.filterDateFrom ||
+            this.filterDateTo ||
+            (this.filterMontantMin != null && !isNaN(this.filterMontantMin)) ||
+            (this.filterMontantMax != null && !isNaN(this.filterMontantMax))
+        );
+    }
+
+    isColumnVisible(key: string): boolean {
+        return this.columns.find(c => c.key === key)?.visible || false;
+    }
+
+    getAcheteurInitials(user: any): string {
+        if (!user || (!user.firstName && !user.username)) return '?';
+        const name = user.firstName || user.username;
+        return name.charAt(0).toUpperCase();
+    }
+
+    getBonHT(bon: Bon): number {
+        return bon.mouvement?.montantHTVA || 0;
+    }
+
+    getBonTTC(bon: Bon): number {
+        return bon.mouvement?.montantTTC || 0;
+    }
+
+    getGrandTotalHT(): number {
+        return this.filteredBons.reduce((acc, b) => acc + this.getBonHT(b), 0);
+    }
+
+    getGrandTotalTTC(): number {
+        return this.filteredBons.reduce((acc, b) => acc + this.getBonTTC(b), 0);
+    }
+
+    getTypeMouvementLabel(bon: Bon): string {
+        const type = bon.mouvement?.typeMouvement;
+        if (!type) return 'N/A';
+
+        switch (type) {
+            case 'ENTREE_RECEPTION': return 'Réception';
+            case 'ENTREE_RETOUR':
+                // Specific logic for Maintenance Return
+                if (bon.bonOrigine?.mouvement?.typeMouvement === 'SORTIE_MAINTENANCE') {
+                    return 'Retour Maintenance';
+                }
+                return 'Retour Client';
+            case 'SORTIE_VENTE': return 'Vente';
+            case 'SORTIE_PERTE': return 'Perte';
+            case 'SORTIE_MAINTENANCE': return 'Maintenance';
+            case 'SORTIE_RETOUR': return 'Retour Fournisseur';
+            default: return type.replace(/_/g, ' ');
         }
     }
 
-    get filteredBons() {
-        let filtered = this.bons;
-
-        if (this.selectedType) {
-            filtered = filtered.filter(b => b.typeBon === this.selectedType);
+    getTypeLabel(type: TypeBon): string {
+        switch (type) {
+            case TypeBon.ENTREE: return 'Entrée';
+            case TypeBon.SORTIE: return 'Sortie';
+            case TypeBon.RETOUR: return 'Retour';
+            default: return type;
         }
-
-        if (this.searchTerm) {
-            const term = this.searchTerm.toLowerCase();
-            filtered = filtered.filter(b =>
-                b.numeroBon?.toString().includes(term) ||
-                b.fournisseur?.code?.toLowerCase().includes(term)
-            );
-        }
-
-        return filtered;
     }
 
     getTypeBadgeClass(type: TypeBon): string {
@@ -194,6 +239,68 @@ export class BonListComponent implements OnInit {
             case TypeBon.SORTIE: return 'sortie';
             case TypeBon.RETOUR: return 'retour';
             default: return '';
+        }
+    }
+
+    getTypeMouvementBadgeClass(bon: Bon): string {
+        const type = bon.mouvement?.typeMouvement;
+        if (!type) return '';
+
+        // Use 'retour' class for all return types for consistent coloring
+        if (type.includes('RETOUR')) return 'retour';
+
+        if (type.startsWith('ENTREE')) return 'entree';
+        if (type.startsWith('SORTIE')) return 'sortie';
+        return '';
+    }
+
+    get filteredBons() {
+        let list = this.bons;
+
+        const term = (this.searchTerm || '').trim().toLowerCase();
+        if (term) {
+            list = list.filter(b => {
+                const ref = (b.numeroBon || '').toLowerCase();
+                const provider = (b.fournisseur?.nom || '').toLowerCase();
+                const creator = b.createur ? `${b.createur.firstName || ''} ${b.createur.lastName || ''} ${b.createur.username || ''}`.toLowerCase() : '';
+                return ref.includes(term) || provider.includes(term) || creator.includes(term);
+            });
+        }
+
+        if (this.filterType) {
+            list = list.filter(b => b.typeBon === this.filterType);
+        }
+        if (this.filterFournisseurId != null) {
+            list = list.filter(b => b.fournisseur?.id === this.filterFournisseurId);
+        }
+        if (this.filterDateFrom) {
+            const from = new Date(this.filterDateFrom);
+            from.setHours(0, 0, 0, 0);
+            list = list.filter(b => new Date(b.date) >= from);
+        }
+        if (this.filterDateTo) {
+            const to = new Date(this.filterDateTo);
+            to.setHours(23, 59, 59, 999);
+            list = list.filter(b => new Date(b.date) <= to);
+        }
+        if (this.filterMontantMin != null && !isNaN(this.filterMontantMin)) {
+            list = list.filter(b => this.getBonTTC(b) >= this.filterMontantMin!);
+        }
+        if (this.filterMontantMax != null && !isNaN(this.filterMontantMax)) {
+            list = list.filter(b => this.getBonTTC(b) <= this.filterMontantMax!);
+        }
+
+        return list;
+    }
+
+    notify(message: string, type: 'success' | 'error'): void {
+        this.notification = { message, type };
+        this.cdr.detectChanges();
+        if (isPlatformBrowser(this.platformId)) {
+            setTimeout(() => {
+                this.notification = null;
+                this.cdr.detectChanges();
+            }, 5000);
         }
     }
 }

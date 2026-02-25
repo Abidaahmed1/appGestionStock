@@ -10,7 +10,7 @@ export interface PieceDetachee {
     archivee: boolean;
     imageUrl?: string;
     categorie?: Categorie;
-    stocks?: Stock[];
+    stock?: Stock;
     produitsAssocies?: ProduitFini[];
 }
 
