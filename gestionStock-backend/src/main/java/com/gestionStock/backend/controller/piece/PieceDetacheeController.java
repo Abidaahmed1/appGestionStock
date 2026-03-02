@@ -22,7 +22,7 @@ public class PieceDetacheeController {
     private final ImageService imageService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'MAGASINIER', 'RESPONSABLE_LOGISTIQUE')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE')")
     public List<PieceDetachee> getAll() {
         return pieceService.findByActive();
     }
@@ -65,5 +65,14 @@ public class PieceDetacheeController {
     public ResponseEntity<Void> delete(@PathVariable String codeBarre) {
         pieceService.delete(codeBarre);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/reference/{ref}")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE')")
+    public ResponseEntity<PieceDetachee> getByReference(@PathVariable String ref) {
+        PieceDetachee p = pieceService.findByReference(ref);
+        if (p == null)
+            return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(p);
     }
 }

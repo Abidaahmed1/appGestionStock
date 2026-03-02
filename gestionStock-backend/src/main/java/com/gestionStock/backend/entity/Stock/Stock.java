@@ -4,6 +4,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.gestionStock.backend.entity.piece.DetailPiece;
 import com.gestionStock.backend.entity.piece.PieceDetachee;
 
 import jakarta.persistence.CascadeType;
@@ -17,21 +19,16 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
-import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
 @Entity
-@Table(uniqueConstraints = @UniqueConstraint(columnNames = { "PieceDetachee_id" }))
 @Getter
 @Setter
 @ToString(exclude = { "ligneMouvement", "piece" })
-@EqualsAndHashCode(of = { "piece" })
+@EqualsAndHashCode(of = { "id" })
 public class Stock {
 	public Stock() {
 	}
@@ -40,8 +37,9 @@ public class Stock {
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private Long id;
 
-	@OneToOne
+	@ManyToOne
 	@JoinColumn(name = "PieceDetachee_id", nullable = false)
+	@JsonIgnoreProperties({ "stocks", "details", "produitsAssocies" })
 	private PieceDetachee piece;
 
 	private int quantite;
@@ -51,5 +49,8 @@ public class Stock {
 	@JsonIgnore
 	@OneToMany(mappedBy = "stock", cascade = CascadeType.ALL, orphanRemoval = true)
 	private Set<LigneMouvement> ligneMouvement = new HashSet<>();
+	@OneToOne(mappedBy = "stock")
+	@JsonIgnoreProperties({ "stock", "piece" })
+	private DetailPiece detailPiece;
 
 }

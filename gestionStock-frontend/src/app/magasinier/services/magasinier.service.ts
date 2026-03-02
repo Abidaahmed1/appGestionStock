@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { PieceDetachee, ProduitFini, Categorie } from '../models/magasinier.models';
+import { PieceDetachee, ProduitFini, Categorie, Parametre } from '../models/magasinier.models';
 
 @Injectable({
     providedIn: 'root'
@@ -21,6 +21,10 @@ export class MagasinierService {
 
     updatePiece(id: number, piece: PieceDetachee): Observable<PieceDetachee> {
         return this.http.put<PieceDetachee>(`${this.baseUrl}/pieces/${id}`, piece);
+    }
+
+    getPieceByReference(ref: string): Observable<PieceDetachee> {
+        return this.http.get<PieceDetachee>(`${this.baseUrl}/pieces/reference/${ref}`);
     }
 
     deletePiece(codeBarre: string): Observable<void> {
@@ -58,5 +62,17 @@ export class MagasinierService {
 
     createCategorie(categorie: Categorie): Observable<Categorie> {
         return this.http.post<Categorie>(`${this.baseUrl}/categories`, categorie);
+    }
+
+    getParametresByEntreprise(entrepriseId: number): Observable<Parametre> {
+        return this.http.get<Parametre>(`${this.baseUrl}/parametres/entreprise/${entrepriseId}`);
+    }
+
+    getAllParametres(): Observable<Parametre[]> {
+        return this.http.get<Parametre[]>(`${this.baseUrl}/parametres`);
+    }
+
+    updateParametre(id: number, parametre: Parametre): Observable<Parametre> {
+        return this.http.put<Parametre>(`${this.baseUrl}/parametres/${id}`, parametre);
     }
 }

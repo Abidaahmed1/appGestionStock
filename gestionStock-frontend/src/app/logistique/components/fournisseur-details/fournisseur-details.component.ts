@@ -43,10 +43,8 @@ export class FournisseurDetailsComponent implements OnInit {
                 this.loadFournisseur(+id);
             }
 
-            // Check if we have an order draft to return to
             this.hasOrderDraft = !!this.logistiqueService.commandeDraft;
 
-            // Récupérer le message de succès éventuel (après création)
             if (history.state && history.state.message) {
                 setTimeout(() => {
                     this.notify(history.state.message, 'success');

@@ -1,10 +1,8 @@
 package com.gestionStock.backend.entity.Stock;
 
-import java.beans.Transient;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
-import org.apache.commons.codec.language.bm.Lang;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;

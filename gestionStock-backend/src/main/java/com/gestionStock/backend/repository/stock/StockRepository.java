@@ -14,6 +14,8 @@ public interface StockRepository extends JpaRepository<Stock, Long> {
 
     List<Stock> findByPieceId(Long pieceId);
 
+    Optional<Stock> findByDetailPieceId(Long detailId);
+
     List<Stock> findByType(TypeStock type);
 
     @Query("SELECT s FROM Stock s WHERE s.quantite < s.piece.seuilMinimum")

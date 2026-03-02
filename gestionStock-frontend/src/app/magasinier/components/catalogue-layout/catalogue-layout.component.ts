@@ -4,6 +4,8 @@ import { CommonModule } from '@angular/common';
 import { PieceDetachee, ProduitFini } from '../../models/magasinier.models';
 import { MagasinierService } from '../../services/magasinier.service';
 import { FormsModule } from '@angular/forms';
+import { EntrepriseService } from '../../../admin/services/entreprise.service';
+import { Entreprise } from '../../../admin/models/entreprise.model';
 
 @Component({
     selector: 'app-catalogue-layout',
@@ -29,15 +31,18 @@ export class CatalogueLayoutComponent implements OnInit {
     maxPrice: number | null = null;
     categories: string[] = [];
     filterPieceSearch: string = '';
+    entreprise: Entreprise | null = null;
 
     constructor(
         private magasinierService: MagasinierService,
+        private entrepriseService: EntrepriseService,
         @Inject(PLATFORM_ID) private platformId: Object
     ) { }
 
     ngOnInit(): void {
         if (isPlatformBrowser(this.platformId)) {
             this.loadData();
+            this.loadEntreprise();
         }
     }
 
@@ -57,6 +62,16 @@ export class CatalogueLayoutComponent implements OnInit {
                 this.filterItems();
             },
             error: (err) => console.error('Error loading produits:', err)
+        });
+    }
+
+    loadEntreprise(): void {
+        this.entrepriseService.getAllEntreprises().subscribe({
+            next: (data) => {
+                if (data && data.length > 0) {
+                    this.entreprise = data[0];
+                }
+            }
         });
     }
 
@@ -106,10 +121,10 @@ export class CatalogueLayoutComponent implements OnInit {
 
                 if (!matchesSearch) return false;
 
-                const stock = this.getTotalStock(piece);
-                if (this.filterStockStatus === 'available' && stock <= 0) return false;
-                if (this.filterStockStatus === 'low' && (stock <= 0 || stock >= piece.seuilMinimum)) return false;
-                if (this.filterStockStatus === 'out' && stock > 0) return false;
+                const stockTotal = this.getTotalStock(piece);
+                if (this.filterStockStatus === 'available' && stockTotal <= 0) return false;
+                if (this.filterStockStatus === 'low' && (stockTotal <= 0 || stockTotal >= piece.seuilMinimum)) return false;
+                if (this.filterStockStatus === 'out' && stockTotal > 0) return false;
 
                 if (this.filterCategory !== 'all' && piece.categorie?.nom !== this.filterCategory) return false;
 
@@ -181,11 +196,17 @@ export class CatalogueLayoutComponent implements OnInit {
     }
 
     getTotalStock(piece: PieceDetachee): number {
-        return piece.stock?.quantite || 0;
+        if (piece.stocks && Array.isArray(piece.stocks)) {
+            return piece.stocks.reduce((sum: number, s: any) => sum + (s.quantite || 0), 0);
+        }
+        return 0;
     }
 
     getStockStatus(piece: PieceDetachee): string {
-        const status = piece.stock?.type || 'INCONNU';
+        let status = 'INCONNU';
+        if (piece.stocks && piece.stocks.length > 0) {
+            status = piece.stocks[0].type || 'INCONNU';
+        }
         return status.replace(/_/g, ' ');
     }
 }

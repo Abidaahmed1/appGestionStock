@@ -1,5 +1,5 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, inject, signal, PLATFORM_ID, Inject } from '@angular/core';
+import { isPlatformBrowser, CommonModule } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { KeycloakService } from 'keycloak-angular';
 
@@ -15,19 +15,21 @@ import { NotificationsComponent } from '../../components/notifications/notificat
 export class MainLayoutComponent implements OnInit {
     private keycloak = inject(KeycloakService);
     private router = inject(Router);
+    private platformId = inject(PLATFORM_ID);
 
     username = signal('');
     roles = signal<string[]>([]);
 
     ngOnInit() {
-        // Keycloak is initialized via APP_INITIALIZER, so it's ready here if authenticated
-        const keycloakInstance = this.keycloak.getKeycloakInstance();
-        if (keycloakInstance && keycloakInstance.authenticated) {
-            const token = keycloakInstance.tokenParsed;
-            if (token) {
-                this.username.set(token['preferred_username'] || token['name'] || '');
+        if (isPlatformBrowser(this.platformId)) {
+            const keycloakInstance = this.keycloak.getKeycloakInstance();
+            if (keycloakInstance && keycloakInstance.authenticated) {
+                const token = keycloakInstance.tokenParsed;
+                if (token) {
+                    this.username.set(token['preferred_username'] || token['name'] || '');
+                }
+                this.roles.set(this.keycloak.getUserRoles());
             }
-            this.roles.set(this.keycloak.getUserRoles());
         }
     }
 

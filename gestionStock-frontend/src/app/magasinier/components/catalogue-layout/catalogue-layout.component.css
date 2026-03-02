@@ -118,7 +118,6 @@
     color: #fff;
 }
 
-/* Advanced Filters Panel */
 .advanced-filters-panel {
     max-height: 0;
     overflow: hidden;
@@ -362,8 +361,9 @@
 
 .status-badge[data-status="EN REAPPROVISIONNEMENT"],
 .status-badge[data-status="EN_REAPPROVISIONNEMENT"] {
-    background: #eff6ff;
-    color: #ea580c;
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #fdba74;
 }
 
 .status-badge[data-status="DEFECTUEUX"] {

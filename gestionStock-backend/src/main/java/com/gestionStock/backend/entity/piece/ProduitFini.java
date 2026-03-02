@@ -33,7 +33,7 @@ public class ProduitFini {
 
 	private String imageUrl;
 
-	@JsonIgnoreProperties("produitsAssocies")
+	@JsonIgnoreProperties({ "produitsAssocies", "stock", "details" })
 	@ManyToMany(cascade = { CascadeType.PERSIST, CascadeType.MERGE })
 	private Set<PieceDetachee> pieces = new HashSet<>();
 }

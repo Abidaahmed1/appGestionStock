@@ -342,6 +342,15 @@ tr:hover td {
     border: 1.5px solid transparent;
 }
 
+.btn-action.icon-only {
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+}
+
 .btn-action--print {
     background: white;
     color: #3d7a7f;

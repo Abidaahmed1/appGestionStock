@@ -21,25 +21,25 @@ public class BonController {
     private final BonService bonService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
     public ResponseEntity<List<Bon>> getAll() {
         return ResponseEntity.ok(bonService.getAll());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
     public ResponseEntity<Bon> getById(@PathVariable Long id) {
         return ResponseEntity.ok(bonService.getById(id));
     }
 
     @GetMapping("/type/{typeBon}")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
     public ResponseEntity<List<Bon>> getByType(@PathVariable TypeBon typeBon) {
         return ResponseEntity.ok(bonService.getByType(typeBon));
     }
 
     @GetMapping("/date-range")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
     public ResponseEntity<List<Bon>> getByDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {

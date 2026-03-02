@@ -6,6 +6,8 @@ import { KeycloakService } from 'keycloak-angular';
 import { LogistiqueService } from '../../services/logistique.service';
 import { BonCommandeFournisseur, Fournisseur, LigneCommande, StatutCommande, TypeStock } from '../../models/logistique.models';
 import { MagasinierService } from '../../../magasinier/services/magasinier.service';
+import { EntrepriseService } from '../../../admin/services/entreprise.service';
+import { Entreprise } from '../../../admin/models/entreprise.model';
 
 @Component({
     selector: 'app-commande-fournisseur-list',
@@ -23,13 +25,13 @@ export class CommandeFournisseurListComponent implements OnInit {
     selectedCommande: BonCommandeFournisseur | null = null;
     newCommande: BonCommandeFournisseur = this.initNewCommande();
 
-    // Action Modal State
     showActionConfirm = false;
     pendingAction: { type: 'RECEIVE' | 'CANCEL'; cmd: BonCommandeFournisseur } | null = null;
 
     notification: { message: string, type: 'success' | 'error' } | null = null;
     searchTerm: string = '';
     userRoles: string[] = [];
+    entreprise: Entreprise | null = null;
 
     showOptionsMenu = false;
     showAdvancedFilter = false;
@@ -63,6 +65,7 @@ export class CommandeFournisseurListComponent implements OnInit {
     private keycloak = inject(KeycloakService);
     private platformId = inject(PLATFORM_ID);
     private cdr = inject(ChangeDetectorRef);
+    private entrepriseService = inject(EntrepriseService);
 
     ngOnInit() {
         if (isPlatformBrowser(this.platformId)) {
@@ -70,6 +73,7 @@ export class CommandeFournisseurListComponent implements OnInit {
             this.loadCommandes();
             this.loadFournisseurs();
             this.loadPieces();
+            this.loadEntreprise();
         }
     }
 
@@ -104,6 +108,17 @@ export class CommandeFournisseurListComponent implements OnInit {
                 this.cdr.detectChanges();
             },
             error: () => this.notify('Erreur lors du chargement des pièces à commander', 'error')
+        });
+    }
+
+    loadEntreprise() {
+        this.entrepriseService.getAllEntreprises().subscribe({
+            next: (data) => {
+                if (data && data.length > 0) {
+                    this.entreprise = data[0];
+                    this.cdr.detectChanges();
+                }
+            }
         });
     }
 
@@ -202,7 +217,6 @@ export class CommandeFournisseurListComponent implements OnInit {
             errorMsg = 'Erreur lors de l\'annulation';
         }
 
-        // Fermer la boîte de confirmation immédiatement au clic sur Confirmer
         this.closeConfirmModal();
         this.cdr.detectChanges();
 
@@ -349,7 +363,7 @@ export class CommandeFournisseurListComponent implements OnInit {
     getStatutLabel(statut: StatutCommande): string {
         if (statut === StatutCommande.RECUE) return 'Reçue';
         if (statut === StatutCommande.ANNULEE) return 'Annulée';
-        return 'En attente'; 
+        return 'En attente';
     }
 
     getStatutClass(statut: StatutCommande): string {

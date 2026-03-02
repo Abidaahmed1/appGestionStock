@@ -15,5 +15,5 @@ public interface PieceDetacheeRepository extends JpaRepository<PieceDetachee, Lo
 
     public boolean existsByReference(String reference);
 
-    public PieceDetachee findByReference(String reference);
+    public PieceDetachee findFirstByReferenceOrderByIdDesc(String reference);
 }

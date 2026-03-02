@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, Inject, PLATFORM_ID, ChangeDetectorRef, NgZone } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { NotificationService } from '../../services/notification.service';
 import { Notification } from '../../models/notification.model';
@@ -22,6 +22,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
         private notificationService: NotificationService,
         private keycloak: KeycloakService,
         private cdr: ChangeDetectorRef,
+        private ngZone: NgZone,
         @Inject(PLATFORM_ID) private platformId: Object
     ) { }
 
@@ -37,9 +38,13 @@ export class NotificationsComponent implements OnInit, OnDestroy {
 
             this.loadNotifications();
 
-            this.refreshInterval = setInterval(() => {
-                this.loadNotifications();
-            }, 30000);
+            this.ngZone.runOutsideAngular(() => {
+                this.refreshInterval = setInterval(() => {
+                    this.ngZone.run(() => {
+                        this.loadNotifications();
+                    });
+                }, 30000);
+            });
         }
     }
 
@@ -63,7 +68,6 @@ export class NotificationsComponent implements OnInit, OnDestroy {
     toggleDropdown() {
         this.showDropdown = !this.showDropdown;
         if (this.showDropdown) {
-            // Mark as read after 1s or immediately?
         }
     }
 

@@ -7,6 +7,8 @@ import { PieceFournisseur, Fournisseur } from '../../models/logistique.models';
 import { PieceDetachee } from '../../../magasinier/models/magasinier.models';
 import { MagasinierService } from '../../../magasinier/services/magasinier.service';
 import { forkJoin } from 'rxjs';
+import { EntrepriseService } from '../../../admin/services/entreprise.service';
+import { Entreprise } from '../../../admin/models/entreprise.model';
 
 @Component({
     selector: 'app-supplier-catalog',
@@ -32,6 +34,7 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
     pendingItems: any[] = [];
     deletedIds: number[] = [];
     hasChanges: boolean = false;
+    entreprise: Entreprise | null = null;
 
     editingIndex: number | null = null;
 
@@ -47,6 +50,7 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
 
     private logistiqueService = inject(LogistiqueService);
     private magasinierService = inject(MagasinierService);
+    private entrepriseService = inject(EntrepriseService);
     private platformId = inject(PLATFORM_ID);
     private cdr = inject(ChangeDetectorRef);
     private route = inject(ActivatedRoute);
@@ -58,9 +62,11 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
                 const id = this.route.snapshot.params['id'];
                 if (id) {
                     this.loadSupplier(Number(id));
+                    this.loadEntreprise();
                 }
             } else {
                 this.loadPieces();
+                this.loadEntreprise();
                 if (this.supplier?.id) {
                     this.loadCatalog();
                 }
@@ -116,6 +122,17 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
             next: (data: any[]) => {
                 this.allPieces = data;
                 if (isPlatformBrowser(this.platformId)) {
+                    this.cdr.detectChanges();
+                }
+            }
+        });
+    }
+
+    loadEntreprise() {
+        this.entrepriseService.getAllEntreprises().subscribe({
+            next: (data) => {
+                if (data && data.length > 0) {
+                    this.entreprise = data[0];
                     this.cdr.detectChanges();
                 }
             }

@@ -1,7 +1,5 @@
 package com.gestionStock.backend.entity.Stock;
 
-import com.gestionStock.backend.entity.piece.PieceDetachee;
-
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;

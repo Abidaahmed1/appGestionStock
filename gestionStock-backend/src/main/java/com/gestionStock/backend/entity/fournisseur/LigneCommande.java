@@ -1,11 +1,8 @@
 package com.gestionStock.backend.entity.fournisseur;
 
-import java.util.Set;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.gestionStock.backend.entity.Stock.LigneMouvement;
-import com.gestionStock.backend.entity.Stock.Stock;
-import com.gestionStock.backend.entity.Stock.TypeStock;
+
+import com.gestionStock.backend.entity.piece.DetailPiece;
 import com.gestionStock.backend.entity.piece.PieceDetachee;
 
 import jakarta.persistence.Entity;
@@ -24,7 +21,7 @@ import lombok.Setter;
 import lombok.ToString;
 
 @Entity
-@Table(uniqueConstraints = @UniqueConstraint(columnNames = { "piece_id",
+@Table(uniqueConstraints = @UniqueConstraint(columnNames = { "piece_id", "detail_piece_id",
 		"commande_id" }), name = "ligne_commande_fournisseur")
 @Getter
 @Setter
@@ -46,6 +43,10 @@ public class LigneCommande {
 	@JoinColumn(name = "piece_id", nullable = false)
 	@NotNull(message = "Le produit est obligatoire")
 	private PieceDetachee piece;
+
+	@ManyToOne
+	@JoinColumn(name = "detail_piece_id")
+	private DetailPiece detailPiece;
 
 	@JsonIgnore
 	@ManyToOne

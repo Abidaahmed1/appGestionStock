@@ -3,6 +3,8 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LogistiqueService } from '../../services/logistique.service';
 import { LigneCommande } from '../../models/logistique.models';
+import { EntrepriseService } from '../../../admin/services/entreprise.service';
+import { Entreprise } from '../../../admin/models/entreprise.model';
 
 @Component({
     selector: 'app-price-tracking',
@@ -17,11 +19,24 @@ export class PriceTrackingComponent implements OnInit {
     searchTerm = '';
     private logistiqueService = inject(LogistiqueService);
     private platformId = inject(PLATFORM_ID);
+    private entrepriseService = inject(EntrepriseService);
+    entreprise: Entreprise | null = null;
 
     ngOnInit() {
         if (isPlatformBrowser(this.platformId)) {
             this.loadStats();
+            this.loadEntreprise();
         }
+    }
+
+    loadEntreprise() {
+        this.entrepriseService.getAllEntreprises().subscribe({
+            next: (data) => {
+                if (data && data.length > 0) {
+                    this.entreprise = data[0];
+                }
+            }
+        });
     }
 
     loadStats() {

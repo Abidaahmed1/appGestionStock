@@ -31,10 +31,8 @@ public class UserController {
 			String lastName = profileData.get("lastName");
 			String email = profileData.get("email");
 
-			// Update in Keycloak
 			keycloakAdminService.updateUserProfile(userId, firstName, lastName, email);
 
-			// Sync with local DB
 			userService.getUserById(userId).ifPresent(user -> {
 				user.setFirstName(firstName);
 				user.setLastName(lastName);

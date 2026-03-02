@@ -209,7 +209,6 @@ export class StockManagementComponent implements OnInit {
     }
 
     passerCommande(stock: Stock) {
-        // Préparer un brouillon de commande avec cette pièce
         const draftCommande = {
             dateCmd: new Date().toISOString(),
             statut: 'EN_ATTENTE' as any,

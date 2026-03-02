@@ -27,7 +27,6 @@ public class ImageController {
                 return ResponseEntity.notFound().build();
             }
 
-            // Essayer de deviner le type de contenu
             String contentType = URLConnection.guessContentTypeFromName(filename);
             if (contentType == null) {
                 contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;

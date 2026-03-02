@@ -78,9 +78,11 @@
             <div class="filter-group" *ngIf="activeTab === 'pieces'">
                 <label>Prix (Min - Max)</label>
                 <div class="range-inputs">
-                    <input type="number" [(ngModel)]="minPrice" (input)="filterItems()" placeholder="Min DT">
+                    <input type="number" [(ngModel)]="minPrice" (input)="filterItems()"
+                        [placeholder]="'Min ' + (entreprise?.devise?.symbole || 'DT')">
                     <span class="range-sep">-</span>
-                    <input type="number" [(ngModel)]="maxPrice" (input)="filterItems()" placeholder="Max DT">
+                    <input type="number" [(ngModel)]="maxPrice" (input)="filterItems()"
+                        [placeholder]="'Max ' + (entreprise?.devise?.symbole || 'DT')">
                 </div>
             </div>
 
@@ -161,7 +163,8 @@
                         </div>
                     </div>
                     <div class="card-footer-sober">
-                        <div class="price-tag" *ngIf="piece.prixVente">{{ piece.prixVente | number:'1.2-2' }} DT</div>
+                        <div class="price-tag" *ngIf="piece.prixVente">{{ piece.prixVente | number:'1.2-2' }} {{
+                            entreprise?.devise?.symbole || 'DT' }}</div>
                         <div class="status-badge" [attr.data-status]="getStockStatus(piece)">
                             {{ getStockStatus(piece) | titlecase }}
                         </div>

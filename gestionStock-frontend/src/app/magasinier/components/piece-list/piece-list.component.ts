@@ -1,14 +1,18 @@
-import { Component, OnInit, inject, PLATFORM_ID, ChangeDetectorRef, HostListener } from '@angular/core';
+import { Component, OnInit, inject, PLATFORM_ID, ChangeDetectorRef, HostListener, NgZone } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { KeycloakService } from 'keycloak-angular';
 import { MagasinierService } from '../../services/magasinier.service';
-import { PieceDetachee, Categorie, ProduitFini } from '../../models/magasinier.models';
+import { PieceDetachee, Categorie, ProduitFini, Parametre, ChampPersonnalise, DetailPiece, Stock } from '../../models/magasinier.models';
+import { EntrepriseService } from '../../../admin/services/entreprise.service';
+import { Entreprise } from '../../../admin/models/entreprise.model';
+
+import { PieceFormComponent } from '../piece-form/piece-form.component';
 
 @Component({
     selector: 'app-piece-list',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, PieceFormComponent],
     templateUrl: './piece-list.component.html',
     styleUrl: './piece-list.component.css'
 })
@@ -16,34 +20,14 @@ export class PieceListComponent implements OnInit {
     pieces: PieceDetachee[] = [];
     loading: boolean = false;
     showCreateModal = false;
-    showDeleteModal = false;
     selectedPiece: PieceDetachee | null = null;
-    newPiece: PieceDetachee = this.initNewPiece();
     notification: { message: string, type: 'success' | 'error' } | null = null;
     searchTerm: string = '';
     searchCategory: string = 'all';
+    entreprise: Entreprise | null = null;
     userRoles: string[] = [];
     categories: Categorie[] = [];
     produitsFinis: ProduitFini[] = [];
-    showQuickAddCategory = false;
-    showQuickAddProduct = false;
-    newCategory: Categorie = { nom: '', code: '', description: '' };
-    newProduct: ProduitFini = { code: '', designation: '' };
-    showDeleteConfirm = false;
-    itemToDelete: any = null;
-    selectedFile: File | null = null;
-    imagePreview: string | null = null;
-
-    showCategorySelector = false;
-    showProductSelector = false;
-    categorySearchTerm = '';
-    productSearchTerm = '';
-    quickProductFile: File | null = null;
-    newProductPreview: string | null = null;
-
-    showAssociatedProductsModal = false;
-    selectedPieceForProducts: PieceDetachee | null = null;
-    associatedProductsSearchTerm: string = '';
 
     showAdvancedFilters = false;
     filterCategory: string = 'all';
@@ -51,9 +35,22 @@ export class PieceListComponent implements OnInit {
     filterMinPrice: number | null = null;
     filterMaxPrice: number | null = null;
 
+    showDeleteConfirm = false;
+    itemToDelete: PieceDetachee | null = null;
+
+    showAssociatedProductsModal = false;
+    selectedPieceForProducts: PieceDetachee | null = null;
+    associatedProductsSearchTerm: string = '';
+
+
+    parametres: Parametre | null = null;
+    private imageCache = new Map<string, string>();
+
     private keycloak = inject(KeycloakService);
     private platformId = inject(PLATFORM_ID);
     private cdr = inject(ChangeDetectorRef);
+    private ngZone = inject(NgZone);
+    private entrepriseService = inject(EntrepriseService);
 
     constructor(private magasinierService: MagasinierService) { }
 
@@ -64,9 +61,10 @@ export class PieceListComponent implements OnInit {
             this.loadPieces();
             this.loadCategories();
             this.loadProduits();
+            this.loadParametres();
+            this.loadEntreprise();
         }
     }
-
 
     hasRole(role: string): boolean {
         const targetRole = role.toUpperCase().replace('ROLE_', '');
@@ -80,32 +78,7 @@ export class PieceListComponent implements OnInit {
         return this.hasRole('MAGASINIER');
     }
 
-    initNewPiece(): PieceDetachee {
-        return {
-            codeBarre: '',
-            designation: '',
-            prixVente: 0,
-            reference: '',
-            seuilMinimum: 0,
-            seuilMaximum: 0,
-            tauxTVA: 0,
-            archivee: false,
-            categorie: { nom: '' },
-            imageUrl: ''
-        };
-    }
 
-    onFileSelected(event: Event): void {
-        const input = event.target as HTMLInputElement;
-        if (input.files && input.files[0]) {
-            this.selectedFile = input.files[0];
-            const reader = new FileReader();
-            reader.onload = () => {
-                this.imagePreview = reader.result as string;
-            };
-            reader.readAsDataURL(this.selectedFile);
-        }
-    }
 
     uploadImage(event: Event, type: 'piece' | 'produit', id: number): void {
         const input = event.target as HTMLInputElement;
@@ -140,12 +113,24 @@ export class PieceListComponent implements OnInit {
             next: (data) => {
                 this.pieces = data || [];
                 this.loading = false;
+                this.applyFilters();
                 this.cdr.detectChanges();
             },
             error: (err) => {
                 this.notify('Erreur lors du chargement des pièces', 'error');
                 this.loading = false;
                 this.cdr.detectChanges();
+            }
+        });
+    }
+
+    loadEntreprise(): void {
+        this.entrepriseService.getAllEntreprises().subscribe({
+            next: (data) => {
+                if (data && data.length > 0) {
+                    this.entreprise = data[0];
+                    this.cdr.detectChanges();
+                }
             }
         });
     }
@@ -170,227 +155,72 @@ export class PieceListComponent implements OnInit {
         });
     }
 
-    quickAddCategorySubmit(): void {
-        if (!this.newCategory.nom || !this.newCategory.code) return;
-        this.magasinierService.createCategorie(this.newCategory).subscribe({
+    handleQuickAddCategory(category: Categorie): void {
+        this.magasinierService.createCategorie(category).subscribe({
             next: (cat) => {
                 this.categories.push(cat);
-                this.newPiece.categorie = cat;
-                this.showQuickAddCategory = false;
-                this.newCategory = { nom: '', code: '', description: '' };
                 this.notify('Catégorie ajoutée', 'success');
                 this.cdr.detectChanges();
             },
-            error: (err) => {
-                this.notify('Erreur lors de l\'ajout de la catégorie', 'error');
-                this.cdr.detectChanges();
-            }
+            error: (err) => this.notify('Erreur lors de l\'ajout de la catégorie', 'error')
         });
     }
 
-    openQuickAddCategory(event?: Event): void {
-        if (event) {
-            event.stopPropagation();
-            event.preventDefault();
-        }
-        this.showQuickAddCategory = true;
-        this.showCategorySelector = false;
-        this.cdr.detectChanges();
-    }
-
-    closeQuickAddCategory(event?: Event): void {
-        if (event) {
-            event.stopPropagation();
-            event.preventDefault();
-        }
-        this.showQuickAddCategory = false;
-        this.cdr.detectChanges();
-    }
-
-    onQuickProductFileSelected(event: Event): void {
-        const input = event.target as HTMLInputElement;
-        if (input.files && input.files[0]) {
-            this.quickProductFile = input.files[0];
-            const reader = new FileReader();
-            reader.onload = () => {
-                this.newProductPreview = reader.result as string;
-                this.cdr.detectChanges();
-            };
-            reader.readAsDataURL(this.quickProductFile);
-        } else {
-            this.quickProductFile = null;
-            this.newProductPreview = null;
-        }
-    }
-
-    quickAddProductSubmit(): void {
-        if (!this.newProduct.code || !this.newProduct.designation) return;
-
-        this.magasinierService.createProduit(this.newProduct).subscribe({
+    handleQuickAddProduct(data: { product: ProduitFini, file: File | null }): void {
+        this.magasinierService.createProduit(data.product).subscribe({
             next: (prod) => {
                 const finalize = (finalProd: ProduitFini) => {
                     this.produitsFinis.push(finalProd);
-                    if (!this.newPiece.produitsAssocies) this.newPiece.produitsAssocies = [];
-                    this.newPiece.produitsAssocies.push(finalProd);
-                    this.showQuickAddProduct = false;
-                    this.newProduct = { code: '', designation: '' };
-                    this.quickProductFile = null;
-                    this.newProductPreview = null;
                     this.notify('Produit ajouté', 'success');
                     this.cdr.detectChanges();
                 };
 
-                if (this.quickProductFile && prod.id) {
+                if (data.file && prod.id) {
                     const formData = new FormData();
-                    formData.append('file', this.quickProductFile);
-
+                    formData.append('file', data.file);
                     this.magasinierService.uploadProduitImage(prod.id, formData).subscribe({
-                        next: (updatedProd) => finalize(updatedProd),
-                        error: (err) => {
-                            console.error('Error uploading produit image from quick add:', err);
-                            finalize(prod);
-                        }
+                        next: (updated) => finalize(updated),
+                        error: (err) => finalize(prod)
                     });
                 } else {
                     finalize(prod);
                 }
             },
-            error: (err) => {
-                this.notify('Erreur lors de l\'ajout du produit', 'error');
-                this.cdr.detectChanges();
-            }
+            error: (err) => this.notify('Erreur lors de l\'ajout du produit', 'error')
         });
     }
 
-    openQuickAddProduct(event?: Event): void {
-        if (event) {
-            event.stopPropagation();
-            event.preventDefault();
-        }
-        this.newProduct = { code: '', designation: '' };
-        this.quickProductFile = null;
-        this.newProductPreview = null;
-        this.showQuickAddProduct = true;
-        this.cdr.detectChanges();
-    }
 
-    closeQuickAddProduct(event?: Event): void {
-        if (event) {
-            event.stopPropagation();
-            event.preventDefault();
-        }
-        this.quickProductFile = null;
-        this.newProductPreview = null;
-        this.showQuickAddProduct = false;
-        this.cdr.detectChanges();
-    }
-
-    onProductSelect(event: any): void {
-        const id = +event.target.value;
-        if (!id) return;
-
-        const product = this.produitsFinis.find(p => p.id === id);
-        if (product) {
-            if (!this.newPiece.produitsAssocies) {
-                this.newPiece.produitsAssocies = [];
-            }
-            if (!this.newPiece.produitsAssocies.some(p => p.id === id)) {
-                this.newPiece.produitsAssocies.push(product);
-            }
-        }
-        event.target.value = '';
-    }
-
-    removeAssociatedProduct(index: number): void {
-        if (this.newPiece.produitsAssocies) {
-            this.newPiece.produitsAssocies.splice(index, 1);
-            this.cdr.detectChanges();
-        }
-    }
-
-    toggleProductSelection(product: ProduitFini): void {
-        if (!this.newPiece.produitsAssocies) this.newPiece.produitsAssocies = [];
-        const index = this.newPiece.produitsAssocies.findIndex(p => p.id === product.id);
-        if (index === -1) {
-            this.newPiece.produitsAssocies.push(product);
+    loadParametres(): void {
+        const entrepriseId = this.pieces.length > 0 ? this.pieces[0].entreprise?.id : null;
+        if (entrepriseId) {
+            this.magasinierService.getParametresByEntreprise(entrepriseId).subscribe({
+                next: (data) => {
+                    this.parametres = data;
+                    this.cdr.detectChanges();
+                },
+                error: (err) => console.error('Error loading specific parameters:', err)
+            });
         } else {
-            this.newPiece.produitsAssocies.splice(index, 1);
+            this.magasinierService.getAllParametres().subscribe({
+                next: (data) => {
+                    if (data && data.length > 0) {
+                        this.parametres = data[0];
+                        this.cdr.detectChanges();
+                    }
+                },
+                error: (err) => console.error('Error loading all parameters:', err)
+            });
         }
-        this.cdr.detectChanges();
-    }
-
-    isProductSelected(productId?: number): boolean {
-        if (!productId || !this.newPiece.produitsAssocies) return false;
-        return this.newPiece.produitsAssocies.some(p => p.id === productId);
-    }
-
-    getSelectedProductsCount(): number {
-        return this.newPiece.produitsAssocies?.length ?? 0;
-    }
-
-    selectCategory(cat: Categorie): void {
-        this.newPiece.categorie = cat;
-        this.showCategorySelector = false;
-        this.cdr.detectChanges();
-    }
-
-    @HostListener('document:click', ['$event'])
-    onDocumentClick(event: MouseEvent): void {
-        if (this.showCategorySelector) {
-            const target = event.target as HTMLElement;
-            const categoryPicker = target.closest('.custom-picker');
-
-            if (!categoryPicker) {
-                this.showCategorySelector = false;
-                this.cdr.detectChanges();
-            }
-        }
-    }
-
-    toggleCategorySelector(event?: Event): void {
-        if (event) {
-            event.stopPropagation();
-            event.preventDefault();
-        }
-        this.showCategorySelector = !this.showCategorySelector;
-        this.cdr.detectChanges();
-    }
-
-    toggleProductSelectorModal(event?: Event): void {
-        if (event) {
-            event.stopPropagation();
-            event.preventDefault();
-        }
-        this.showProductSelector = !this.showProductSelector;
-        this.cdr.detectChanges();
-    }
-
-    get filteredCategories() {
-        const term = (this.categorySearchTerm || '').toLowerCase();
-        return (this.categories || []).filter(c => (c.nom || '').toLowerCase().includes(term));
-    }
-
-    get filteredProduitsSelection() {
-        const term = this.productSearchTerm.toLowerCase();
-        return this.produitsFinis.filter(p =>
-            p.designation.toLowerCase().includes(term) ||
-            p.code.toLowerCase().includes(term)
-        );
     }
 
     openCreateModal(): void {
         this.selectedPiece = null;
-        this.newPiece = this.initNewPiece();
-        this.selectedFile = null;
-        this.imagePreview = null;
         this.showCreateModal = true;
     }
 
     openEditModal(piece: PieceDetachee): void {
         this.selectedPiece = piece;
-        this.newPiece = { ...piece, categorie: piece.categorie ? { ...piece.categorie } : { nom: '' } };
-        this.selectedFile = null;
-        this.imagePreview = piece.imageUrl || null;
         this.showCreateModal = true;
         this.cdr.detectChanges();
     }
@@ -398,51 +228,23 @@ export class PieceListComponent implements OnInit {
     closeCreateModal(): void {
         this.showCreateModal = false;
         this.selectedPiece = null;
-        this.newPiece = this.initNewPiece();
-        this.selectedFile = null;
-        this.imagePreview = null;
         this.cdr.detectChanges();
     }
 
-    savePiece(): void {
-        const pieceData = { ...this.newPiece };
+    handleSavePiece(data: { piece: PieceDetachee, file: File | null }): void {
+        const pieceData = data.piece;
+        const file = data.file;
 
         if (pieceData.prixVente <= 0) {
             this.notify('Le prix d\'achat doit être supérieur à 0', 'error');
             return;
         }
-        if (pieceData.seuilMinimum < 0) {
-            this.notify('Le seuil minimum ne peut pas être négatif', 'error');
-            return;
-        }
-        if (!pieceData.codeBarre || pieceData.codeBarre.trim().length === 0) {
-            this.notify('Le code barre est obligatoire', 'error');
-            return;
-        }
-
-
-        const alreadyExists = this.pieces.some(p =>
-            p.codeBarre === pieceData.codeBarre && p.id !== this.selectedPiece?.id
-        );
-        if (alreadyExists) {
-            this.notify('Ce code barre existe déjà pour une autre pièce', 'error');
-            return;
-        }
-
-        if (!pieceData.categorie || !pieceData.categorie.nom || pieceData.categorie.nom.trim() === '') {
-            this.notify('La sélection d\'une catégorie est obligatoire', 'error');
-            return;
-        }
-
-        if (pieceData.categorie && pieceData.categorie.nom && !pieceData.categorie.code) {
-            pieceData.categorie.code = 'CAT_' + pieceData.categorie.nom.toUpperCase().replace(/\s+/g, '_');
-        }
 
         if (this.selectedPiece && this.selectedPiece.id) {
             this.magasinierService.updatePiece(this.selectedPiece.id, pieceData).subscribe({
                 next: (saved) => {
-                    if (this.selectedFile && saved.id) {
-                        this.doUpload(this.selectedFile, saved.id, 'Pièce mise à jour');
+                    if (file && saved.id) {
+                        this.doUpload(file, saved.id, 'Pièce mise à jour');
                     } else {
                         this.notify('Pièce mise à jour', 'success');
                         this.loadPieces();
@@ -450,15 +252,15 @@ export class PieceListComponent implements OnInit {
                     this.closeCreateModal();
                 },
                 error: (err) => {
-                    const msg = err.error?.message || err.error || 'Erreur lors de la mise à jour';
-                    this.notify(msg, 'error');
+                    const errorMsg = err.error?.message || err.error || 'Erreur lors de la mise à jour';
+                    this.notify(typeof errorMsg === 'string' ? errorMsg : 'Erreur réseau', 'error');
                 }
             });
         } else {
             this.magasinierService.createPiece(pieceData).subscribe({
                 next: (saved) => {
-                    if (this.selectedFile && saved.id) {
-                        this.doUpload(this.selectedFile, saved.id, 'Pièce créée');
+                    if (file && saved.id) {
+                        this.doUpload(file, saved.id, 'Pièce créée');
                     } else {
                         this.notify('Pièce créée', 'success');
                         this.loadPieces();
@@ -466,9 +268,9 @@ export class PieceListComponent implements OnInit {
                     this.closeCreateModal();
                 },
                 error: (err) => {
-                    console.error('Create error:', err);
-                    const msg = err.error?.message || (typeof err.error === 'string' ? err.error : 'Erreur lors de la création');
-                    this.notify(msg, 'error');
+                    const errorMsg = err.error?.message || err.error || 'Erreur lors de la création';
+                    this.notify(typeof errorMsg === 'string' ? errorMsg : 'Erreur de validation. Vérifiez les champs.', 'error');
+                    console.error('Save error details:', err.error);
                 }
             });
         }
@@ -508,51 +310,75 @@ export class PieceListComponent implements OnInit {
         this.cdr.detectChanges();
         if (isPlatformBrowser(this.platformId)) {
             const duration = type === 'success' ? 1500 : 5000;
-            setTimeout(() => {
-                this.notification = null;
-                this.cdr.detectChanges();
-            }, duration);
+            this.ngZone.runOutsideAngular(() => {
+                setTimeout(() => {
+                    this.ngZone.run(() => {
+                        this.notification = null;
+                        this.cdr.detectChanges();
+                    });
+                }, duration);
+            });
         }
     }
 
     getImageUrl(url: string | null | undefined): string {
         if (!url) return 'assets/images/default-produit.svg';
+        if (this.imageCache.has(url)) return this.imageCache.get(url)!;
 
+        let result = url;
         if (url.startsWith('/api/images') || url.startsWith('/uploads')) {
-            return `http://localhost:8081${url}`;
-        }
-
-        if (url.includes('/remote.php/dav/files/')) {
+            result = `http://localhost:8081${url}`;
+        } else if (url.includes('/remote.php/dav/files/')) {
             const parts = url.split('/');
             const filename = parts[parts.length - 1];
-            return `http://localhost:8081/api/images/${filename}`;
+            result = `http://localhost:8081/api/images/${filename}`;
         }
 
-        return url;
+        this.imageCache.set(url, result);
+        return result;
     }
 
     closeAssociatedProductsModal(): void {
         this.showAssociatedProductsModal = false;
-        this.selectedPieceForProducts = null;
-        this.associatedProductsSearchTerm = '';
+        // Clear data after a short delay so the closing animation stays smooth
+        setTimeout(() => {
+            this.selectedPieceForProducts = null;
+            this.associatedProductsSearchTerm = '';
+            this.associatedProductsList = [];
+            this.cdr.detectChanges();
+        }, 200);
     }
 
     triggerChangeDetection(): void {
         this.cdr.detectChanges();
     }
 
+    loadingAssociated = false;
+    associatedProductsList: ProduitFini[] = [];
+
     showAssociatedProducts(piece: PieceDetachee): void {
         this.selectedPieceForProducts = piece;
+        this.associatedProductsSearchTerm = '';
+        this.associatedProductsList = []; // Empty initially to render modal quickly
+        this.loadingAssociated = true;
         this.showAssociatedProductsModal = true;
+
+        // Defer filtering and DOM creation to the next event loop tick
+        setTimeout(() => {
+            this.applyAssociatedFilter();
+            this.loadingAssociated = false;
+            this.cdr.detectChanges();
+        }, 10);
     }
 
-    get filteredAssociatedProducts(): ProduitFini[] {
+    applyAssociatedFilter(): void {
         const produits = this.selectedPieceForProducts?.produitsAssocies || [];
         if (!this.associatedProductsSearchTerm) {
-            return produits;
+            this.associatedProductsList = produits;
+            return;
         }
         const term = this.associatedProductsSearchTerm.toLowerCase();
-        return produits.filter(p => {
+        this.associatedProductsList = produits.filter(p => {
             const designation = (p.designation || '').toLowerCase();
             const code = (p.code || '').toLowerCase();
             return designation.includes(term) || code.includes(term);
@@ -571,10 +397,21 @@ export class PieceListComponent implements OnInit {
         this.filterStockStatus = 'all';
         this.filterMinPrice = null;
         this.filterMaxPrice = null;
+        this.applyFilters();
         this.cdr.detectChanges();
     }
 
-    get filteredPieces() {
+    filteredPiecesList: PieceDetachee[] = [];
+
+    pieceTrackBy(index: number, piece: PieceDetachee): string | number {
+        return piece.id || piece.codeBarre || index;
+    }
+
+    produitTrackBy(index: number, produit: ProduitFini): string | number {
+        return produit.id || produit.code || index;
+    }
+
+    applyFilters(): void {
         let results = this.pieces;
 
         if (this.searchTerm) {
@@ -612,7 +449,8 @@ export class PieceListComponent implements OnInit {
         }
         if (this.filterStockStatus !== 'all') {
             results = results.filter(p => {
-                const totalStock = p.stock?.quantite || 0;
+                const totalStock = this.getTotalStock(p);
+
                 if (this.filterStockStatus === 'out') return totalStock <= 0;
                 if (this.filterStockStatus === 'low') return totalStock < (p.seuilMinimum || 0) && totalStock > 0;
                 if (this.filterStockStatus === 'ok') return totalStock >= (p.seuilMinimum || 0);
@@ -620,13 +458,60 @@ export class PieceListComponent implements OnInit {
             });
         }
 
-        if (this.filterMinPrice !== null) {
+        if (this.filterMinPrice !== null && this.filterMinPrice !== undefined) {
             results = results.filter(p => (p.prixVente || 0) >= (this.filterMinPrice || 0));
         }
-        if (this.filterMaxPrice !== null) {
+        if (this.filterMaxPrice !== null && this.filterMaxPrice !== undefined) {
             results = results.filter(p => (p.prixVente || 0) <= (this.filterMaxPrice || 0));
         }
 
-        return results;
+        this.filteredPiecesList = results;
+    }
+
+    getTotalStock(piece: any): number {
+        if (piece._totalStock !== undefined) return piece._totalStock;
+
+        let total = 0;
+        if (piece.stock && !Array.isArray(piece.stock)) {
+            total = piece.stock.quantite || 0;
+        } else if (piece.stocks && Array.isArray(piece.stocks)) {
+            total = piece.stocks.reduce((sum: number, s: any) => sum + (s.quantite || 0), 0);
+        } else if (piece.details && piece.details.length > 0) {
+            total = piece.details.reduce((sum: number, dp: any) => sum + (dp.stock?.quantite || 0), 0);
+        }
+
+        piece._totalStock = total;
+        return total;
+    }
+
+    getVariantLabel(detail: any): string {
+        if (detail._label !== undefined) return detail._label;
+
+        const attributes = detail.attributs || {};
+        const label = Object.entries(attributes)
+            .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && String(value).trim() !== '')
+            .map(([_, value]) => value)
+            .join(' - ');
+
+        detail._label = label || 'Standard';
+        return detail._label;
+    }
+
+    isArray(obj: any): boolean {
+        return Array.isArray(obj);
+    }
+
+    getUnassignedStock(piece: any): number {
+        if (piece._unassignedStock !== undefined) return piece._unassignedStock;
+
+        let stock = 0;
+        if (piece.stock && !Array.isArray(piece.stock)) {
+            stock = piece.stock.quantite || 0;
+        } else if (piece.stocks && Array.isArray(piece.stocks)) {
+            stock = piece.stocks.reduce((sum: number, s: any) => sum + (s.quantite || 0), 0);
+        }
+
+        piece._unassignedStock = stock;
+        return stock;
     }
 }

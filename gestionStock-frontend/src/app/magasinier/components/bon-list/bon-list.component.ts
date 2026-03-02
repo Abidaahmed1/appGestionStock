@@ -5,6 +5,8 @@ import { KeycloakService } from 'keycloak-angular';
 import { LogistiqueService } from '../../../logistique/services/logistique.service';
 import { Bon, TypeBon, Fournisseur } from '../../../logistique/models/logistique.models';
 import { Router } from '@angular/router';
+import { EntrepriseService } from '../../../admin/services/entreprise.service';
+import { Entreprise } from '../../../admin/models/entreprise.model';
 
 @Component({
     selector: 'app-bon-list',
@@ -21,6 +23,7 @@ export class BonListComponent implements OnInit {
     newBon: Bon = this.initNewBon();
     notification: { message: string, type: 'success' | 'error' } | null = null;
     searchTerm: string = '';
+    entreprise: Entreprise | null = null;
 
 
     showOptionsMenu = false;
@@ -52,6 +55,7 @@ export class BonListComponent implements OnInit {
     private platformId = inject(PLATFORM_ID);
     private cdr = inject(ChangeDetectorRef);
     private router = inject(Router);
+    private entrepriseService = inject(EntrepriseService);
 
     constructor(private logistiqueService: LogistiqueService) { }
 
@@ -60,6 +64,7 @@ export class BonListComponent implements OnInit {
             this.userRoles = this.keycloak.getUserRoles() || [];
             this.loadBons();
             this.loadFournisseurs();
+            this.loadEntreprise();
             this.cdr.detectChanges();
         }
     }
@@ -102,6 +107,17 @@ export class BonListComponent implements OnInit {
             },
             error: () => {
                 console.error('Erreur lors du chargement des fournisseurs');
+            }
+        });
+    }
+
+    loadEntreprise(): void {
+        this.entrepriseService.getAllEntreprises().subscribe({
+            next: (data) => {
+                if (data && data.length > 0) {
+                    this.entreprise = data[0];
+                    this.cdr.detectChanges();
+                }
             }
         });
     }

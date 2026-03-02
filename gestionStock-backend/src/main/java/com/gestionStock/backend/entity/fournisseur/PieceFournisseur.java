@@ -41,6 +41,5 @@ public class PieceFournisseur {
 	@ManyToOne
 	@JoinColumn(name = "id_fournisseur", nullable = false)
 	private Fournisseur fournisseur;
-	
 
 }

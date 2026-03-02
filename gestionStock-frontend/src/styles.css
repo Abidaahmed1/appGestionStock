@@ -30,7 +30,6 @@
     background: #fffafa !important;
 }
 
-/* Ensure the message content is clear */
 .notification-toast .msg {
     color: #334155 !important;
     font-size: 1rem !important;
@@ -50,7 +49,6 @@
     }
 }
 
-/* --- Global Print Resets --- */
 @media print {
 
     aside.sidebar,

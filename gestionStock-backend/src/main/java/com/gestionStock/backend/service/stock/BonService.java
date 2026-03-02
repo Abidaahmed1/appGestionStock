@@ -18,6 +18,7 @@ public class BonService {
 
     private final BonRepository bonRepo;
     private final com.gestionStock.backend.service.user.UserService userService;
+    private final MouvementStockService mouvementService;
 
     public List<Bon> getAll() {
         return bonRepo.findAll();
@@ -128,9 +129,10 @@ public class BonService {
     }
 
     public void delete(Long id) {
-        if (!bonRepo.existsById(id)) {
-            throw new EntityNotFoundException("Bon non trouvé");
+        Bon bon = getById(id);
+        if (bon.getMouvement() != null) {
+            mouvementService.rollbackStockQuantity(bon.getMouvement());
         }
-        bonRepo.deleteById(id);
+        bonRepo.delete(bon);
     }
 }

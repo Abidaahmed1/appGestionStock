@@ -47,6 +47,7 @@ export interface Stock {
     piece: any;
     quantite: number;
     type: TypeStock;
+    detailPiece?: any;
 }
 
 export interface LigneMouvement {
@@ -87,6 +88,7 @@ export interface BonCommandeFournisseur {
 export interface LigneCommande {
     id?: number;
     piece: any;
+    detailPiece?: any;
     qteCmd: number;
     prixAchat: number;
     taxe?: number;

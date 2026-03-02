@@ -77,9 +77,11 @@ public class GlobalArticleExceptionHandler extends ResponseEntityExceptionHandle
 	// 409 – Contrainte d'unicité violée (doublon en BDD)
 	@ExceptionHandler(DataIntegrityViolationException.class)
 	public ResponseEntity<Erreur> handleDataIntegrity(DataIntegrityViolationException ex) {
-		String message = "Un enregistrement avec ces données existe déjà (contrainte d'unicité). Veuillez réessayer.";
-		Map<String, String> details = new HashMap<>();
 		String cause = ex.getRootCause() != null ? ex.getRootCause().getMessage() : ex.getMessage();
+		String message = "Un enregistrement avec ces données existe déjà : "
+				+ (cause != null ? cause : "Contrainte d'unicité violée.");
+
+		Map<String, String> details = new HashMap<>();
 		if (cause != null && !cause.isBlank()) {
 			details.put("cause", cause);
 		}
@@ -88,6 +90,7 @@ public class GlobalArticleExceptionHandler extends ResponseEntityExceptionHandle
 		return new ResponseEntity<>(e, HttpStatus.CONFLICT);
 	}
 
+	// 500 – Erreur inattendue (filet de sécurité)
 	// 500 – Erreur inattendue (filet de sécurité)
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<Erreur> handleUnexpected(Exception ex) {

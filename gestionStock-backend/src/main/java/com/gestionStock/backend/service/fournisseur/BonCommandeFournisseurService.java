@@ -168,15 +168,18 @@ public class BonCommandeFournisseurService {
                 bon.getLignes().forEach(ligne -> ligne.setId(null));
             }
 
-            java.util.Map<Long, LigneCommande> mergedMap = new java.util.HashMap<>();
+            java.util.Map<String, LigneCommande> mergedMap = new java.util.HashMap<>();
             for (LigneCommande ligne : bon.getLignes()) {
                 if (ligne.getPiece() != null && ligne.getPiece().getId() != null) {
                     Long pieceId = ligne.getPiece().getId();
-                    if (mergedMap.containsKey(pieceId)) {
-                        LigneCommande existing = mergedMap.get(pieceId);
+                    Long detailId = ligne.getDetailPiece() != null ? ligne.getDetailPiece().getId() : 0L;
+                    String key = pieceId + "_" + detailId;
+
+                    if (mergedMap.containsKey(key)) {
+                        LigneCommande existing = mergedMap.get(key);
                         existing.setQteCmd(existing.getQteCmd() + ligne.getQteCmd());
                     } else {
-                        mergedMap.put(pieceId, ligne);
+                        mergedMap.put(key, ligne);
                     }
                 }
             }
@@ -245,18 +248,32 @@ public class BonCommandeFournisseurService {
             if (savedBon.getLignes() != null) {
                 for (LigneCommande ligne : savedBon.getLignes()) {
                     if (ligne.getPiece() != null && ligne.getPiece().getId() != null) {
-                        List<Stock> stocks = stockRepo
-                                .findByPieceId(ligne.getPiece().getId());
-                        if (stocks.isEmpty()) {
-                            Stock newStock = new Stock();
-                            newStock.setPiece(ligne.getPiece());
-                            newStock.setQuantite(0);
-                            newStock.setType(TypeStock.EN_REAPPROVISIONNEMENT);
-                            stockRepo.save(newStock);
-                        } else {
-                            for (Stock stock : stocks) {
+                        if (ligne.getDetailPiece() != null && ligne.getDetailPiece().getId() != null) {
+                            Stock stock = stockRepo.findByDetailPieceId(ligne.getDetailPiece().getId()).orElse(null);
+
+                            if (stock == null) {
+                                stock = new Stock();
+                                stock.setPiece(ligne.getPiece());
+                                stock.setQuantite(0);
                                 stock.setType(TypeStock.EN_REAPPROVISIONNEMENT);
                                 stockRepo.save(stock);
+                            } else {
+                                stock.setType(TypeStock.EN_REAPPROVISIONNEMENT);
+                                stockRepo.save(stock);
+                            }
+                        } else {
+                            List<Stock> stocks = stockRepo.findByPieceId(ligne.getPiece().getId());
+                            if (stocks.isEmpty()) {
+                                Stock newStock = new Stock();
+                                newStock.setPiece(ligne.getPiece());
+                                newStock.setQuantite(0);
+                                newStock.setType(TypeStock.EN_REAPPROVISIONNEMENT);
+                                stockRepo.save(newStock);
+                            } else {
+                                for (Stock stock : stocks) {
+                                    stock.setType(TypeStock.EN_REAPPROVISIONNEMENT);
+                                    stockRepo.save(stock);
+                                }
                             }
                         }
                     }

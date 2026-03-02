@@ -139,7 +139,8 @@
                                             </div>
                                         </td>
                                         <td class="col-price text-right font-bold" style="color: #3d7a7f;">
-                                            {{ item.prixAchat | number:'1.2-2' }} DT
+                                            {{ item.prixAchat | number:'1.2-2' }} {{ entreprise?.devise?.symbole || 'DT'
+                                            }}
                                         </td>
                                         <td class="col-discount text-center">
                                             {{ item.tauxRemise }} %

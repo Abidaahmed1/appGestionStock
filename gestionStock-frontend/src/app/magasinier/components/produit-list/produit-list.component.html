@@ -237,7 +237,6 @@
             </button>
         </div>
         <div class="associated-modal-body">
-            <!-- Advanced Header Actions -->
             <div class="associated-actions-bar">
                 <div class="associated-search-wrapper">
                     <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18"
@@ -269,11 +268,10 @@
                 </div>
             </div>
 
-            <!-- Expandable Filter Panel -->
             <div class="advanced-filter-panel" *ngIf="showAdvancedFilters">
                 <div class="filter-row">
                     <div class="filter-group">
-                        <label>Prix (DTN)</label>
+                        <label>Prix ({{ entreprise?.devise?.symbole || 'DT' }})</label>
                         <div class="range-inputs">
                             <input type="number" [(ngModel)]="minPrice" placeholder="Min"
                                 (ngModelChange)="triggerChangeDetection()">
@@ -313,7 +311,8 @@
                     <div class="associated-card-info">
                         <code class="associated-card-code">{{ piece.reference }}</code>
                         <h4 class="associated-card-name">{{ piece.designation }}</h4>
-                        <div class="associated-card-price">{{ piece.prixVente | number:'1.2-2' }} DTN</div>
+                        <div class="associated-card-price">{{ piece.prixVente | number:'1.2-2' }} {{
+                            entreprise?.devise?.symbole || 'DT' }}</div>
                     </div>
                 </div>
             </div>

@@ -99,7 +99,6 @@
     border-radius: 10px;
 }
 
-/* Advanced Actions Bar */
 .associated-actions-bar {
     display: flex;
     align-items: stretch;
@@ -191,7 +190,6 @@
     background: #fef2f2;
 }
 
-/* Advanced Filter Panel */
 .advanced-filter-panel {
     background: white;
     border-radius: 14px;
@@ -264,7 +262,6 @@
     box-shadow: 0 0 0 3px rgba(61, 122, 127, 0.1);
 }
 
-/* Grid & Cards */
 .associated-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -336,7 +333,6 @@
     margin-top: 0.25rem;
 }
 
-/* Empty States */
 .associated-empty {
     text-align: center;
     padding: 4rem 2rem;

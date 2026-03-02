@@ -66,7 +66,6 @@ public class NotificationService {
             users.addAll(userRepository.findByRoleIn(roles));
         }
 
-        // --- Add the creator automatically ---
         org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder
                 .getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {

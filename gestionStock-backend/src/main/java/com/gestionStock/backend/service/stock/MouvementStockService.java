@@ -101,7 +101,6 @@ public class MouvementStockService {
                                 }
                             }
 
-                            // 3. Valider la limite
                             if (alreadyReturnedQty + newLine.getQuantite() > originalQty) {
                                 int remaining = originalQty - alreadyReturnedQty;
                                 String finalName = pieceName != null ? pieceName : "Inconnue (ID: " + pieceId + ")";
@@ -141,10 +140,72 @@ public class MouvementStockService {
     }
 
     public void delete(Long id) {
-        if (!mouvementRepo.existsById(id)) {
-            throw new EntityNotFoundException("Mouvement non trouvé");
+        MouvementStock mouvement = getById(id);
+        rollbackStockQuantity(mouvement);
+        mouvementRepo.delete(mouvement);
+    }
+
+    public void rollbackStockQuantity(MouvementStock mouvement) {
+        if (mouvement == null || mouvement.getLigneMouvement() == null) {
+            return;
         }
-        mouvementRepo.deleteById(id);
+
+        for (LigneMouvement ligne : mouvement.getLigneMouvement()) {
+            reverseUpdateStockQuantity(ligne, mouvement.getTypeMouvement());
+        }
+    }
+
+    private void reverseUpdateStockQuantity(LigneMouvement ligne, TypeMouvement typeMouvement) {
+        if (typeMouvement == null) {
+            return;
+        }
+        Stock incomingStock = ligne.getStock();
+        if (incomingStock == null || incomingStock.getPiece() == null) {
+            return;
+        }
+
+        Long pieceId = incomingStock.getPiece().getId();
+        if (pieceId == null) {
+            return;
+        }
+
+        Stock existingStock = null;
+        if (incomingStock.getId() != null) {
+            existingStock = stockRepo.findById(incomingStock.getId()).orElse(null);
+        }
+
+        if (existingStock == null) {
+            existingStock = stockRepo.findByPieceId(pieceId).stream().findFirst().orElse(null);
+        }
+
+        if (existingStock == null) {
+            return;
+        }
+
+        int currentQuantity = existingStock.getQuantite();
+        int changeQuantity = ligne.getQuantite();
+
+        boolean isEntry = (typeMouvement == TypeMouvement.ENTREE_RECEPTION ||
+                typeMouvement == TypeMouvement.ENTREE_RETOUR);
+
+        boolean isExit = (typeMouvement == TypeMouvement.SORTIE_VENTE ||
+                typeMouvement == TypeMouvement.SORTIE_PERTE ||
+                typeMouvement == TypeMouvement.SORTIE_MAINTENANCE ||
+                typeMouvement == TypeMouvement.SORTIE_RETOUR);
+
+        if (isEntry) {
+            existingStock.setQuantite(currentQuantity - changeQuantity);
+        } else if (isExit || typeMouvement.name().startsWith("SORTIE")) {
+            existingStock.setQuantite(currentQuantity + changeQuantity);
+        }
+
+        if (existingStock.getQuantite() <= 0) {
+            existingStock.setType(com.gestionStock.backend.entity.Stock.TypeStock.RUPTURE_STOCK);
+        } else {
+            existingStock.setType(com.gestionStock.backend.entity.Stock.TypeStock.DISPONIBLE);
+        }
+
+        stockRepo.save(existingStock);
     }
 
     private void updateStockQuantity(LigneMouvement ligne, TypeMouvement typeMouvement) {
@@ -159,7 +220,14 @@ public class MouvementStockService {
         if (pieceId == null)
             return;
 
-        Stock existingStock = stockRepo.findByPieceId(pieceId).stream().findFirst().orElse(null);
+        Stock existingStock = null;
+        if (incomingStock.getId() != null) {
+            existingStock = stockRepo.findById(incomingStock.getId()).orElse(null);
+        }
+
+        if (existingStock == null) {
+            existingStock = stockRepo.findByPieceId(pieceId).stream().findFirst().orElse(null);
+        }
 
         if (existingStock == null) {
             existingStock = new Stock();

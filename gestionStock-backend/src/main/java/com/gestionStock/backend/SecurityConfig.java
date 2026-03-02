@@ -28,6 +28,8 @@ public class SecurityConfig {
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 						.requestMatchers("/images/**").permitAll().requestMatchers("/api/images/**").permitAll()
+						.requestMatchers("/api/metadata/**").permitAll()
+						.requestMatchers("/api/entreprises/**").authenticated()
 						.requestMatchers("/api/admin/**").hasRole("ADMINISTRATEUR").requestMatchers("/api/**")
 						.authenticated().anyRequest().permitAll())
 				.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter)));

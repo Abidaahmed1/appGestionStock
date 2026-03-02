@@ -62,7 +62,7 @@
           "builder": "@angular/build:dev-server",
           "options": {
             "headers": {
-              "Content-Security-Policy": "default-src 'self' http://localhost:*; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: http://localhost:8081 http://localhost:8082; connect-src 'self' http://localhost:* ws://localhost:*; frame-src 'self' http://localhost:*;"
+              "Content-Security-Policy": "default-src 'self' http://localhost:*; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data: http://localhost:8081 http://localhost:8082; connect-src 'self' http://localhost:* ws://localhost:*; frame-src 'self' http://localhost:*;"
             }
           },
           "configurations": {

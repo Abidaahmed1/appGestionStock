@@ -1,4 +1,10 @@
 <div class="purchase-order-container">
+    <div class="notification-toast" *ngIf="notification" [class.success]="notification.type === 'success'"
+        [class.error]="notification.type === 'error'">
+        <span class="msg">{{ notification.message }}</span>
+        <button class="close-btn" (click)="notification = null">✕</button>
+    </div>
+
     <div class="print-view-toolbar no-print" *ngIf="isPrintView">
         <button type="button" class="back-link" (click)="goBackToCommandList()">
             ← Retour à la liste des commandes
@@ -209,7 +215,7 @@
                             </td>
                             <td class="text-right">
                                 {{ (ligne.qteCmd * (ligne.prixAchat || 0) * (1 - (ligne.remise || 0)/100)) |
-                                number:'1.3-3' }} DT
+                                number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT' }}
                             </td>
                             <td>
                                 <button (click)="removeLigne(i)" class="btn-icon" *ngIf="isEditable">×</button>
@@ -236,7 +242,7 @@
                     <div class="comparison-grid" *ngIf="commande.lignes && commande.lignes.length > 0">
                         <div class="comparison-card" *ngFor="let line of commande.lignes">
                             <div class="piece-header" *ngIf="line.piece">
-                                <strong>{{ line.piece.designation }}</strong>
+                                <strong>{{ getPieceDesignation(line) }}</strong>
                                 <span class="piece-ref" *ngIf="line.piece.reference">[{{ line.piece.reference }}]</span>
                             </div>
                             <table class="comparison-table" *ngIf="line.piece">
@@ -260,7 +266,8 @@
                                                     *ngIf="pf.fournisseur.id === commande.fournisseur?.id">Sélectionné</span>
                                             </div>
                                         </td>
-                                        <td class="text-right">{{ pf.prixAchat | number:'1.3-3' }} DT</td>
+                                        <td class="text-right">{{ pf.prixAchat | number:'1.3-3' }} {{
+                                            entreprise?.devise?.symbole || 'DT' }}</td>
                                         <td class="text-right">{{ pf.tauxRemise || 0 }}%</td>
                                         <td class="text-right">{{ pf.qteMinACommander || 1 }}</td>
                                         <td class="text-right">
@@ -284,23 +291,28 @@
             <div class="totals-area">
                 <div class="total-row">
                     <span>Montant brut:</span>
-                    <span class="total-value">{{ totalBrut | number:'1.3-3' }} DT</span>
+                    <span class="total-value">{{ totalBrut | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT'
+                        }}</span>
                 </div>
                 <div class="total-row">
                     <span>Remise:</span>
-                    <span class="total-value">- {{ totalRemise | number:'1.3-3' }} DT</span>
+                    <span class="total-value">- {{ totalRemise | number:'1.3-3' }} {{ entreprise?.devise?.symbole ||
+                        'DT' }}</span>
                 </div>
                 <div class="total-row highlight-row">
                     <span>Montant après remise:</span>
-                    <span class="total-value">{{ totalHT | number:'1.3-3' }} DT</span>
+                    <span class="total-value">{{ totalHT | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT'
+                        }}</span>
                 </div>
                 <div class="total-row">
                     <span>Montant taxes:</span>
-                    <span class="total-value">{{ totalTaxe | number:'1.3-3' }} DT</span>
+                    <span class="total-value">{{ totalTaxe | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT'
+                        }}</span>
                 </div>
                 <div class="total-row main-total">
                     <span>Total:</span>
-                    <span class="total-value">{{ totalTTC | number:'1.3-3' }} DT</span>
+                    <span class="total-value">{{ totalTTC | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT'
+                        }}</span>
                 </div>
             </div>
         </div>
@@ -309,8 +321,8 @@
     <div class="print-only-container" [class.visible-on-screen]="isPrintView">
         <header class="po-header">
             <div class="po-company">
-                <strong class="po-company-name">StockMasters S.A.</strong>
-                <span class="po-company-line">Spécialiste de la Gestion de Stock</span>
+                <strong class="po-company-name">{{ entreprise?.nom || 'Nom de l\'entreprise' }}</strong>
+                <span class="po-company-line">{{ entreprise?.adresse || 'Spécialiste de la Gestion de Stock' }}</span>
             </div>
             <div class="po-doc-meta">
                 <h1 class="po-doc-title">BON DE COMMANDE</h1>
@@ -335,9 +347,9 @@
             <div class="po-party">
                 <div class="po-party-label">Expédier à</div>
                 <div class="po-party-content">
-                    <strong>StockMasters S.A.</strong>
-                    <span>Zone Industrielle El Agba</span>
-                    <span>Tunis, Tunisie</span>
+                    <strong>{{ entreprise?.nom || 'Nom de l\'entreprise' }}</strong>
+                    <span>{{ entreprise?.adresse || 'Adresse' }}</span>
+                    <span>Tunisie</span>
                 </div>
             </div>
         </section>
@@ -347,14 +359,14 @@
                 <tr>
                     <th class="po-th-desc">Désignation</th>
                     <th class="po-th-num">Qté</th>
-                    <th class="po-th-num">Prix unit. (DT)</th>
+                    <th class="po-th-num">Prix unit. ({{ entreprise?.devise?.symbole || 'DT' }})</th>
                     <th class="po-th-num">Remise %</th>
-                    <th class="po-th-num">Montant HT (DT)</th>
+                    <th class="po-th-num">Montant HT ({{ entreprise?.devise?.symbole || 'DT' }})</th>
                 </tr>
             </thead>
             <tbody>
                 <tr *ngFor="let ligne of commande.lignes">
-                    <td class="po-td-desc">{{ ligne.piece?.designation }}</td>
+                    <td class="po-td-desc">{{ getPieceDesignation(ligne) }}</td>
                     <td class="po-td-num">{{ ligne.qteCmd }}</td>
                     <td class="po-td-num">{{ (ligne.prixAchat || 0) | number:'1.3-3' }}</td>
                     <td class="po-td-num">{{ (ligne.remise || 0) }}%</td>
@@ -370,13 +382,17 @@
                 <div class="po-signature-line"></div>
             </div>
             <div class="po-totals">
-                <div class="po-totals-row"><span>Total brut</span><span>{{ totalBrut | number:'1.3-3' }} DT</span></div>
-                <div class="po-totals-row"><span>Total remise</span><span>-{{ totalRemise | number:'1.3-3' }} DT</span>
+                <div class="po-totals-row"><span>Total brut</span><span>{{ totalBrut | number:'1.3-3' }} {{
+                        entreprise?.devise?.symbole || 'DT' }}</span></div>
+                <div class="po-totals-row"><span>Total remise</span><span>-{{ totalRemise | number:'1.3-3' }} {{
+                        entreprise?.devise?.symbole || 'DT' }}</span>
                 </div>
-                <div class="po-totals-row"><span>Total HT</span><span>{{ totalHT | number:'1.3-3' }} DT</span></div>
-                <div class="po-totals-row"><span>Total TVA</span><span>{{ totalTaxe | number:'1.3-3' }} DT</span></div>
+                <div class="po-totals-row"><span>Total HT</span><span>{{ totalHT | number:'1.3-3' }} {{
+                        entreprise?.devise?.symbole || 'DT' }}</span></div>
+                <div class="po-totals-row"><span>Total TVA</span><span>{{ totalTaxe | number:'1.3-3' }} {{
+                        entreprise?.devise?.symbole || 'DT' }}</span></div>
                 <div class="po-totals-row po-totals-ttc"><span>Total TTC</span><span>{{ totalTTC | number:'1.3-3' }}
-                        DT</span></div>
+                        {{ entreprise?.devise?.symbole || 'DT' }}</span></div>
             </div>
         </footer>
     </div>

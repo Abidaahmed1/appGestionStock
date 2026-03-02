@@ -90,12 +90,12 @@
                 <input type="date" [(ngModel)]="filterDateTo" class="filter-input">
             </div>
             <div class="filter-group">
-                <label>Montant TTC min (DT)</label>
+                <label>Montant TTC min ({{ entreprise?.devise?.symbole || 'DT' }})</label>
                 <input type="number" [(ngModel)]="filterMontantMin" class="filter-input" placeholder="Min" min="0"
                     step="1">
             </div>
             <div class="filter-group">
-                <label>Montant TTC max (DT)</label>
+                <label>Montant TTC max ({{ entreprise?.devise?.symbole || 'DT' }})</label>
                 <input type="number" [(ngModel)]="filterMontantMax" class="filter-input" placeholder="Max" min="0"
                     step="1">
             </div>
@@ -160,10 +160,11 @@
                         <span class="text-muted" *ngIf="!bon.createur">N/A</span>
                     </td>
                     <td *ngIf="isColumnVisible('date')">{{ bon.date | date:'dd/MM/yyyy' }}</td>
-                    <td *ngIf="isColumnVisible('montantHT')" class="text-right">{{ getBonHT(bon) | number:'1.3-3' }} DT
+                    <td *ngIf="isColumnVisible('montantHT')" class="text-right">{{ getBonHT(bon) | number:'1.3-3' }} {{
+                        entreprise?.devise?.symbole || 'DT' }}
                     </td>
                     <td *ngIf="isColumnVisible('montantTTC')" class="text-right">{{ getBonTTC(bon) | number:'1.3-3' }}
-                        DT</td>
+                        {{ entreprise?.devise?.symbole || 'DT' }}</td>
                     <td class="actions-td" (click)="$event.stopPropagation()">
                         <div class="list-actions">
                             <button type="button" class="btn-action btn-action--print" (click)="printBon(bon, $event)"
@@ -202,10 +203,10 @@
                     <td *ngIf="isColumnVisible('createur')"></td>
                     <td *ngIf="isColumnVisible('date')"></td>
                     <td *ngIf="isColumnVisible('montantHT')" class="text-right footer-total">
-                        {{ getGrandTotalHT() | number:'1.3-3' }} DT
+                        {{ getGrandTotalHT() | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT' }}
                     </td>
                     <td *ngIf="isColumnVisible('montantTTC')" class="text-right footer-total">
-                        {{ getGrandTotalTTC() | number:'1.3-3' }} DT
+                        {{ getGrandTotalTTC() | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT' }}
                     </td>
                     <td></td>
                 </tr>

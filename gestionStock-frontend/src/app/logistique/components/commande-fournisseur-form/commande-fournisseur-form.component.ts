@@ -5,6 +5,8 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { LogistiqueService } from '../../services/logistique.service';
 import { BonCommandeFournisseur, Fournisseur, LigneCommande, StatutCommande, PieceFournisseur } from '../../models/logistique.models';
 import { MagasinierService } from '../../../magasinier/services/magasinier.service';
+import { EntrepriseService } from '../../../admin/services/entreprise.service';
+import { Entreprise } from '../../../admin/models/entreprise.model';
 
 @Component({
   selector: 'app-commande-fournisseur-form',
@@ -20,6 +22,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
   private router = inject(Router);
   private platformId = inject(PLATFORM_ID);
   private cdr = inject(ChangeDetectorRef);
+  private entrepriseService = inject(EntrepriseService);
 
   commande: BonCommandeFournisseur = {
     numeroCmd: 0,
@@ -48,6 +51,8 @@ export class CommandeFournisseurFormComponent implements OnInit {
   showSupplierDropdown = false;
   supplierSearchText: string = '';
   filteredFournisseurs: Fournisseur[] = [];
+  entreprise: Entreprise | null = null;
+  notification: { message: string, type: 'success' | 'error' } | null = null;
 
   isPrintView = false;
   private afterPrintListener: (() => void) | null = null;
@@ -56,6 +61,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
     if (isPlatformBrowser(this.platformId)) {
       this.loadFournisseurs();
       this.loadPieces();
+      this.loadEntreprise();
 
       if (this.logistiqueService.commandeDraft) {
         this.commande = this.logistiqueService.commandeDraft;
@@ -122,8 +128,44 @@ export class CommandeFournisseurFormComponent implements OnInit {
 
   loadPieces() {
     this.magasinierService.getPieces().subscribe(data => {
-      this.pieces = data;
+      this.pieces = this.explodePieces(data);
       this.cdr.detectChanges();
+    });
+  }
+
+  explodePieces(pieces: any[]): any[] {
+    const exploded: any[] = [];
+    pieces.forEach(p => {
+      if (p.details && p.details.length > 0) {
+        p.details.forEach((detail: any) => {
+          const attributes = detail.attributs || {};
+          const variantLabel = Object.entries(attributes)
+            .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && String(value).trim() !== '')
+            .map(([_, value]) => value)
+            .join(' - ');
+
+          exploded.push({
+            ...p,
+            designation: `${p.designation} [${variantLabel}]`,
+            detailPiece: detail,
+            originalPiece: p
+          });
+        });
+      } else {
+        exploded.push(p);
+      }
+    });
+    return exploded;
+  }
+
+  loadEntreprise() {
+    this.entrepriseService.getAllEntreprises().subscribe({
+      next: (data) => {
+        if (data && data.length > 0) {
+          this.entreprise = data[0];
+          this.cdr.detectChanges();
+        }
+      }
     });
   }
 
@@ -253,7 +295,8 @@ export class CommandeFournisseurFormComponent implements OnInit {
     }
 
     const ligne = this.commande.lignes[index];
-    ligne.piece = piece;
+    ligne.piece = piece.originalPiece || piece;
+    ligne.detailPiece = piece.detailPiece || null;
 
     ligne.qteCmd = this.calculateRecommendedQuantity(piece);
 
@@ -353,8 +396,22 @@ export class CommandeFournisseurFormComponent implements OnInit {
     this.filterFournisseurs();
   }
 
+  getPieceDesignation(ligne: any): string {
+    if (!ligne || !ligne.piece) return '—';
+    if (ligne.detailPiece) {
+      const attributes = ligne.detailPiece.attributs || {};
+      const variantLabel = Object.entries(attributes)
+        .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && String(value).trim() !== '')
+        .map(([_, value]) => value)
+        .join(' - ');
+      return `${ligne.piece.designation} [${variantLabel}]`;
+    }
+    return ligne.piece.designation;
+  }
+
   getPieceDisplayValue(index: number, ligne: any): string {
-    return this.openDropdownIndex === index ? this.pieceSearchText : (ligne.piece ? ligne.piece.designation : '');
+    if (this.openDropdownIndex === index) return this.pieceSearchText;
+    return this.getPieceDesignation(ligne);
   }
 
   onPieceSearchChange(value: string) {
@@ -447,7 +504,8 @@ export class CommandeFournisseurFormComponent implements OnInit {
           this.errors[`ligne_${i}_prix`] = `Ligne ${i + 1} : le prix ne peut pas être négatif.`;
         }
         if ((ligne.prixAchat || 0) === 0 && ligne.piece) {
-          this.errors[`ligne_${i}_prix_zero`] = `Ligne ${i + 1} (${ligne.piece?.designation}) : le prix unitaire est à 0 DT, veuillez le saisir.`;
+          const devise = this.entreprise?.devise?.symbole || 'DT';
+          this.errors[`ligne_${i}_prix_zero`] = `Ligne ${i + 1} (${ligne.piece?.designation}) : le prix unitaire est à 0 ${devise}, veuillez le saisir.`;
         }
 
 
@@ -489,7 +547,10 @@ export class CommandeFournisseurFormComponent implements OnInit {
 
     const onSaved = () => {
       this.logistiqueService.commandeDraft = null;
-      this.router.navigate(['/logistique/commandes']);
+      this.notify('Commande enregistrée avec succès !', 'success');
+      setTimeout(() => {
+        this.router.navigate(['/logistique/commandes']);
+      }, 1500);
     };
 
     const onError = (err: any) => {
@@ -501,6 +562,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         this.errors['global'] = 'Une erreur est survenue. Veuillez réessayer.';
+        this.notify('Erreur lors de l\'enregistrement', 'error');
       }
       console.error('Save error', err);
     };
@@ -546,5 +608,16 @@ export class CommandeFournisseurFormComponent implements OnInit {
       this.afterPrintListener = null;
     }
     this.router.navigate(['/logistique/commandes']);
+  }
+
+  notify(message: string, type: 'success' | 'error'): void {
+    this.notification = { message, type };
+    this.cdr.detectChanges();
+    if (isPlatformBrowser(this.platformId)) {
+      setTimeout(() => {
+        this.notification = null;
+        this.cdr.detectChanges();
+      }, 5000);
+    }
   }
 }

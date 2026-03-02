@@ -5,6 +5,8 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { LogistiqueService } from '../../../logistique/services/logistique.service';
 import { Bon, TypeBon, Fournisseur, MouvementStock, TypeMouvement, LigneMouvement, Stock } from '../../../logistique/models/logistique.models';
 import { MagasinierService } from '../../services/magasinier.service';
+import { EntrepriseService } from '../../../admin/services/entreprise.service';
+import { Entreprise } from '../../../admin/models/entreprise.model';
 
 @Component({
     selector: 'app-bon-form',
@@ -20,6 +22,10 @@ export class BonFormComponent implements OnInit {
     private router = inject(Router);
     private platformId = inject(PLATFORM_ID);
     private cdr = inject(ChangeDetectorRef);
+    private entrepriseService = inject(EntrepriseService);
+
+    entreprise: Entreprise | null = null;
+    notification: { message: string, type: 'success' | 'error' } | null = null;
 
     bon: Bon = {
         numeroBon: '',
@@ -70,6 +76,7 @@ export class BonFormComponent implements OnInit {
             this.loadPieces();
             this.loadStocks();
             this.loadSourceBons();
+            this.loadEntreprise();
 
             const id = this.route.snapshot.paramMap.get('id');
             if (id && id !== 'nouveau') {
@@ -233,15 +240,50 @@ export class BonFormComponent implements OnInit {
 
     loadPieces() {
         this.magasinierService.getPieces().subscribe(data => {
-            this.pieces = data;
+            this.pieces = this.explodePieces(data);
             this.cdr.detectChanges();
         });
+    }
+
+    explodePieces(pieces: any[]): any[] {
+        const exploded: any[] = [];
+        pieces.forEach(p => {
+            if (p.details && p.details.length > 0) {
+                p.details.forEach((detail: any) => {
+                    const attributes = detail.attributs || {};
+                    const variantLabel = Object.entries(attributes)
+                        .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && String(value).trim() !== '')
+                        .map(([_, value]) => value)
+                        .join(' - ');
+
+                    exploded.push({
+                        ...p,
+                        designation: `${p.designation} [${variantLabel}]`,
+                        stock: detail.stock,
+                        originalPiece: p,
+                        variantDetail: detail
+                    });
+                });
+            } else {
+                exploded.push(p);
+            }
+        });
+        return exploded;
     }
 
     loadStocks() {
         this.logistiqueService.getAllStocks().subscribe(data => {
             this.stocks = data;
             this.cdr.detectChanges();
+        });
+    }
+
+    loadEntreprise() {
+        this.entrepriseService.getAllEntreprises().subscribe(data => {
+            if (data && data.length > 0) {
+                this.entreprise = data[0];
+                this.cdr.detectChanges();
+            }
         });
     }
 
@@ -271,7 +313,7 @@ export class BonFormComponent implements OnInit {
     }
 
     addLigne() {
-        if (this.bon.typeBon === TypeBon.RETOUR) return; // Cannot add manual lines for returns
+        if (this.bon.typeBon === TypeBon.RETOUR) return;
 
         if (!this.mouvement.ligneMouvement) this.mouvement.ligneMouvement = [];
         this.mouvement.ligneMouvement.push({
@@ -315,7 +357,12 @@ export class BonFormComponent implements OnInit {
     selectPiece(index: number, piece: any) {
         const line = this.mouvement.ligneMouvement[index];
 
-        let stock = this.stocks.find(s => s.piece.id === piece.id);
+        let stock = piece.stock;
+
+        if (!stock) {
+            stock = this.stocks.find(s => s.piece?.id === piece.id && !s.detailPiece);
+        }
+
         if (!stock) {
             stock = { piece: piece, quantite: 0, type: 'DISPONIBLE' } as any;
         }
@@ -379,8 +426,22 @@ export class BonFormComponent implements OnInit {
         return this.showSupplierDropdown ? this.supplierSearchText : (this.bon.fournisseur ? this.bon.fournisseur.nom : '');
     }
 
+    getStockDesignation(stock: any): string {
+        if (!stock || !stock.piece) return '—';
+        if (stock.detailPiece) {
+            const attributes = stock.detailPiece.attributs || {};
+            const variantLabel = Object.entries(attributes)
+                .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && String(value).trim() !== '')
+                .map(([_, value]) => value)
+                .join(' - ');
+            return `${stock.piece.designation} [${variantLabel}]`;
+        }
+        return stock.piece.designation;
+    }
+
     getPieceDisplayValue(index: number, ligne: any): string {
-        return this.openDropdownIndex === index ? this.pieceSearchText : (ligne.stock?.piece ? ligne.stock.piece.designation : '');
+        if (this.openDropdownIndex === index) return this.pieceSearchText;
+        return this.getStockDesignation(ligne.stock);
     }
 
     get totalBrut(): number {
@@ -540,6 +601,7 @@ export class BonFormComponent implements OnInit {
                     prixHTVA: l.prixHTVA ?? 0,
                     tauxTVA: l.tauxTVA ?? 19,
                     stock: {
+                        id: l.stock.id ?? null,
                         piece: {
                             id: l.stock.piece!.id,
                             codeBarre: l.stock.piece!.codeBarre
@@ -550,11 +612,13 @@ export class BonFormComponent implements OnInit {
 
         const onSuccess = () => {
             this.loading = false;
-            this.router.navigate(['/magasinier/bons']);
+            this.notify('Bon enregistré avec succès !', 'success');
+            setTimeout(() => {
+                this.router.navigate(['/magasinier/bons']);
+            }, 1500);
         };
 
         const onError = (err: any) => {
-            // Si c'est un nouveau bon et que le mouvement a échoué, on supprime le bon orphelin
             if (isNewBon) {
                 console.warn('Movement failed, cleaning up orphan Bon ID:', bonId);
                 this.logistiqueService.deleteBon(bonId).subscribe({
@@ -584,12 +648,22 @@ export class BonFormComponent implements OnInit {
         const backendMessage = err.error?.message || (typeof err.error === 'string' ? err.error : null);
         this.errors['global'] = backendMessage || 'Une erreur est survenue lors de la communication avec le serveur.';
 
-        // Affichage immédiat du message
         this.cdr.detectChanges();
         window.scrollTo({ top: 0, behavior: 'auto' });
     }
 
     cancel() {
         this.router.navigate(['/magasinier/bons']);
+    }
+
+    notify(message: string, type: 'success' | 'error'): void {
+        this.notification = { message, type };
+        this.cdr.detectChanges();
+        if (isPlatformBrowser(this.platformId)) {
+            setTimeout(() => {
+                this.notification = null;
+                this.cdr.detectChanges();
+            }, 5000);
+        }
     }
 }

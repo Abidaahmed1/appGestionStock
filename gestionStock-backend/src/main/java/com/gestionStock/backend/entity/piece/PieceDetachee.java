@@ -1,6 +1,8 @@
 package com.gestionStock.backend.entity.piece;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -13,10 +15,15 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.*;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Type;
+import org.hibernate.type.SqlTypes;
+import com.gestionStock.backend.entity.entreprise.Entreprise;
+
 @ToString(exclude = { "stock", "produitsAssocies" })
 @Getter
 @Setter
-@EqualsAndHashCode(of = "codeBarre")
+@EqualsAndHashCode(of = "id")
 @Entity
 public class PieceDetachee {
 	public PieceDetachee() {
@@ -25,6 +32,10 @@ public class PieceDetachee {
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private Long id;
+
+	@ManyToOne
+	@JoinColumn(name = "entreprise_id")
+	private Entreprise entreprise;
 
 	@NotBlank(message = "Le code barre est obligatoire")
 	@Column(unique = true, nullable = false)
@@ -55,8 +66,8 @@ public class PieceDetachee {
 	private String imageUrl;
 
 	@JsonIgnoreProperties("piece")
-	@OneToOne(mappedBy = "piece")
-	private Stock stock;
+	@OneToMany(mappedBy = "piece", cascade = CascadeType.ALL, orphanRemoval = true)
+	private Set<Stock> stocks = new HashSet<>();
 	@JsonIgnoreProperties("pieces")
 	@ManyToMany(mappedBy = "pieces", cascade = { CascadeType.PERSIST, CascadeType.MERGE })
 	private Set<ProduitFini> produitsAssocies = new HashSet<>();
@@ -64,4 +75,7 @@ public class PieceDetachee {
 	@JoinColumn(name = "categorie_id")
 	private Categorie categorie;
 
+	@JsonIgnoreProperties("piece")
+	@OneToMany(mappedBy = "piece", cascade = CascadeType.ALL, orphanRemoval = true)
+	private Set<DetailPiece> details = new HashSet<>();
 }

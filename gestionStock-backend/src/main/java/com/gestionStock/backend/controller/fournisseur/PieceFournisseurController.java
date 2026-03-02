@@ -18,19 +18,19 @@ public class PieceFournisseurController {
     private final PieceFournisseurService service;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE')")
+    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE')")
     public List<PieceFournisseur> getAll() {
         return service.getAll();
     }
 
     @GetMapping("/fournisseur/{fournisseurId}")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE')")
+    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE')")
     public List<PieceFournisseur> getByFournisseur(@PathVariable Long fournisseurId) {
         return service.getByFournisseur(fournisseurId);
     }
 
     @GetMapping("/pieces")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE')")
+    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE')")
     public List<PieceFournisseur> getByPieces(@RequestParam List<Long> ids) {
         return service.getByPieceIds(ids);
     }

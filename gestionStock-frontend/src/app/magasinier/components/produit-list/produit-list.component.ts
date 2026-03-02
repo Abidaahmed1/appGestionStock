@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { KeycloakService } from 'keycloak-angular';
 import { MagasinierService } from '../../services/magasinier.service';
 import { ProduitFini, PieceDetachee } from '../../models/magasinier.models';
+import { EntrepriseService } from '../../../admin/services/entreprise.service';
+import { Entreprise } from '../../../admin/models/entreprise.model';
 
 @Component({
     selector: 'app-produit-list',
@@ -20,6 +22,7 @@ export class ProduitListComponent implements OnInit {
     notification: { message: string, type: 'success' | 'error' } | null = null;
     searchTerm: string = '';
     searchCategory: string = 'all';
+    entreprise: Entreprise | null = null;
     userRoles: string[] = [];
     selectedFile: File | null = null;
     imagePreview: string | null = null;
@@ -41,6 +44,7 @@ export class ProduitListComponent implements OnInit {
     private keycloak = inject(KeycloakService);
     private platformId = inject(PLATFORM_ID);
     private cdr = inject(ChangeDetectorRef);
+    private entrepriseService = inject(EntrepriseService);
 
     constructor(private magasinierService: MagasinierService) { }
 
@@ -49,6 +53,7 @@ export class ProduitListComponent implements OnInit {
             this.userRoles = this.keycloak.getUserRoles() || [];
             this.cdr.detectChanges();
             this.loadProduits();
+            this.loadEntreprise();
         }
     }
 
@@ -122,6 +127,17 @@ export class ProduitListComponent implements OnInit {
             error: (err) => {
                 this.notify('Erreur lors du chargement des produits', 'error');
                 this.cdr.detectChanges();
+            }
+        });
+    }
+
+    loadEntreprise(): void {
+        this.entrepriseService.getAllEntreprises().subscribe({
+            next: (data) => {
+                if (data && data.length > 0) {
+                    this.entreprise = data[0];
+                    this.cdr.detectChanges();
+                }
             }
         });
     }

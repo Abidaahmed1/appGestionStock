@@ -35,8 +35,6 @@ public class ProduitFiniService {
         ProduitFini produit = produitRepo.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Produit non trouvé"));
 
-        // Un produit fini peut être archivé si toutes ses pièces associées sont
-        // archivées
         boolean allPiecesArchived = produit.getPieces().isEmpty() ||
                 produit.getPieces().stream().allMatch(PieceDetachee::isArchivee);
 

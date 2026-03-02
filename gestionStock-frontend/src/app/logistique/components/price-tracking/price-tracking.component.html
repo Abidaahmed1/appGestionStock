@@ -38,8 +38,10 @@
             <tbody>
                 <tr *ngFor="let stats of filteredStats">
                     <td class="ref-col font-bold">{{ stats.pieceName }}</td>
-                    <td class="text-right">{{ stats.lastPrice | number:'1.3-3' }} DT</td>
-                    <td class="text-right">{{ stats.avgPrice | number:'1.3-3' }} DT</td>
+                    <td class="text-right">{{ stats.lastPrice | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT'
+                        }}</td>
+                    <td class="text-right">{{ stats.avgPrice | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT'
+                        }}</td>
                     <td class="text-center">
                         <span class="trend-badge" [ngClass]="getTrendClass(stats.trend)">
                             <ng-container *ngIf="stats.trend > 0">
