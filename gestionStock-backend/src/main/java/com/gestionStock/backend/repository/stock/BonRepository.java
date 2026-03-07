@@ -54,6 +54,11 @@ public interface BonRepository extends JpaRepository<Bon, Long> {
         java.util.List<String> findNumeroBonByPrefix(
                         @org.springframework.data.repository.query.Param("prefix") String prefix);
 
+        @org.springframework.data.jpa.repository.Query("SELECT b.numeroBon FROM Bon b WHERE b.numeroBon LIKE :prefix% AND b.entreprise = :entreprise ORDER BY b.numeroBon DESC")
+        java.util.List<String> findNumeroBonByPrefixAndEntreprise(
+                        @org.springframework.data.repository.query.Param("prefix") String prefix,
+                        @org.springframework.data.repository.query.Param("entreprise") Entreprise entreprise);
+
         boolean existsByNumeroBon(String numeroBon);
 
         java.util.List<Bon> findByBonOrigineId(Long bonOrigineId);

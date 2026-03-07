@@ -78,12 +78,11 @@ export class CatalogueLayoutComponent implements OnInit {
     }
 
     loadEntreprise(): void {
-        this.entrepriseService.getAllEntreprises().subscribe({
+        this.entrepriseService.getCurrentEntreprise().subscribe({
             next: (data) => {
-                if (data && data.length > 0) {
-                    this.entreprise = data[0];
-                }
-            }
+                this.entreprise = data;
+            },
+            error: (err) => console.error('Erreur chargement entreprise:', err)
         });
     }
 

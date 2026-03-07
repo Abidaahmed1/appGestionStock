@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { LogistiqueService } from '../../logistique/services/logistique.service';
 import { Bon } from '../../logistique/models/logistique.models';
+import { EntrepriseService } from '../../admin/services/entreprise.service';
+import { Entreprise } from '../../admin/models/entreprise.model';
 
 @Component({
     selector: 'app-bon-history',
@@ -20,6 +22,7 @@ export class BonHistoryComponent implements OnInit {
     showReactivateConfirm = false;
     bonToReactivate: Bon | null = null;
     loading = false;
+    entreprise: Entreprise | null = null;
 
     // Advanced filters
     showAdvancedFilter = false;
@@ -50,9 +53,11 @@ export class BonHistoryComponent implements OnInit {
 
     private logistiqueService = inject(LogistiqueService);
     private router = inject(Router);
+    private entrepriseService = inject(EntrepriseService);
 
     ngOnInit(): void {
         this.loadHistory();
+        this.loadEntreprise();
     }
 
     loadHistory(): void {
@@ -66,6 +71,24 @@ export class BonHistoryComponent implements OnInit {
             error: (err) => {
                 console.error('Error loading bon history', err);
                 this.loading = false;
+            }
+        });
+    }
+
+    loadEntreprise(): void {
+        this.entrepriseService.getCurrentEntreprise().subscribe({
+            next: (data) => {
+                this.entreprise = data;
+            },
+            error: () => {
+                // Fallback: prendre la première entreprise si /current n'est pas disponible
+                this.entrepriseService.getAllEntreprises().subscribe({
+                    next: (list) => {
+                        if (list && list.length > 0) {
+                            this.entreprise = list[0];
+                        }
+                    }
+                });
             }
         });
     }

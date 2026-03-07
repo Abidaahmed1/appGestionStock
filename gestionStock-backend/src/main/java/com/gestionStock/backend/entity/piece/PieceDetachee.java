@@ -1,8 +1,7 @@
 package com.gestionStock.backend.entity.piece;
 
-import java.util.HashMap;
+
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -23,7 +22,8 @@ import com.gestionStock.backend.entity.entreprise.Entreprise;
 @ToString(exclude = { "stock", "produitsAssocies" })
 @Getter
 @Setter
-@EqualsAndHashCode(of = "id")
+//@EqualsAndHashCode(of = "id")
+@EqualsAndHashCode(of = {"reference", "entreprise"})
 @Entity
 public class PieceDetachee {
 	public PieceDetachee() {
@@ -38,7 +38,6 @@ public class PieceDetachee {
 	private Entreprise entreprise;
 
 	@NotBlank(message = "Le code barre est obligatoire")
-	@Column(unique = true, nullable = false)
 	private String codeBarre;
 
 	private boolean archivee = false;

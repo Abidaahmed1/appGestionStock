@@ -40,6 +40,10 @@ export class ParametreService {
 
     constructor(private http: HttpClient) { }
 
+    getCurrentParametre(): Observable<Parametre> {
+        return this.http.get<Parametre>(`${this.apiUrl}/current`);
+    }
+
     getParametreByEntreprise(entrepriseId: number): Observable<Parametre> {
         return this.http.get<Parametre>(`${this.apiUrl}/entreprise/${entrepriseId}`);
     }

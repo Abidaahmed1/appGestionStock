@@ -143,7 +143,7 @@
                     </td>
                     <td *ngIf="isColumnVisible('date')">{{ bon.date | date:'dd/MM/yyyy' }}</td>
                     <td *ngIf="isColumnVisible('montant')" class="text-right">
-                        {{ getGrandTotalTTC(bon) | number:'1.3-3' }} DT
+                        {{ getGrandTotalTTC(bon) | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT' }}
                     </td>
                     <td *ngIf="isColumnVisible('statut')" class="statut-td">
                         <div class="status-cell">

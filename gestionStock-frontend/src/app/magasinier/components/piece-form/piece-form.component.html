@@ -329,11 +329,13 @@
                             <label class="odoo-label">Seuil Minimum <span class="attribute-required">*</span></label>
                             <div class="odoo-value">
                                 <input type="number" [(ngModel)]="newPiece.seuilMinimum" name="seuilMinimum"
-                                    #smin="ngModel" required min="0" class="odoo-input">
+                                    #smin="ngModel" required min="1" class="odoo-input"
+                                    [class.is-invalid]="smin.invalid && (smin.dirty || smin.touched || pieceForm.submitted)">
                                 <div class="error-msg"
                                     *ngIf="smin.invalid && (smin.dirty || smin.touched || pieceForm.submitted)">
                                     <span *ngIf="smin.errors?.['required']">Le seuil minimum est obligatoire.</span>
-                                    <span *ngIf="smin.errors?.['min']">Le seuil ne peut pas être négatif.</span>
+                                    <span *ngIf="smin.errors?.['min']">Le seuil doit être strictement positif (>
+                                        0).</span>
                                 </div>
                             </div>
                         </div>
@@ -343,11 +345,13 @@
                             <label class="odoo-label">Seuil Maximum <span class="attribute-required">*</span></label>
                             <div class="odoo-value">
                                 <input type="number" [(ngModel)]="newPiece.seuilMaximum" name="seuilMaximum"
-                                    #smax="ngModel" required min="0" class="odoo-input"
-                                    [class.is-invalid]="newPiece.seuilMaximum < newPiece.seuilMinimum">
+                                    #smax="ngModel" required min="1" class="odoo-input"
+                                    [class.is-invalid]="(smax.invalid || newPiece.seuilMaximum < newPiece.seuilMinimum) && (smax.dirty || smax.touched || pieceForm.submitted)">
                                 <div class="error-msg"
                                     *ngIf="(smax.invalid || newPiece.seuilMaximum < newPiece.seuilMinimum) && (smax.dirty || smax.touched || pieceForm.submitted)">
                                     <span *ngIf="smax.errors?.['required']">Le seuil maximum est obligatoire.</span>
+                                    <span *ngIf="smax.errors?.['min']">Le seuil doit être strictement positif (>
+                                        0).</span>
                                     <span *ngIf="!smax.errors && newPiece.seuilMaximum < newPiece.seuilMinimum">Doit
                                         être >= au seuil min.</span>
                                 </div>

@@ -58,11 +58,12 @@ public class PieceDetacheeService {
     }
 
     public PieceDetachee addPiece(PieceDetachee piece) {
-        if (this.pieceRepo.existsByCodeBarre(piece.getCodeBarre())) {
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
+        if (entreprise != null && this.pieceRepo.existsByCodeBarreAndEntreprise(piece.getCodeBarre(), entreprise)) {
             throw new PieceException("Une pièce avec ce code barre '" + piece.getCodeBarre() + "' existe déjà.");
         }
 
-        piece.setEntreprise(userService.getCurrentUserEntreprise());
+        piece.setEntreprise(entreprise);
 
         handleCategory(piece);
 
@@ -117,7 +118,9 @@ public class PieceDetacheeService {
     }
 
     public void delete(String code) {
-        PieceDetachee p = this.pieceRepo.findByCodeBarre(code);
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
+        PieceDetachee p = (entreprise != null) ? this.pieceRepo.findByCodeBarreAndEntreprise(code, entreprise)
+                : this.pieceRepo.findByCodeBarre(code);
         if (p == null)
             return;
 
@@ -133,6 +136,10 @@ public class PieceDetacheeService {
     }
 
     public PieceDetachee findByReference(String reference) {
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
+        if (entreprise != null) {
+            return pieceRepo.findFirstByReferenceAndEntrepriseOrderByIdDesc(reference, entreprise);
+        }
         return pieceRepo.findFirstByReferenceOrderByIdDesc(reference);
     }
 
@@ -140,7 +147,13 @@ public class PieceDetacheeService {
         PieceDetachee existingPiece = pieceRepo.findById(id)
                 .orElseThrow(() -> new PieceException("Pièce non trouvée avec l'ID : " + id));
 
-        PieceDetachee pieceWithSameCode = pieceRepo.findByCodeBarre(piece.getCodeBarre());
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = existingPiece.getEntreprise();
+        if (entreprise == null) {
+            entreprise = userService.getCurrentUserEntreprise();
+            existingPiece.setEntreprise(entreprise);
+        }
+
+        PieceDetachee pieceWithSameCode = pieceRepo.findByCodeBarreAndEntreprise(piece.getCodeBarre(), entreprise);
         if (pieceWithSameCode != null && !pieceWithSameCode.getId().equals(id)) {
             throw new PieceException(
                     "Le code barre '" + piece.getCodeBarre() + "' est déjà utilisé par une autre pièce.");

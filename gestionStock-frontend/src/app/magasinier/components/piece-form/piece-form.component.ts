@@ -58,13 +58,12 @@ export class PieceFormComponent implements OnInit, OnChanges {
     }
 
     loadEntreprise() {
-        this.entrepriseService.getAllEntreprises().subscribe({
+        this.entrepriseService.getCurrentEntreprise().subscribe({
             next: (data) => {
-                if (data && data.length > 0) {
-                    this.entreprise = data[0];
-                    this.cdr.detectChanges();
-                }
-            }
+                this.entreprise = data;
+                this.cdr.detectChanges();
+            },
+            error: (err) => console.error('Erreur chargement entreprise:', err)
         });
     }
 

@@ -117,7 +117,8 @@ public class BonService {
                 "ROLE_RESPONSABLE_LOGISTIQUE".equals(role);
     }
 
-    private synchronized String generateNextNumeroBon(TypeBon type) {
+    private synchronized String generateNextNumeroBon(TypeBon type,
+            com.gestionStock.backend.entity.entreprise.Entreprise entreprise) {
         String prefix = "";
         if (type == TypeBon.ENTREE)
             prefix = "BE";
@@ -133,7 +134,7 @@ public class BonService {
         String mm = String.format("%02d", now.getMonthValue());
 
         String basePrefix = prefix + yy + mm + "00";
-        List<String> matches = bonRepo.findNumeroBonByPrefix(basePrefix);
+        List<String> matches = bonRepo.findNumeroBonByPrefixAndEntreprise(basePrefix, entreprise);
 
         int sequence = 1;
         if (!matches.isEmpty()) {
@@ -151,11 +152,12 @@ public class BonService {
 
     public Bon save(Bon bon) {
         boolean isNew = bon.getId() == null || bon.getId().equals(0L);
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
 
         if (isNew) {
             bon.setId(null);
             if (bon.getNumeroBon() == null || bon.getNumeroBon().isEmpty() || bon.getNumeroBon().equals("0")) {
-                bon.setNumeroBon(generateNextNumeroBon(bon.getTypeBon()));
+                bon.setNumeroBon(generateNextNumeroBon(bon.getTypeBon(), entreprise));
             } else if (bonRepo.existsByNumeroBon(bon.getNumeroBon())) {
                 throw new IllegalStateException("Un bon avec ce numéro (" + bon.getNumeroBon() + ") existe déjà");
             }

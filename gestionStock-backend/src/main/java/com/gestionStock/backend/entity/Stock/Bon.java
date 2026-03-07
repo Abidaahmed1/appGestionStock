@@ -26,6 +26,9 @@ import com.gestionStock.backend.entity.entreprise.Entreprise;
 @Setter
 @ToString(exclude = "mouvement")
 @EqualsAndHashCode(of = "numeroBon")
+@jakarta.persistence.Table(uniqueConstraints = {
+		@jakarta.persistence.UniqueConstraint(columnNames = { "numeroBon", "entreprise_id" })
+})
 public class Bon {
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
@@ -35,7 +38,7 @@ public class Bon {
 	@JoinColumn(name = "entreprise_id")
 	private Entreprise entreprise;
 	private LocalDate date;
-	@Column(unique = true, nullable = false)
+	@Column(nullable = false)
 	private String numeroBon;
 	@Enumerated(EnumType.STRING)
 	private TypeBon typeBon;

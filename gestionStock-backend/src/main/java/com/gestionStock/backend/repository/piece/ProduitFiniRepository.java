@@ -15,5 +15,5 @@ public interface ProduitFiniRepository extends JpaRepository<ProduitFini, Long> 
 
 	List<ProduitFini> findByEntreprise(Entreprise entreprise);
 
-	boolean existsByCode(String code);
+	boolean existsByCodeAndEntreprise(String code, Entreprise entreprise);
 }

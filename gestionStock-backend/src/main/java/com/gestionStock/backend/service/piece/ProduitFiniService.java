@@ -31,10 +31,11 @@ public class ProduitFiniService {
     }
 
     public ProduitFini save(ProduitFini produit) {
-        if (produitRepo.existsByCode(produit.getCode())) {
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
+        if (entreprise != null && produitRepo.existsByCodeAndEntreprise(produit.getCode(), entreprise)) {
             throw new ProduitException("Un produit avec ce code existe déjà.");
         }
-        produit.setEntreprise(userService.getCurrentUserEntreprise());
+        produit.setEntreprise(entreprise);
         return produitRepo.save(produit);
     }
 
@@ -57,7 +58,13 @@ public class ProduitFiniService {
     public ProduitFini update(Long id, ProduitFini produit) {
         ProduitFini existing = produitRepo.findById(id).orElseThrow(() -> new ProduitException("Produit non trouvé"));
 
-        if (!existing.getCode().equals(produit.getCode()) && produitRepo.existsByCode(produit.getCode())) {
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = existing.getEntreprise();
+        if (entreprise == null) {
+            entreprise = userService.getCurrentUserEntreprise();
+        }
+
+        if (!existing.getCode().equals(produit.getCode())
+                && produitRepo.existsByCodeAndEntreprise(produit.getCode(), entreprise)) {
             throw new ProduitException("Un autre produit utilise déjà ce code.");
         }
 

@@ -3,7 +3,6 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { ParametreService, Parametre, ChampPersonnalise, TypeChamp } from '../../services/parametre.service';
-import { EntrepriseService } from '../../services/entreprise.service';
 
 @Component({
     selector: 'app-piece-configuration',
@@ -50,7 +49,6 @@ export class PieceConfigurationComponent implements OnInit {
 
     constructor(
         private parametreService: ParametreService,
-        private entrepriseService: EntrepriseService,
         private router: Router,
         private ngZone: NgZone,
         @Inject(PLATFORM_ID) private platformId: Object
@@ -65,23 +63,7 @@ export class PieceConfigurationComponent implements OnInit {
     }
 
     private initialiserDonnees(): void {
-        this.entrepriseService.getAllEntreprises().subscribe({
-            next: (data) => {
-                if (data && data.length > 0) {
-                    this.entrepriseId = data[0].id!;
-                    this.loadParametres();
-                } else {
-                    this.loading = false;
-                }
-            },
-            error: (err) => {
-                console.error('Erreur entreprises', err);
-                this.loading = false;
-                if (err.status !== 401) {
-                    this.errorMessage = "Impossible de récupérer les informations de l'entreprise.";
-                }
-            }
-        });
+        this.loadParametres();
     }
 
     loadParametres(): void {
@@ -99,9 +81,12 @@ export class PieceConfigurationComponent implements OnInit {
             }, 5000);
         });
 
-        this.parametreService.getParametreByEntreprise(this.entrepriseId).subscribe({
+        // Utilise /api/parametres/current : le backend détermine l'entreprise
+        // du user connecté automatiquement (via getCurrentUserEntreprise())
+        this.parametreService.getCurrentParametre().subscribe({
             next: (data) => {
                 this.parametre = data;
+                this.entrepriseId = data.entreprise?.id ?? this.entrepriseId;
                 this.champs = data.champsPersonnalises.map(c => ({
                     ...c,
                     options: c.options || []

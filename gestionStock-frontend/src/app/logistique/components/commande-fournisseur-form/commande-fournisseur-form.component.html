@@ -31,9 +31,7 @@
                     *ngIf="isEditMode && commande.statut !== 'ANNULEE'">
                     IMPRIMER
                 </button>
-                <button (click)="annulerCommande()" class="btn btn-outline btn-danger" *ngIf="isEditable && isEditMode">
-                    ANNULER LA COMMANDE
-                </button>
+
                 <button (click)="cancel()" class="btn btn-outline">RETOUR</button>
             </div>
             <div class="status-steps">

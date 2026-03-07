@@ -315,11 +315,12 @@ export class BonFormComponent implements OnInit {
     }
 
     loadEntreprise() {
-        this.entrepriseService.getAllEntreprises().subscribe(data => {
-            if (data && data.length > 0) {
-                this.entreprise = data[0];
+        this.entrepriseService.getCurrentEntreprise().subscribe({
+            next: (data) => {
+                this.entreprise = data;
                 this.cdr.detectChanges();
-            }
+            },
+            error: (err) => console.error('Erreur chargement entreprise:', err)
         });
     }
 

@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.gestionStock.backend.entity.user.User;
+import com.gestionStock.backend.entity.entreprise.Entreprise;
+import jakarta.persistence.JoinColumn;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -27,15 +29,22 @@ import lombok.Setter;
 @Getter
 @Setter
 @EqualsAndHashCode(of = "numeroCmd")
+@jakarta.persistence.Table(uniqueConstraints = {
+		@jakarta.persistence.UniqueConstraint(columnNames = { "numeroCmd", "entreprise_id" })
+})
 public class BonCommandeFournisseur {
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
 
 	private Long id;
-	@Column(unique = true)
+	@Column
 	private Long numeroCmd;
 	private LocalDateTime dateCmd;
 	private LocalDate dateArrivee;
+
+	@ManyToOne
+	@JoinColumn(name = "entreprise_id")
+	private Entreprise entreprise;
 
 	@ManyToOne
 	private User createur;

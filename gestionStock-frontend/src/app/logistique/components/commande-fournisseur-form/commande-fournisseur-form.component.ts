@@ -94,7 +94,6 @@ export class CommandeFournisseurFormComponent implements OnInit {
           }
         } else {
           if (!this.logistiqueService.commandeDraft) {
-            // Initialize a NEW order with the calculated sequence
             this.commande = this.initNewCommande();
           }
         }
@@ -162,12 +161,20 @@ export class CommandeFournisseurFormComponent implements OnInit {
   }
 
   loadEntreprise() {
-    this.entrepriseService.getAllEntreprises().subscribe({
+    this.entrepriseService.getCurrentEntreprise().subscribe({
       next: (data) => {
-        if (data && data.length > 0) {
-          this.entreprise = data[0];
-          this.cdr.detectChanges();
-        }
+        this.entreprise = data;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.entrepriseService.getAllEntreprises().subscribe({
+          next: (list) => {
+            if (list && list.length > 0) {
+              this.entreprise = list[0];
+              this.cdr.detectChanges();
+            }
+          }
+        });
       }
     });
   }

@@ -30,11 +30,18 @@ export class PriceTrackingComponent implements OnInit {
     }
 
     loadEntreprise() {
-        this.entrepriseService.getAllEntreprises().subscribe({
+        this.entrepriseService.getCurrentEntreprise().subscribe({
             next: (data) => {
-                if (data && data.length > 0) {
-                    this.entreprise = data[0];
-                }
+                this.entreprise = data;
+            },
+            error: () => {
+                this.entrepriseService.getAllEntreprises().subscribe({
+                    next: (list) => {
+                        if (list && list.length > 0) {
+                            this.entreprise = list[0];
+                        }
+                    }
+                });
             }
         });
     }

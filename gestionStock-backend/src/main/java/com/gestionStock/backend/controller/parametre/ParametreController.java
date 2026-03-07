@@ -26,6 +26,13 @@ public class ParametreController {
         return ResponseEntity.ok(parametreService.getAllParametres());
     }
 
+    @GetMapping("/current")
+    public ResponseEntity<Parametre> getCurrentParametre() {
+        return parametreService.getCurrentParametre()
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Parametre> getParametreById(@PathVariable Long id) {
         return parametreService.getParametreById(id)

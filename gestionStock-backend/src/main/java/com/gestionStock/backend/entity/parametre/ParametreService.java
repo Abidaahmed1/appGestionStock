@@ -32,6 +32,21 @@ public class ParametreService {
                 .orElse(List.of());
     }
 
+    public Optional<Parametre> getCurrentParametre() {
+        Entreprise entreprise = userService.getCurrentUserEntreprise();
+        if (entreprise == null) {
+            return Optional.empty();
+        }
+        Optional<Parametre> opt = parametreRepository.findByEntrepriseId(entreprise.getId());
+        if (opt.isEmpty()) {
+            Parametre newParam = new Parametre();
+            newParam.setEntreprise(entreprise);
+            newParam.setChampsPersonnalises(new java.util.ArrayList<>());
+            return Optional.of(parametreRepository.save(newParam));
+        }
+        return opt;
+    }
+
     public Optional<Parametre> getParametreById(Long id) {
         return parametreRepository.findById(id);
     }

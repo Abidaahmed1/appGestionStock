@@ -15,6 +15,7 @@ import com.gestionStock.backend.entity.entreprise.Entreprise;
 @Entity
 @Getter
 @Setter
+@EqualsAndHashCode(of = {"code", "entreprise"})
 public class ProduitFini {
 	public ProduitFini() {
 	}
@@ -29,7 +30,8 @@ public class ProduitFini {
 
 	@NotBlank(message = "Le code produit est obligatoire")
 	@Pattern(regexp = "^PF-.*", message = "Le code du produit fini doit commencer par PF-")
-	@Column(unique = true, nullable = false)
+	//@Column(unique = true, nullable = false)
+	@Column( nullable = false)
 	private String code;
 
 	@NotBlank(message = "La désignation est obligatoire")

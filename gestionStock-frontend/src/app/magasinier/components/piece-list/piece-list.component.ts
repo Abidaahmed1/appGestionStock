@@ -131,13 +131,12 @@ export class PieceListComponent implements OnInit {
     }
 
     loadEntreprise(): void {
-        this.entrepriseService.getAllEntreprises().subscribe({
+        this.entrepriseService.getCurrentEntreprise().subscribe({
             next: (data) => {
-                if (data && data.length > 0) {
-                    this.entreprise = data[0];
-                    this.cdr.detectChanges();
-                }
-            }
+                this.entreprise = data;
+                this.cdr.detectChanges();
+            },
+            error: (err) => console.error('Erreur chargement entreprise:', err)
         });
     }
 
@@ -198,26 +197,16 @@ export class PieceListComponent implements OnInit {
 
 
     loadParametres(): void {
-        const entrepriseId = this.pieces.length > 0 ? this.pieces[0].entreprise?.id : null;
-        if (entrepriseId) {
-            this.magasinierService.getParametresByEntreprise(entrepriseId).subscribe({
-                next: (data) => {
-                    this.parametres = data;
+
+        this.magasinierService.getAllParametres().subscribe({
+            next: (data) => {
+                if (data && data.length > 0) {
+                    this.parametres = data[0];
                     this.cdr.detectChanges();
-                },
-                error: (err) => console.error('Error loading specific parameters:', err)
-            });
-        } else {
-            this.magasinierService.getAllParametres().subscribe({
-                next: (data) => {
-                    if (data && data.length > 0) {
-                        this.parametres = data[0];
-                        this.cdr.detectChanges();
-                    }
-                },
-                error: (err) => console.error('Error loading all parameters:', err)
-            });
-        }
+                }
+            },
+            error: (err) => console.error('Erreur chargement paramètres:', err)
+        });
     }
 
     openCreateModal(): void {

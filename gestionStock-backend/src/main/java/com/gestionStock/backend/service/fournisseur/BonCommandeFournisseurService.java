@@ -55,7 +55,7 @@ public class BonCommandeFournisseurService {
                             a.getAuthority().equals("ROLE_AUDITEUR"));
 
             if (hasFullAccess) {
-                return repository.findByCreateurEntreprise(entreprise);
+                return repository.findByEntreprise(entreprise);
             } else {
                 return repository.findByCreateurId(userId);
             }
@@ -70,7 +70,6 @@ public class BonCommandeFournisseurService {
         com.gestionStock.backend.entity.entreprise.Entreprise currentEntreprise = userService
                 .getCurrentUserEntreprise();
 
-        // Check enterprise isolation
         if (bon.getCreateur() != null && bon.getCreateur().getEntreprise() != null) {
             if (!bon.getCreateur().getEntreprise().equals(currentEntreprise)) {
                 throw new org.springframework.security.access.AccessDeniedException(
@@ -114,7 +113,8 @@ public class BonCommandeFournisseurService {
         return false;
     }
 
-    private long generateNumeroCmd(long minExclusive) {
+    private long generateNumeroCmd(long minExclusive,
+            com.gestionStock.backend.entity.entreprise.Entreprise entreprise) {
         LocalDate now = LocalDate.now();
         String aa = String.valueOf(now.getYear()).substring(2);
         String mm = String.format("%02d", now.getMonthValue());
@@ -122,7 +122,7 @@ public class BonCommandeFournisseurService {
         long rangeStart = Long.parseLong(aa + mm + "00001");
         long rangeEnd = Long.parseLong(aa + mm + "99999");
 
-        Long maxExisting = repository.findMaxNumeroCmdBetween(rangeStart, rangeEnd);
+        Long maxExisting = repository.findMaxNumeroCmdBetweenAndEntreprise(rangeStart, rangeEnd, entreprise);
         long next = maxExisting == null ? rangeStart : (maxExisting + 1);
         if (minExclusive > 0 && next <= minExclusive) {
             next = minExclusive + 1;
@@ -133,8 +133,8 @@ public class BonCommandeFournisseurService {
         return next;
     }
 
-    private long generateNumeroCmd() {
-        return generateNumeroCmd(0L);
+    private long generateNumeroCmd(com.gestionStock.backend.entity.entreprise.Entreprise entreprise) {
+        return generateNumeroCmd(0L, entreprise);
     }
 
     private void validateBon(BonCommandeFournisseur bon) {
@@ -169,8 +169,10 @@ public class BonCommandeFournisseurService {
 
         if (isNew) {
             bon.setDateCmd(LocalDateTime.now());
+            com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
+            bon.setEntreprise(entreprise);
             synchronized (NUMERO_CMD_LOCK) {
-                bon.setNumeroCmd(generateNumeroCmd());
+                bon.setNumeroCmd(generateNumeroCmd(entreprise));
             }
             if (bon.getStatut() == null) {
                 bon.setStatut(StatutCommande.EN_ATTENTE);
@@ -242,8 +244,10 @@ public class BonCommandeFournisseurService {
                     }
 
                     long lastNumero = Optional.ofNullable(bon.getNumeroCmd()).orElse(0L);
+                    com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService
+                            .getCurrentUserEntreprise();
                     synchronized (NUMERO_CMD_LOCK) {
-                        bon.setNumeroCmd(generateNumeroCmd(lastNumero));
+                        bon.setNumeroCmd(generateNumeroCmd(lastNumero, entreprise));
                     }
                     System.err.println("[BonCommandeFournisseur] Conflit d'unicité (tentative " + attempt + "/"
                             + maxAttempts + "), retry avec numeroCmd=" + bon.getNumeroCmd());
