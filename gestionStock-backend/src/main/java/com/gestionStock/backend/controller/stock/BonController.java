@@ -21,25 +21,31 @@ public class BonController {
     private final BonService bonService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE', 'MAGASINIER', 'AUDITEUR')")
     public ResponseEntity<List<Bon>> getAll() {
         return ResponseEntity.ok(bonService.getAll());
     }
 
+    @GetMapping("/history")
+    @PreAuthorize("hasRole('AUDITEUR')")
+    public ResponseEntity<List<Bon>> getHistory() {
+        return ResponseEntity.ok(bonService.getAllArchived());
+    }
+
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE', 'MAGASINIER', 'AUDITEUR')")
     public ResponseEntity<Bon> getById(@PathVariable Long id) {
         return ResponseEntity.ok(bonService.getById(id));
     }
 
     @GetMapping("/type/{typeBon}")
-    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE', 'MAGASINIER', 'AUDITEUR')")
     public ResponseEntity<List<Bon>> getByType(@PathVariable TypeBon typeBon) {
         return ResponseEntity.ok(bonService.getByType(typeBon));
     }
 
     @GetMapping("/date-range")
-    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE', 'MAGASINIER', 'AUDITEUR')")
     public ResponseEntity<List<Bon>> getByDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
@@ -47,7 +53,7 @@ public class BonController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'AUDITEUR')")
     public ResponseEntity<?> create(@RequestBody Bon bon) {
         try {
             return ResponseEntity.ok(bonService.save(bon));
@@ -57,7 +63,7 @@ public class BonController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'AUDITEUR')")
     public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Bon bon) {
         try {
             return ResponseEntity.ok(bonService.update(id, bon));
@@ -67,9 +73,15 @@ public class BonController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'AUDITEUR')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         bonService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/reactivate")
+    @PreAuthorize("hasRole('AUDITEUR')")
+    public ResponseEntity<Bon> reactivate(@PathVariable Long id) {
+        return ResponseEntity.ok(bonService.reactivate(id));
     }
 }

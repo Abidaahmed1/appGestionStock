@@ -7,7 +7,8 @@
             </div>
         </div>
         <div class="header-right">
-            <button class="btn-new" (click)="openCreateModal()">NOUVEAU</button>
+            <button class="btn-new" (click)="openCreateModal()" [disabled]="isAuditeur()"
+                [class.btn-disabled]="isAuditeur()">NOUVEAU</button>
         </div>
     </div>
 
@@ -142,7 +143,7 @@
                     <td *ngIf="isColumnVisible('statut')" class="statut-td">
                         <div class="status-cell">
                             <span class="status-pill" [class]="'status-pill--' + getStatutClass(cmd.statut)">
-                                <span class="status-pill__dot" [attr.aria-hidden]="true"></span>
+                                <span class="status-pill__dot" aria-hidden="true"></span>
                                 <span class="status-pill__label">{{ getStatutLabel(cmd.statut) }}</span>
                             </span>
                         </div>
@@ -159,11 +160,13 @@
 
                             <ng-container *ngIf="cmd.statut === 'EN_ATTENTE'">
                                 <button type="button" class="btn-action btn-action--receive"
-                                    (click)="onRecevoirClick(cmd, $event)" title="Marquer comme reçue">
+                                    (click)="onRecevoirClick(cmd, $event)" title="Marquer comme reçue"
+                                    [disabled]="isAuditeur()">
                                     <span class="btn-action__text">Recevoir</span>
                                 </button>
                                 <button type="button" class="btn-action btn-action--cancel"
-                                    (click)="onAnnulerClick(cmd, $event)" title="Annuler la commande">
+                                    (click)="onAnnulerClick(cmd, $event)" title="Annuler la commande"
+                                    [disabled]="isAuditeur()">
                                     <span class="btn-action__text">Annuler</span>
                                 </button>
                                 <button type="button" class="btn-action btn-action--print"
@@ -189,7 +192,6 @@
                     <td *ngIf="isColumnVisible('total')" class="text-right footer-total">
                         {{ getGrandTotalTTC() | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT' }}
                     </td>
-                    <td *ngIf="isColumnVisible('acheteur')"></td>
                     <td *ngIf="isColumnVisible('statut')"></td>
                     <td *ngIf="isColumnVisible('statut')"></td>
                 </tr>
@@ -203,11 +205,12 @@
         </div>
     </div>
 
-    <!-- Action Confirmation Modal -->
-    <div class="modal-overlay" *ngIf="showActionConfirm" (click)="closeConfirmModal()">
+    <div class="modal-overlay" *ngIf="showActionConfirm && pendingAction && pendingAction.cmd"
+        (click)="closeConfirmModal()">
         <div class="modal-content small confirm-danger" (click)="$event.stopPropagation()">
-            <div class="confirm-icon" [class]="pendingAction?.type?.toLowerCase()">
-                <ng-container [ngSwitch]="pendingAction?.type">
+            <div class="confirm-icon" *ngIf="pendingAction.type"
+                [ngClass]="pendingAction.type === 'RECEIVE' ? 'receive' : 'cancel'">
+                <ng-container [ngSwitch]="pendingAction.type">
                     <svg *ngSwitchCase="'RECEIVE'" width="32" height="32" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M20 6L9 17l-5-5"></path>
@@ -222,24 +225,24 @@
             </div>
 
             <h3>
-                {{ pendingAction?.type === 'RECEIVE' ? 'Valider la réception' : 'Annuler la commande' }}
+                {{ pendingAction.type === 'RECEIVE' ? 'Valider la réception' : 'Annuler la commande' }}
             </h3>
 
             <p>
                 Êtes-vous sûr de vouloir {{
-                pendingAction?.type === 'RECEIVE' ? 'valider la réception de' : 'annuler'
-                }} la commande <strong>P{{ pendingAction?.cmd?.numeroCmd }}</strong> ?
+                pendingAction.type === 'RECEIVE' ? 'valider la réception de' : 'annuler'
+                }} la commande <strong>P{{ pendingAction.cmd.numeroCmd || (pendingAction.cmd.id || '...') }}</strong> ?
             </p>
 
-            <p class="warning-text" *ngIf="pendingAction?.type === 'CANCEL'">Cette action est irréversible.</p>
+            <p class="warning-text" *ngIf="pendingAction.type === 'CANCEL'">Cette action est irréversible.</p>
 
             <div class="modal-actions" (click)="$event.stopPropagation()">
                 <button type="button" class="btn-secondary" (click)="onModalAnnuler()">Annuler</button>
-                <button type="button" class="btn-danger" *ngIf="pendingAction?.type === 'CANCEL'"
+                <button type="button" class="btn-danger" *ngIf="pendingAction.type === 'CANCEL'"
                     (click)="onModalConfirmer()">
                     Confirmer l'annulation
                 </button>
-                <button type="button" class="btn-primary" *ngIf="pendingAction?.type === 'RECEIVE'"
+                <button type="button" class="btn-primary" *ngIf="pendingAction.type === 'RECEIVE'"
                     (click)="onModalConfirmer()">
                     Confirmer la réception
                 </button>

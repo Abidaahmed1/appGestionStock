@@ -1,0 +1,109 @@
+<div class="entreprise-container" *ngIf="!loading">
+    <div class="back-nav">
+        <button class="btn-back" (click)="goBack()">
+            <i class="fas fa-arrow-left"></i>
+            Retour aux paramètres
+        </button>
+    </div>
+    <header class="entreprise-header">
+        <div class="logo-container" (click)="triggerLogoUpload()" [class.editable]="isEditing">
+            <div class="logo-placeholder" *ngIf="!displayLogo">
+                <i class="fas fa-camera"></i>
+                <span>{{ isEditing ? 'Choisir le logo' : 'Aucun logo' }}</span>
+            </div>
+            <img [src]="displayLogo" *ngIf="displayLogo" alt="Logo" class="company-logo" (error)="onLogoError()">
+            <div class="logo-edit-overlay" *ngIf="isEditing && displayLogo">
+                <i class="fas fa-pen"></i>
+            </div>
+            <input type="file" #logoInput accept="image/*" (change)="onLogoChange($event)" hidden>
+        </div>
+        <div class="title-section">
+            <span class="breadcrumb-text">Nom de la société</span>
+            <h1 *ngIf="!isEditing">{{ entreprise.nom || 'Nouvelle Société' }}</h1>
+            <input *ngIf="isEditing" [(ngModel)]="entreprise.nom" class="input-title" placeholder="p.ex. Ma Société">
+        </div>
+        <div class="actions">
+            <button class="btn-edit" (click)="toggleEdit()" *ngIf="!isEditing">Modifier</button>
+            <button class="btn-save" (click)="save()" *ngIf="isEditing">Sauvegarder</button>
+            <button class="btn-cancel" (click)="toggleEdit()" *ngIf="isEditing">Annuler</button>
+        </div>
+    </header>
+
+    <div class="error-banner" *ngIf="saveError">
+        <i class="fas fa-exclamation-circle"></i>
+        {{ saveError }}
+    </div>
+
+    <nav class="tabs-nav">
+        <button class="tab-btn active">Informations générales</button>
+    </nav>
+
+    <main class="entreprise-content">
+        <div class="form-grid">
+            <div class="form-column">
+                <div class="form-group">
+                    <label>Contact</label>
+                    <div class="input-wrapper">
+                        <input [(ngModel)]="entreprise.contact" [readonly]="!isEditing" placeholder="Contact principal">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Adresse</label>
+                    <div class="input-wrapper multiline">
+                        <input [(ngModel)]="entreprise.adresse" [readonly]="!isEditing" placeholder="Rue...">
+                        <div class="address-details">
+                            <input [(ngModel)]="entreprise.codePostal" [readonly]="!isEditing" placeholder="Code Postal"
+                                class="small">
+
+                            <select *ngIf="isEditing" [(ngModel)]="entreprise.pays" [compareWith]="compareObjects"
+                                class="select-field">
+                                <option [ngValue]="undefined" disabled>Choisir un pays</option>
+                                <option *ngFor="let p of countries" [ngValue]="p">{{ p.nom }}</option>
+                            </select>
+                            <input *ngIf="!isEditing" [value]="entreprise.pays?.nom || ''" readonly placeholder="Pays">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="form-column">
+                <div class="form-group">
+                    <label>Téléphone</label>
+                    <div class="input-wrapper">
+                        <input [(ngModel)]="entreprise.telephone" [readonly]="!isEditing"
+                            placeholder="p.ex. +216 74 ...">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>E-mail</label>
+                    <div class="input-wrapper">
+                        <input [(ngModel)]="entreprise.email" [readonly]="!isEditing"
+                            placeholder="p.ex. info@societe.com">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Devise</label>
+                    <div class="input-wrapper">
+                        <select *ngIf="isEditing" [(ngModel)]="entreprise.devise" [compareWith]="compareObjects"
+                            class="select-field full-width">
+                            <option [ngValue]="undefined" disabled>Choisir une devise</option>
+                            <option *ngFor="let d of devises" [ngValue]="d">{{ d.code }} ({{ d.symbole }})</option>
+                        </select>
+                        <input *ngIf="!isEditing" [value]="entreprise.devise?.code || ''" readonly placeholder="Devise">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div class="notification-toast" *ngIf="notification" [class.success]="notification.type === 'success'"
+    [class.error]="notification.type === 'error'">
+    <span class="msg">{{ notification.message }}</span>
+    <button class="close-btn" (click)="notification = null">✕</button>
+</div>
+
+<div class="loading-overlay" *ngIf="loading">
+    <div class="spinner"></div>
+</div>

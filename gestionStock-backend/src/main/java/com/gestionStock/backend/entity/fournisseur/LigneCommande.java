@@ -26,19 +26,19 @@ import lombok.ToString;
 @Getter
 @Setter
 @ToString(exclude = "bonCommandeFournisseur")
-@EqualsAndHashCode(of = { "piece" })
+@EqualsAndHashCode(of = { "id" })
 public class LigneCommande {
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private Long id;
 	@Min(value = 0, message = "Le prix d'achat ne peut pas être négatif")
-	private double prixAchat;
+	private Double prixAchat;
 
 	@Min(value = 1, message = "La quantité doit être au moins de 1")
-	private int qteCmd;
+	private Integer qteCmd;
 
-	private double taxe = 19.0;
-	private double remise = 0.0;
+	private Double taxe = 19.0;
+	private Double remise = 0.0;
 	@ManyToOne
 	@JoinColumn(name = "piece_id", nullable = false)
 	@NotNull(message = "Le produit est obligatoire")

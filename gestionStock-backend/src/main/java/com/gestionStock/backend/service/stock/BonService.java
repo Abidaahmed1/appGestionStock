@@ -1,15 +1,17 @@
 package com.gestionStock.backend.service.stock;
 
+import java.time.LocalDate;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
 import com.gestionStock.backend.entity.Stock.Bon;
 import com.gestionStock.backend.entity.Stock.TypeBon;
 import com.gestionStock.backend.repository.stock.BonRepository;
+
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
-import org.springframework.stereotype.Service;
-
-import java.time.LocalDate;
-import java.util.List;
 
 @Service
 @AllArgsConstructor
@@ -19,9 +21,64 @@ public class BonService {
     private final BonRepository bonRepo;
     private final com.gestionStock.backend.service.user.UserService userService;
     private final MouvementStockService mouvementService;
+    private final com.gestionStock.backend.service.notification.NotificationService notificationService;
 
     public List<Bon> getAll() {
-        return bonRepo.findAll();
+        String[] userInfo = getCurrentUserIdAndRole();
+        String userId = userInfo[0];
+        String role = userInfo[1];
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
+
+        if (isInternalRole(role)) {
+            return bonRepo.findByArchivedFalseAndEntreprise(entreprise);
+        }
+
+        // Pour les magasiniers/auditeurs restreints, on filtre par créateur ET
+        // entreprise
+        return bonRepo.findByCreateurIdAndArchivedFalseAndEntreprise(userId, entreprise);
+    }
+
+    public List<Bon> getAllArchived() {
+        String[] userInfo = getCurrentUserIdAndRole();
+        String userId = userInfo[0];
+        String role = userInfo[1];
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
+
+        if (isInternalRole(role)) {
+            return bonRepo.findByArchivedTrueAndEntreprise(entreprise);
+        }
+
+        return bonRepo.findByCreateurIdAndArchivedTrueAndEntreprise(userId, entreprise);
+    }
+
+    private String[] getCurrentUserIdAndRole() {
+        try {
+            org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder
+                    .getContext().getAuthentication();
+            if (auth != null && auth.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+                String jwtUserId = jwt.getSubject();
+                String email = jwt.getClaimAsString("email");
+
+                // Récupérer l'utilisateur en base (en utilisant les fallbacks de UserService)
+                java.util.Optional<com.gestionStock.backend.entity.user.User> currentUserOpt = userService
+                        .getCurrentUser();
+
+                String effectiveUserId = jwtUserId;
+                if (currentUserOpt.isPresent()) {
+                    effectiveUserId = currentUserOpt.get().getId();
+                }
+
+                String role = auth.getAuthorities().stream()
+                        .map(a -> a.getAuthority())
+                        .filter(r -> r.startsWith("ROLE_"))
+                        .findFirst()
+                        .orElse("");
+                return new String[] { effectiveUserId, role, email != null ? email : "" };
+            }
+        } catch (Exception e) {
+            System.err.println("Error getting current user: " + e.getMessage());
+        }
+        return new String[] { "", "", "" };
     }
 
     public Bon getById(Long id) {
@@ -30,11 +87,34 @@ public class BonService {
     }
 
     public List<Bon> getByType(TypeBon typeBon) {
-        return bonRepo.findByTypeBon(typeBon);
+        String[] userInfo = getCurrentUserIdAndRole();
+        String userId = userInfo[0];
+        String role = userInfo[1];
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
+
+        if (isInternalRole(role)) {
+            return bonRepo.findByTypeBonAndArchivedFalseAndEntreprise(typeBon, entreprise);
+        }
+        return bonRepo.findByTypeBonAndCreateurIdAndArchivedFalseAndEntreprise(typeBon, userId, entreprise);
     }
 
     public List<Bon> getByDateRange(LocalDate startDate, LocalDate endDate) {
-        return bonRepo.findByDateBetween(startDate, endDate);
+        String[] userInfo = getCurrentUserIdAndRole();
+        String userId = userInfo[0];
+        String role = userInfo[1];
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
+
+        if (isInternalRole(role)) {
+            return bonRepo.findByDateBetweenAndArchivedFalseAndEntreprise(startDate, endDate, entreprise);
+        }
+        return bonRepo.findByDateBetweenAndCreateurIdAndArchivedFalseAndEntreprise(startDate, endDate, userId,
+                entreprise);
+    }
+
+    private boolean isInternalRole(String role) {
+        return "ROLE_AUDITEUR".equals(role) ||
+                "ROLE_ADMINISTRATEUR".equals(role) ||
+                "ROLE_RESPONSABLE_LOGISTIQUE".equals(role);
     }
 
     private synchronized String generateNextNumeroBon(TypeBon type) {
@@ -93,17 +173,27 @@ public class BonService {
                     String lastName = jwt.getClaimAsString("family_name");
                     String email = jwt.getClaimAsString("email");
 
-                    if (firstName == null)
-                        firstName = "Utilisateur";
-                    if (lastName == null)
-                        lastName = "Inconnu";
+                    com.gestionStock.backend.entity.user.Role creatorRole = auth.getAuthorities().stream()
+                            .anyMatch(a -> a.getAuthority().equals("ROLE_AUDITEUR"))
+                                    ? com.gestionStock.backend.entity.user.Role.AUDITEUR
+                                    : com.gestionStock.backend.entity.user.Role.MAGASINIER;
 
                     com.gestionStock.backend.entity.user.User creator = userService.provisionUserIfNeeded(
-                            userId, firstName, lastName, email, com.gestionStock.backend.entity.user.Role.MAGASINIER);
+                            userId,
+                            firstName != null ? firstName : "Utilisateur",
+                            lastName != null ? lastName : "Inconnu",
+                            email,
+                            creatorRole);
                     bon.setCreateur(creator);
+
+                    com.gestionStock.backend.entity.entreprise.Entreprise ent = creator.getEntreprise();
+                    if (ent == null) {
+                        ent = userService.getCurrentUserEntreprise();
+                    }
+                    bon.setEntreprise(ent);
                 }
             } catch (Exception e) {
-                System.err.println("Could not set creator for Bon: " + e.getMessage());
+                System.err.println("Could not set creator/entreprise for Bon: " + e.getMessage());
             }
         } else {
             Bon existing = getById(bon.getId());
@@ -113,7 +203,32 @@ public class BonService {
             }
         }
 
-        return bonRepo.save(bon);
+        if (bon.getMouvement() != null) {
+            com.gestionStock.backend.entity.Stock.MouvementStock mvt = bon.getMouvement();
+            mvt.setBon(bon);
+            if (mvt.getLigneMouvement() != null) {
+                for (com.gestionStock.backend.entity.Stock.LigneMouvement ligne : mvt.getLigneMouvement()) {
+                    ligne.setMouvementStock(mvt);
+
+                    // Resolve stock: replace the detached/partial Stock with a managed entity
+                    if (ligne.getStock() != null && ligne.getStock().getId() != null) {
+                        com.gestionStock.backend.entity.Stock.Stock managedStock = mouvementService
+                                .resolveStock(ligne.getStock());
+                        if (managedStock != null) {
+                            ligne.setStock(managedStock);
+                        }
+                    }
+                }
+            }
+        }
+
+        Bon savedBon = bonRepo.save(bon);
+
+        if (savedBon.getMouvement() != null) {
+            mouvementService.updateStockForMouvement(savedBon.getMouvement());
+        }
+
+        return savedBon;
     }
 
     public Bon update(Long id, Bon bon) {
@@ -133,6 +248,55 @@ public class BonService {
         if (bon.getMouvement() != null) {
             mouvementService.rollbackStockQuantity(bon.getMouvement());
         }
-        bonRepo.delete(bon);
+
+        bon.setArchived(true);
+        bonRepo.save(bon);
+
+        try {
+            String roleStr = "";
+            org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder
+                    .getContext().getAuthentication();
+            if (auth != null) {
+                roleStr = " par " + auth.getName();
+            }
+
+            notificationService.createNotificationForRoles(
+                    "ANNULATION DE BON",
+                    "Le bon N° " + bon.getNumeroBon() + " a été annulé et déplacé vers l'historique" + roleStr + ".",
+                    com.gestionStock.backend.entity.notification.NotificationType.WARNING,
+                    List.of(com.gestionStock.backend.entity.user.Role.AUDITEUR,
+                            com.gestionStock.backend.entity.user.Role.ADMINISTRATEUR),
+                    null);
+        } catch (Exception e) {
+            System.err.println("Erreur notification suppression bon: " + e.getMessage());
+        }
+    }
+
+    public Bon reactivate(Long id) {
+        Bon bon = getById(id);
+        if (bon.getArchived() == null || !bon.getArchived()) {
+            return bon;
+        }
+
+        if (bon.getMouvement() != null) {
+            mouvementService.updateStockForMouvement(bon.getMouvement());
+        }
+
+        bon.setArchived(false);
+        Bon saved = bonRepo.save(bon);
+
+        try {
+            notificationService.createNotificationForRoles(
+                    "RÉACTIVATION DE BON",
+                    "Le bon N° " + bon.getNumeroBon() + " a été réactivé par  L'auditeur.",
+                    com.gestionStock.backend.entity.notification.NotificationType.INFO,
+                    List.of(com.gestionStock.backend.entity.user.Role.MAGASINIER,
+                            com.gestionStock.backend.entity.user.Role.ADMINISTRATEUR),
+                    null);
+        } catch (Exception e) {
+            System.err.println("Erreur notification réactivation: " + e.getMessage());
+        }
+
+        return saved;
     }
 }

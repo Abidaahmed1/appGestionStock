@@ -19,6 +19,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import com.gestionStock.backend.entity.entreprise.Entreprise;
 
 @Entity
 @Getter
@@ -29,6 +30,10 @@ public class Bon {
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private Long id;
+
+	@ManyToOne
+	@JoinColumn(name = "entreprise_id")
+	private Entreprise entreprise;
 	private LocalDate date;
 	@Column(unique = true, nullable = false)
 	private String numeroBon;
@@ -45,4 +50,6 @@ public class Bon {
 	@ManyToOne
 	@JoinColumn(name = "fournisseur_id")
 	private Fournisseur fournisseur;
+
+	private Boolean archived = false;
 }

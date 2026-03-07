@@ -19,7 +19,7 @@ import lombok.ToString;
 @Getter
 @Setter
 @ToString(exclude = { "stock", "mouvementStock" })
-@EqualsAndHashCode(of = { "stock", "mouvementStock" })
+@EqualsAndHashCode(of = { "id" })
 public class LigneMouvement {
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
@@ -29,10 +29,10 @@ public class LigneMouvement {
 	@JoinColumn(name = "mouvement_id", nullable = false)
 	private MouvementStock mouvementStock;
 
-	@ManyToOne(cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+	@ManyToOne
 	@JoinColumn(name = "stock_id", nullable = false)
 	private Stock stock;
-	private int quantite;
-	private double prixHTVA;
-	private double tauxTVA;
+	private Integer quantite;
+	private Double prixHTVA;
+	private Double tauxTVA;
 }

@@ -15,6 +15,9 @@ public interface BonCommandeFournisseurRepository extends JpaRepository<BonComma
 
     List<BonCommandeFournisseur> findByCreateurId(String createurId);
 
+    List<BonCommandeFournisseur> findByCreateurEntreprise(
+            com.gestionStock.backend.entity.entreprise.Entreprise entreprise);
+
     @org.springframework.data.jpa.repository.Query("SELECT MAX(b.numeroCmd) FROM BonCommandeFournisseur b WHERE b.numeroCmd >= ?1 AND b.numeroCmd <= ?2")
     Long findMaxNumeroCmdBetween(Long start, Long end);
 }

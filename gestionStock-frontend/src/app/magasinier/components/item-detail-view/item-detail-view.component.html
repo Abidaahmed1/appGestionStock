@@ -1,0 +1,207 @@
+<!-- ==================== RICH DETAIL INTERFACE (REUSABLE COMPONENT) ==================== -->
+<div class="modal-overlay rich-overlay" (click)="closeView()">
+    <div class="purchase-order-container rich-detail-container" (click)="$event.stopPropagation()">
+
+        <div class="form-header detail-header">
+            <div class="breadcrumb">
+                <a (click)="closeView()" style="cursor: pointer;">Catalogue</a> /
+                <span>{{ item?.designation }}</span>
+            </div>
+
+            <div class="action-bar">
+                <div class="main-actions">
+                    <button class="btn btn-outline" (click)="closeView()">RETOUR AU CATALOGUE</button>
+                </div>
+                <div class="status-steps" *ngIf="isPiece(item)">
+                    <div class="step" [class.active]="!hasVariants(item)">Standard</div>
+                    <div class="step-arrow"></div>
+                    <div class="step" [class.active]="hasVariants(item)">Avec Variantes</div>
+                </div>
+                <div class="status-steps" *ngIf="!isPiece(item)">
+                    <div class="step active">Produit Fini</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-card detail-card">
+            <div class="detail-main-header">
+                <div class="header-info-left">
+                    <span class="type-label-small">{{ isPiece(item) ? 'Pièce Détachée' : 'Produit Fini' }}</span>
+                    <h1 class="main-title">
+                        {{ item?.designation }}
+                        <svg class="star-icon" viewBox="0 0 24 24" width="24" height="24" stroke="currentColor"
+                            fill="none" stroke-width="2">
+                            <polygon
+                                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                    </h1>
+
+                </div>
+                <div class="header-info-right">
+                    <div class="rich-image-box">
+                        <img [src]="getImageUrl(item?.imageUrl || item?.image)"
+                            onerror="this.src='assets/images/default-piece.svg'">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs-container" style="margin-top: 20px;">
+                <div class="tabs-header">
+                    <button [class.active]="activeTab === 'general'" (click)="setTab('general')">Informations
+                        générales</button>
+                    <button [class.active]="activeTab === 'variants'" (click)="setTab('variants')"
+                        *ngIf="isPiece(item)">Attributs & Variantes</button>
+                    <button [class.active]="activeTab === 'suppliers'"
+                        (click)="setTab('suppliers')">Fournisseurs</button>
+                </div>
+
+                <!-- TAB: GENERAL -->
+                <div class="tab-content" *ngIf="activeTab === 'general'">
+                    <div class="form-grid">
+                        <div class="form-column">
+                            <div class="form-group">
+                                <label>Type de produit</label>
+                                <span class="readonly-text">Article stockable</span>
+                            </div>
+                            <div class="form-group">
+                                <label>Prix de vente</label>
+                                <span class="readonly-text">{{ item?.prixVente || '0,000' }} {{
+                                    entreprise?.devise?.symbole || 'DT' }}</span>
+                            </div>
+                            <div class="form-group">
+                                <label>Taxes client</label>
+                                <span class="readonly-text">{{ item?.tauxTVA || 19 }}%</span>
+                            </div>
+                            <div class="form-group" *ngIf="isPiece(item)">
+                                <label>Stock / Max par défaut</label>
+                                <span class="readonly-text"
+                                    [style.color]="getTotalStock(item) < (item?.seuilMinimum || 0) ? '#e11d48' : '#3d7a7f'">
+                                    {{ getTotalStock(item) }} / {{ item?.seuilMaximum || '∞' }}
+                                </span>
+                            </div>
+                            <div class="form-group" *ngIf="isPiece(item)">
+                                <label>Quantité min</label>
+                                <span class="readonly-text">{{ item?.seuilMinimum || 0 }}</span>
+                            </div>
+                        </div>
+                        <div class="form-column">
+
+                            <div class="form-group">
+                                <label>Référence interne</label>
+                                <span class="readonly-text">{{ isPiece(item) ? getPieceFromItem(item)?.reference :
+                                    item?.code }}</span>
+                            </div>
+                            <div class="form-group" *ngIf="isPiece(item) && getPieceFromItem(item)?.codeBarre">
+                                <label>Code à barres</label>
+                                <span class="readonly-text">{{ getPieceFromItem(item)?.codeBarre }}</span>
+                            </div>
+                            <div class="form-group" *ngIf="item?.categorie">
+                                <label>Catégorie</label>
+                                <span class="readonly-text">{{ item?.categorie?.nom }}</span>
+                            </div>
+                            <div class="form-group" *ngIf="isPiece(item)">
+                                <label>Variantes</label>
+                                <span class="readonly-text">{{ hasVariants(item) ? 'Oui' : 'Non' }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="internal-notes">
+                        <h3>NOTES INTERNES</h3>
+                        <div class="notes-p">Cette note est pour usage interne seulement.</div>
+                    </div>
+                </div>
+
+                <!-- TAB: VARIANTS -->
+                <div class="tab-content" *ngIf="activeTab === 'variants' && isPiece(item)">
+                    <table class="variants-table">
+                        <thead>
+                            <tr>
+                                <th>Attribut</th>
+                                <th>Valeurs</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngFor="let attrGroup of getGroupedAttributes(getPieceFromItem(item))">
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <div class="drag-handle" style="color: #94a3b8; cursor: grab;">⋮⋮</div>
+                                        {{ attrGroup.name }}
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="val-pill" *ngFor="let val of attrGroup.values">
+                                        <span class="val-name">{{ val }}</span>
+                                        <span class="pill-stock" *ngIf="isPiece(item)">
+                                            <span class="stock-lbl">Stock:</span>
+                                            <span class="stock-num">{{ getVariantStock(getPieceFromItem(item),
+                                                attrGroup.name, val) }}</span>
+                                        </span>
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- TAB: SUPPLIERS -->
+                <div class="tab-content" *ngIf="activeTab === 'suppliers'">
+                    <div class="suppliers-list" *ngIf="pieceSuppliers && pieceSuppliers.length > 0">
+                        <table class="variants-table">
+                            <thead>
+                                <tr>
+                                    <th>Fournisseur</th>
+                                    <th>Prix d'achat</th>
+                                    <th>Qte Min</th>
+                                    <th>Validité</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngFor="let ps of pieceSuppliers">
+                                    <td>
+                                        <div class="supplier-info-cell">
+                                            <span class="supplier-name">{{ ps.fournisseur?.nom }}</span>
+                                            <span class="supplier-code">{{ ps.fournisseur?.codeFournisseur }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="price-val">{{ ps.prixAchat | number:'1.3-3' }} {{
+                                            entreprise?.devise?.symbole || 'DT' }}</span>
+                                    </td>
+                                    <td><span class="qte-min-val">{{ ps.qteMinACommander }}</span></td>
+                                    <td>
+                                        <div class="validity-dates">
+                                            <div class="date-row">
+                                                <span class="date-label">Du :</span>
+                                                <span class="date-val">{{ (ps.dateDebutValidite | date:'dd/MM/yyyy') ||
+                                                    '--' }}</span>
+                                            </div>
+                                            <div class="date-row">
+                                                <span class="date-label">Au :</span>
+                                                <span class="date-val">{{ (ps.dateFinValidite | date:'dd/MM/yyyy') ||
+                                                    '--'
+                                                    }}</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="status-badge" [class.main]="ps.estPrincipale"
+                                            [class.secondaire]="!ps.estPrincipale">
+                                            {{ ps.estPrincipale ? 'Principal' : 'Secondaire' }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="empty-state" *ngIf="!pieceSuppliers || pieceSuppliers.length === 0">
+                        <p>Aucun fournisseur associé à cette pièce.</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>

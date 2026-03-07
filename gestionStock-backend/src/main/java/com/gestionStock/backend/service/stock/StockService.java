@@ -6,6 +6,7 @@ import com.gestionStock.backend.repository.stock.StockRepository;
 import com.gestionStock.backend.entity.notification.NotificationType;
 import com.gestionStock.backend.service.notification.NotificationService;
 import com.gestionStock.backend.entity.user.Role;
+import com.gestionStock.backend.service.user.UserService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
@@ -21,13 +22,14 @@ public class StockService {
 
     private final StockRepository stockRepo;
     private final NotificationService notificationService;
+    private final UserService userService;
 
     public List<Stock> getAll() {
-        return stockRepo.findAll();
+        return stockRepo.findByPieceEntreprise(userService.getCurrentUserEntreprise());
     }
 
     public List<Stock> getByType(TypeStock type) {
-        return stockRepo.findByType(type);
+        return stockRepo.findByTypeAndPieceEntreprise(type, userService.getCurrentUserEntreprise());
     }
 
     public List<Stock> getByPiece(Long pieceId) {
@@ -35,7 +37,7 @@ public class StockService {
     }
 
     public List<Stock> getLowStockItems() {
-        return stockRepo.findLowStockItems();
+        return stockRepo.findLowStockItemsByEntreprise(userService.getCurrentUserEntreprise());
     }
 
     public Stock getById(Long id) {

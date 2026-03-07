@@ -11,6 +11,8 @@ import lombok.ToString;
 
 import java.util.HashSet;
 
+import com.gestionStock.backend.entity.entreprise.Entreprise;
+
 @Getter
 @Setter
 @EqualsAndHashCode(of = "code")
@@ -23,6 +25,10 @@ public class Categorie {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
+
+    @ManyToOne
+    @JoinColumn(name = "entreprise_id")
+    private Entreprise entreprise;
     private boolean archivee = false;
     private String nom;
     private String description;

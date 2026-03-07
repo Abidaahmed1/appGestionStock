@@ -44,6 +44,10 @@ export class CommandeFournisseurFormComponent implements OnInit {
   errors: { [key: string]: string } = {};
   formSubmitted = false;
 
+  get isEditable(): boolean {
+    return this.commande.statut === StatutCommande.EN_ATTENTE;
+  }
+
   openDropdownIndex: number | null = null;
   pieceSearchText: string = '';
   filteredPieces: any[] = [];
@@ -101,7 +105,6 @@ export class CommandeFournisseurFormComponent implements OnInit {
 
   initNewCommande(): BonCommandeFournisseur {
     const now = new Date();
-    // Format for datetime-local: YYYY-MM-DDTHH:mm
     const year = now.getFullYear();
     const month = (now.getMonth() + 1).toString().padStart(2, '0');
     const day = now.getDate().toString().padStart(2, '0');
@@ -254,10 +257,6 @@ export class CommandeFournisseurFormComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
-  get isEditable(): boolean {
-    return this.commande.statut === StatutCommande.EN_ATTENTE;
-  }
-
   toggleDropdown(index: number, event: Event) {
     if (!this.isEditable) return;
     event.stopPropagation();
@@ -290,6 +289,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
     if (existingIndex !== -1) {
       this.commande.lignes[existingIndex].qteCmd += this.commande.lignes[index].qteCmd;
       this.commande.lignes.splice(index, 1);
+      this.validate();
       this.closeDropdown();
       return;
     }
@@ -298,29 +298,78 @@ export class CommandeFournisseurFormComponent implements OnInit {
     ligne.piece = piece.originalPiece || piece;
     ligne.detailPiece = piece.detailPiece || null;
 
-    ligne.qteCmd = this.calculateRecommendedQuantity(piece);
+    ligne.qteCmd = this.calculateRecommendedQuantity(piece, index);
 
     if (this.commande.fournisseur) {
       this.updateLinesFromCatalog();
     }
 
+    this.validate();
     this.closeDropdown();
   }
 
-  calculateRecommendedQuantity(piece: any): number {
-    if (!piece || !piece.seuilMaximum) return 1;
+  getTotalPieceStock(piece: any, detailPieceId?: number): number {
+    const p = piece.originalPiece || piece;
 
+    // Si une variante spécifique est demandée
+    if (detailPieceId && p.details && p.details.length > 0) {
+      const detail = p.details.find((d: any) => d.id === detailPieceId);
+      if (detail) return detail.stock?.quantite || 0;
+    }
 
-    const currentStock = piece.stock?.quantite || 0;
+    // Sinon, calcul du total global (fallback ou produit sans variante)
+    let total = 0;
+    if (p.stocks && Array.isArray(p.stocks)) {
+      total = p.stocks.reduce((sum: number, s: any) => sum + (s.quantite || 0), 0);
+    } else if (p.details && p.details.length > 0) {
+      total = p.details.reduce((sum: number, dp: any) => sum + (dp.stock?.quantite || 0), 0);
+    }
 
-    const pendingQtyInOtherOrders = this.commandes
+    if (total === 0 && p.stock?.quantite) {
+      total = p.stock.quantite;
+    }
+    return total;
+  }
+
+  getPiecePendingQty(pieceId: number, detailPieceId?: number): number {
+    return this.commandes
       .filter(c => c.statut === StatutCommande.EN_ATTENTE && c.id !== this.commande.id)
       .reduce((total, c) => {
-        const pieceLines = c.lignes?.filter(l => (l.piece?.id || l.piece) === piece.id) || [];
+        const pieceLines = c.lignes?.filter(l => {
+          const matchesPiece = (l.piece?.id || l.piece) === pieceId;
+          if (!detailPieceId) return matchesPiece;
+          const matchesDetail = (l.detailPiece?.id || l.detailPiece) === detailPieceId;
+          return matchesPiece && matchesDetail;
+        }) || [];
         return total + pieceLines.reduce((sum, l) => sum + (l.qteCmd || 0), 0);
       }, 0);
+  }
 
-    const recommended = piece.seuilMaximum - (currentStock + pendingQtyInOtherOrders);
+  getOtherLinesQtyForPiece(pieceId: number, detailPieceId: number | undefined, currentLineIndex: number): number {
+    return this.commande.lignes?.reduce((total, l, idx) => {
+      if (idx !== currentLineIndex) {
+        const matchesPiece = (l.piece?.id || l.piece) === pieceId;
+        const matchesDetail = (l.detailPiece?.id || l.detailPiece) === (detailPieceId || undefined);
+        if (matchesPiece && matchesDetail) {
+          return total + (l.qteCmd || 0);
+        }
+      }
+      return total;
+    }, 0) || 0;
+  }
+
+  calculateRecommendedQuantity(piece: any, lineIndex: number = -1): number {
+    if (!piece || !piece.seuilMaximum) return 1;
+
+    const pieceId = piece.id || piece.originalPiece?.id;
+    const detailPieceId = piece.detailPiece?.id;
+
+    const currentStock = this.getTotalPieceStock(piece, detailPieceId);
+    const pendingQtyInOtherOrders = this.getPiecePendingQty(pieceId, detailPieceId);
+    const qtyInCurrentOrderOtherLines = this.getOtherLinesQtyForPiece(pieceId, detailPieceId, lineIndex);
+
+    const totalUsedOrPlanned = currentStock + pendingQtyInOtherOrders + qtyInCurrentOrderOtherLines;
+    const recommended = piece.seuilMaximum - totalUsedOrPlanned;
 
     return recommended > 0 ? recommended : 0;
   }
@@ -396,17 +445,56 @@ export class CommandeFournisseurFormComponent implements OnInit {
     this.filterFournisseurs();
   }
 
-  getPieceDesignation(ligne: any): string {
+  getPieceRootName(ligne: any): string {
     if (!ligne || !ligne.piece) return '—';
-    if (ligne.detailPiece) {
-      const attributes = ligne.detailPiece.attributs || {};
-      const variantLabel = Object.entries(attributes)
-        .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && String(value).trim() !== '')
-        .map(([_, value]) => value)
-        .join(' - ');
-      return `${ligne.piece.designation} [${variantLabel}]`;
+    return ligne.piece.designation || '—';
+  }
+
+  getPieceVariantDescription(ligne: any): string {
+    if (!ligne || !ligne.detailPiece) return '';
+
+    const attributes = ligne.detailPiece.attributs || {};
+
+    const rawName = (attributes as any).nom || (attributes as any).name || '';
+    const variantName = typeof rawName === 'string' ? rawName.trim() : String(rawName || '').trim();
+
+    const detailParts = Object.entries(attributes)
+      .filter(([key, value]) =>
+        !key.startsWith('_') &&
+        key !== 'nom' &&
+        key !== 'name' &&
+        value !== null &&
+        value !== '' &&
+        String(value).trim() !== ''
+      )
+      .map(([key, value]) => {
+        const label = key
+          .replace(/^_+/, '')
+          .replace(/_/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .toLowerCase()
+          .replace(/^\w/, c => c.toUpperCase());
+        return `${label}: ${value}`;
+      });
+
+    const details = detailParts.join(' - ');
+
+    if (variantName && details) {
+      return `${variantName} — ${details}`;
     }
-    return ligne.piece.designation;
+    if (variantName) {
+      return variantName;
+    }
+    return details;
+  }
+
+  getPieceDesignation(ligne: any): string {
+    const root = this.getPieceRootName(ligne);
+    if (root === '—') return '—';
+
+    const variant = this.getPieceVariantDescription(ligne);
+    return variant ? `${root} - ${variant}` : root;
   }
 
   getPieceDisplayValue(index: number, ligne: any): string {
@@ -510,23 +598,22 @@ export class CommandeFournisseurFormComponent implements OnInit {
 
 
         if (ligne.piece && ligne.piece.seuilMaximum) {
-          const currentStock = ligne.piece.stock?.quantite || 0;
-          const pendingQty = this.commandes
-            .filter(c => c.statut === StatutCommande.EN_ATTENTE && c.id !== this.commande.id)
-            .reduce((total, c) => {
-              const pieceLines = c.lignes?.filter(l => (l.piece?.id || l.piece) === ligne.piece.id) || [];
-              return total + pieceLines.reduce((sum, l) => sum + (l.qteCmd || 0), 0);
-            }, 0);
+          const pieceId = ligne.piece.id || ligne.piece;
+          const detailPieceId = ligne.detailPiece?.id || ligne.detailPiece;
 
-          const alreadyReachedMax = (currentStock + pendingQty) >= ligne.piece.seuilMaximum;
+          const currentStock = this.getTotalPieceStock(ligne.piece, detailPieceId);
+          const pendingInOthers = this.getPiecePendingQty(pieceId, detailPieceId);
+          const otherLinesInCurrent = this.getOtherLinesQtyForPiece(pieceId, detailPieceId, i);
 
-          if (alreadyReachedMax) {
-            this.errors[`ligne_${i}_qte`] = `Ligne ${i + 1} : Stock maximum (${ligne.piece.seuilMaximum}) déjà atteint ou dépassé. Vous ne pouvez pas commander ce produit actuellement.`;
+          const totalAlreadyCounted = currentStock + pendingInOthers + otherLinesInCurrent;
+          const availableCapacity = ligne.piece.seuilMaximum - totalAlreadyCounted;
+
+          if (totalAlreadyCounted >= ligne.piece.seuilMaximum) {
+            this.errors[`ligne_${i}_max`] = `Ligne ${i + 1} : Seuil maximum (${ligne.piece.seuilMaximum}) déjà atteint ou dépassé pour cette variante (Total actuel: ${totalAlreadyCounted}).`;
           } else if (ligne.qteCmd < 1) {
             this.errors[`ligne_${i}_qte`] = `Ligne ${i + 1} : la quantité doit être ≥ 1.`;
-          } else if (currentStock + pendingQty + ligne.qteCmd > ligne.piece.seuilMaximum) {
-            const availableSpace = ligne.piece.seuilMaximum - (currentStock + pendingQty);
-            this.errors[`ligne_${i}_max`] = `Ligne ${i + 1} : le seuil maximum (${ligne.piece.seuilMaximum}) sera dépassé. Capacité restante (stock + autres commandes) : ${availableSpace}.`;
+          } else if (ligne.qteCmd > availableCapacity) {
+            this.errors[`ligne_${i}_max`] = `Ligne ${i + 1} : le seuil maximum (${ligne.piece.seuilMaximum}) sera dépassé pour cette variante. Capacité restante : ${availableCapacity}.`;
           }
         } else if (ligne.qteCmd < 1) {
           this.errors[`ligne_${i}_qte`] = `Ligne ${i + 1} : la quantité doit être ≥ 1.`;
@@ -545,6 +632,32 @@ export class CommandeFournisseurFormComponent implements OnInit {
       return;
     }
 
+    // Extremely clean payload - only IDs and primitive values
+    const payload: any = {
+      id: this.commande.id,
+      numeroCmd: (this.commande.numeroCmd && this.commande.numeroCmd > 0) ? this.commande.numeroCmd : null,
+      dateCmd: this.commande.dateCmd,
+      dateArrivee: (this.commande.dateArrivee && this.commande.dateArrivee !== '') ? this.commande.dateArrivee : null,
+      statut: this.commande.statut,
+      fournisseur: { id: this.commande.fournisseur?.id },
+      lignes: this.commande.lignes?.map(l => ({
+        id: l.id,
+        qteCmd: l.qteCmd,
+        prixAchat: l.prixAchat,
+        taxe: l.taxe,
+        remise: l.remise,
+        piece: { id: l.piece?.id || l.piece },
+        detailPiece: l.detailPiece?.id ? { id: l.detailPiece.id } : null
+      }))
+    };
+
+    // Ensure dateCmd has seconds if it's in YYYY-MM-DDTHH:mm format
+    if (payload.dateCmd && payload.dateCmd.includes('T') && payload.dateCmd.split(':').length === 2) {
+      payload.dateCmd = payload.dateCmd + ':00';
+    } else if (payload.dateCmd && !payload.dateCmd.includes('T')) {
+      payload.dateCmd = payload.dateCmd + 'T00:00:00';
+    }
+
     const onSaved = () => {
       this.logistiqueService.commandeDraft = null;
       this.notify('Commande enregistrée avec succès !', 'success');
@@ -554,25 +667,32 @@ export class CommandeFournisseurFormComponent implements OnInit {
     };
 
     const onError = (err: any) => {
-      if (err.status === 400 && err.error) {
-        this.errors = err.error;
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+      this.loading = false;
+      if (err.status === 400) {
+        // If the error message is just a string (like "Failed to read request")
+        if (typeof err.error === 'string' || (err.error && err.error.message && !err.error.errors)) {
+          this.errors = { global: err.error.message || err.error || 'Erreur lors de la lecture de la requête par le serveur.' };
+        } else {
+          // If it's a map of field errors
+          this.errors = err.error || { global: 'Erreur de validation.' };
+        }
       } else if (err.status === 409) {
-        this.errors['global'] = err.error?.message || 'Un enregistrement avec ces données existe déjà (contrainte d\'unicité). Vérifiez la liste des commandes ou réessayez.';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        this.errors['global'] = err.error?.message || 'Un enregistrement avec ces données existe déjà (contrainte d\'unicité).';
       } else {
-        this.errors['global'] = 'Une erreur est survenue. Veuillez réessayer.';
+        this.errors['global'] = 'Une erreur est survenue lors de la communication avec le serveur (Status: ' + err.status + ').';
         this.notify('Erreur lors de l\'enregistrement', 'error');
       }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       console.error('Save error', err);
     };
 
+    this.loading = true;
     if (this.isEditMode && this.commande.id) {
-      this.logistiqueService.updateCommandeFournisseur(this.commande.id, this.commande).subscribe({
+      this.logistiqueService.updateCommandeFournisseur(this.commande.id, payload).subscribe({
         next: onSaved, error: onError
       });
     } else {
-      this.logistiqueService.createCommandeFournisseur(this.commande).subscribe({
+      this.logistiqueService.createCommandeFournisseur(payload).subscribe({
         next: onSaved, error: onError
       });
     }
@@ -580,7 +700,12 @@ export class CommandeFournisseurFormComponent implements OnInit {
 
   confirmCommande() {
     if (!this.isEditable) return;
-    this.commande.statut = StatutCommande.EN_ATTENTE;
+    this.save();
+  }
+
+  recevoirCommande() {
+    if (!this.isEditable) return;
+    this.commande.statut = StatutCommande.RECUE;
     this.save();
   }
 

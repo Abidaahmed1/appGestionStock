@@ -323,6 +323,43 @@
     font-weight: 700;
 }
 
+.piece-info-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px 0;
+}
+
+.piece-name {
+    font-size: 0.95rem;
+    line-height: 1.2;
+}
+
+.piece-details-chip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.detail-item {
+    display: inline-flex;
+    align-items: center;
+    background: #f1f5f9;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+.detail-key {
+    font-weight: 700;
+    margin-right: 4px;
+    color: #64748b;
+    text-transform: capitalize;
+}
+
 .actions-td {
     background-color: #fafbfc;
 }

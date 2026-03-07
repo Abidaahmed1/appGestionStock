@@ -21,25 +21,25 @@ public class MouvementStockController {
     private final MouvementStockService mouvementService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'AUDITEUR')")
     public ResponseEntity<List<MouvementStock>> getAll() {
         return ResponseEntity.ok(mouvementService.getAll());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'AUDITEUR')")
     public ResponseEntity<MouvementStock> getById(@PathVariable Long id) {
         return ResponseEntity.ok(mouvementService.getById(id));
     }
 
     @GetMapping("/type/{typeMouvement}")
-    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'AUDITEUR')")
     public ResponseEntity<List<MouvementStock>> getByType(@PathVariable TypeMouvement typeMouvement) {
         return ResponseEntity.ok(mouvementService.getByType(typeMouvement));
     }
 
     @GetMapping("/date-range")
-    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'AUDITEUR')")
     public ResponseEntity<List<MouvementStock>> getByDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {

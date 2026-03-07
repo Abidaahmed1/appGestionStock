@@ -20,13 +20,13 @@ public class FournisseurController {
     private final FournisseurService fournisseurService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE', 'MAGASINIER', 'AUDITEUR')")
     public ResponseEntity<List<Fournisseur>> getAll() {
         return ResponseEntity.ok(fournisseurService.getAll());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE', 'MAGASINIER', 'AUDITEUR')")
     public ResponseEntity<Fournisseur> getById(@PathVariable Long id) {
         return ResponseEntity.ok(fournisseurService.getById(id));
     }

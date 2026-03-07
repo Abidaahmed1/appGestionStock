@@ -19,6 +19,9 @@ import jakarta.persistence.OneToMany;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
+import com.gestionStock.backend.entity.entreprise.Entreprise;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 
 @Entity
 @Getter
@@ -29,6 +32,10 @@ public class Fournisseur {
 	@GeneratedValue(strategy = GenerationType.AUTO)
 
 	private Long id;
+
+	@ManyToOne
+	@JoinColumn(name = "entreprise_id")
+	private Entreprise entreprise;
 	private boolean archivee = false;
 
 	@NotBlank(message = "L'adresse est obligatoire")

@@ -2,6 +2,7 @@ import { Component, OnInit, inject, PLATFORM_ID, ChangeDetectorRef, HostListener
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { KeycloakService } from 'keycloak-angular';
 import { LogistiqueService } from '../../../logistique/services/logistique.service';
 import { Bon, TypeBon, Fournisseur, MouvementStock, TypeMouvement, LigneMouvement, Stock } from '../../../logistique/models/logistique.models';
 import { MagasinierService } from '../../services/magasinier.service';
@@ -23,6 +24,10 @@ export class BonFormComponent implements OnInit {
     private platformId = inject(PLATFORM_ID);
     private cdr = inject(ChangeDetectorRef);
     private entrepriseService = inject(EntrepriseService);
+    private keycloak = inject(KeycloakService);
+
+    showReactivateConfirm = false;
+    userRoles: string[] = [];
 
     entreprise: Entreprise | null = null;
     notification: { message: string, type: 'success' | 'error' } | null = null;
@@ -148,12 +153,21 @@ export class BonFormComponent implements OnInit {
 
         if (this.bon.typeBon === TypeBon.SORTIE) {
             this.mouvement.typeMouvement = TypeMouvement.SORTIE_VENTE;
+            this.updateLinesWithPrices();
         } else if (this.bon.typeBon === TypeBon.ENTREE) {
             this.mouvement.typeMouvement = TypeMouvement.ENTREE_RECEPTION;
+            this.resetLinesPrices();
         } else if (this.bon.typeBon === TypeBon.RETOUR) {
             this.mouvement.typeMouvement = TypeMouvement.ENTREE_RETOUR;
         }
+
         this.cdr.detectChanges();
+    }
+
+    private resetLinesPrices() {
+        this.mouvement.ligneMouvement.forEach(line => {
+            line.prixHTVA = 0;
+        });
     }
 
     onTypeMouvementChange() {
@@ -161,7 +175,29 @@ export class BonFormComponent implements OnInit {
             this.bon.fournisseur = undefined;
             this.supplierSearchText = '';
         }
+
+        if (this.mouvement.typeMouvement === TypeMouvement.SORTIE_VENTE) {
+            this.updateLinesWithPrices();
+        } else {
+            this.resetLinesPrices();
+        }
+
         this.cdr.detectChanges();
+    }
+
+    private updateLinesWithPrices() {
+        this.mouvement.ligneMouvement.forEach(line => {
+            if (line.stock?.piece?.id) {
+                const pieceId = line.stock.piece.id;
+                const detailId = line.stock.detailPiece?.id;
+                const pieceInfo = this.pieces.find(p => p.id === pieceId && (!detailId || p.variantDetail?.id === detailId));
+
+                if (pieceInfo) {
+                    line.prixHTVA = pieceInfo.prixVente ?? 0;
+                    line.tauxTVA = pieceInfo.tauxTVA ?? 19;
+                }
+            }
+        });
     }
 
     loadSourceBons() {
@@ -357,21 +393,51 @@ export class BonFormComponent implements OnInit {
     selectPiece(index: number, piece: any) {
         const line = this.mouvement.ligneMouvement[index];
 
-        let stock = piece.stock;
+        let stock: any = null;
 
-        if (!stock) {
-            stock = this.stocks.find(s => s.piece?.id === piece.id && !s.detailPiece);
+        if (piece.variantDetail) {
+            stock = piece.stock;
+            if (!stock) {
+                stock = this.stocks.find(s => s.detailPiece?.id === piece.variantDetail.id);
+            }
+        } else {
+            stock = piece.stock;
+            if (!stock) {
+                stock = this.stocks.find(s => s.piece?.id === piece.id && !s.detailPiece);
+            }
         }
 
         if (!stock) {
-            stock = { piece: piece, quantite: 0, type: 'DISPONIBLE' } as any;
+            stock = {
+                piece: piece.originalPiece || piece,
+                detailPiece: piece.variantDetail || null,
+                quantite: 0,
+                type: 'DISPONIBLE'
+            };
         }
 
-        line.stock = stock!;
+        if (!stock.detailPiece && piece.variantDetail) {
+            stock.detailPiece = piece.variantDetail;
+        }
+
+
+        const rootPiece = piece.originalPiece || piece;
+        line.stock = {
+            ...stock,
+            piece: {
+                id: rootPiece.id,
+                designation: rootPiece.designation,
+                codeBarre: rootPiece.codeBarre,
+                reference: rootPiece.reference
+            },
+            detailPiece: stock.detailPiece || piece.variantDetail || null
+        };
         line.tauxTVA = piece.tauxTVA ?? 19;
 
-        if (this.bon.typeBon === TypeBon.SORTIE) {
+        if (this.mouvement.typeMouvement === TypeMouvement.SORTIE_VENTE) {
             line.prixHTVA = piece.prixVente ?? 0;
+        } else if (this.bon.typeBon === TypeBon.SORTIE) {
+            line.prixHTVA = 0;
         } else {
             line.prixHTVA = 0;
         }
@@ -426,17 +492,66 @@ export class BonFormComponent implements OnInit {
         return this.showSupplierDropdown ? this.supplierSearchText : (this.bon.fournisseur ? this.bon.fournisseur.nom : '');
     }
 
-    getStockDesignation(stock: any): string {
-        if (!stock || !stock.piece) return '—';
-        if (stock.detailPiece) {
-            const attributes = stock.detailPiece.attributs || {};
-            const variantLabel = Object.entries(attributes)
-                .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && String(value).trim() !== '')
-                .map(([_, value]) => value)
-                .join(' - ');
-            return `${stock.piece.designation} [${variantLabel}]`;
+    getStockRootName(stock: any): string {
+        if (!stock) return '—';
+
+        const rootName = stock.piece?.designation ||
+            stock.designation ||
+            (stock.piece?.id ? `Produit #${stock.piece.id}` : '—');
+
+        return rootName || '—';
+    }
+
+
+
+
+    getStockVariantDescription(stock: any): string {
+        if (!stock || !stock.detailPiece) return '';
+
+        const attributes = stock.detailPiece.attributs || {};
+
+        const rawName = (attributes as any).nom || (attributes as any).name || '';
+        const variantName = typeof rawName === 'string' ? rawName.trim() : String(rawName || '').trim();
+
+        const detailParts = Object.entries(attributes)
+            .filter(([key, value]) =>
+                !key.startsWith('_') &&
+                key !== 'nom' &&
+                key !== 'name' &&
+                value !== null &&
+                value !== '' &&
+                String(value).trim() !== ''
+            )
+            .map(([key, value]) => {
+                const label = key
+                    .replace(/^_+/, '')
+                    .replace(/_/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim()
+                    .toLowerCase()
+                    .replace(/^\w/, c => c.toUpperCase());
+                return `${label}: ${value}`;
+            });
+
+        const details = detailParts.join(' - ');
+
+        if (variantName && details) {
+            return `${variantName} — ${details}`;
         }
-        return stock.piece.designation;
+
+        if (variantName) {
+            return variantName;
+        }
+
+        return details;
+    }
+
+    getStockDesignation(stock: any): string {
+        const rootName = this.getStockRootName(stock);
+        if (rootName === '—') return '—';
+
+        const variantLabel = this.getStockVariantDescription(stock);
+        return variantLabel ? `${rootName} - ${variantLabel}` : rootName;
     }
 
     getPieceDisplayValue(index: number, ligne: any): string {
@@ -520,9 +635,30 @@ export class BonFormComponent implements OnInit {
         if (this.mouvement.ligneMouvement.length === 0) {
             this.errors['lignes'] = 'Le bon doit contenir au moins une ligne.';
         } else {
+            const stockRequestTotals = new Map<string, number>();
+
             this.mouvement.ligneMouvement.forEach((l, i) => {
-                if (!l.stock?.piece) this.errors[`ligne_${i}_piece`] = `Ligne ${i + 1}: Produit obligatoire`;
-                if (l.quantite <= 0) this.errors[`ligne_${i}_qte`] = `Ligne ${i + 1}: Quantité doit être > 0`;
+                if (!l.stock?.piece) {
+                    this.errors[`ligne_${i}_piece`] = `Ligne ${i + 1}: Produit obligatoire`;
+                } else {
+                    if (this.bon.typeBon === TypeBon.SORTIE) {
+                        const stockId = l.stock.id ? `id_${l.stock.id}` :
+                            (l.stock.detailPiece?.id ? `var_${l.stock.detailPiece.id}` : `p_${l.stock.piece.id}`);
+
+                        const currentTotal = (stockRequestTotals.get(stockId) || 0) + l.quantite;
+                        stockRequestTotals.set(stockId, currentTotal);
+
+                        const available = l.stock.quantite || 0;
+                        if (currentTotal > available) {
+                            const design = this.getStockDesignation(l.stock);
+                            this.errors[`ligne_${i}_qte`] = `Ligne ${i + 1}: Quantité insuffisante pour '${design}' (Total requis: ${currentTotal}, Disponible: ${available})`;
+                        }
+                    }
+                }
+
+                if (l.quantite <= 0) {
+                    this.errors[`ligne_${i}_qte`] = `Ligne ${i + 1}: Quantité doit être > 0`;
+                }
             });
         }
 
@@ -539,121 +675,146 @@ export class BonFormComponent implements OnInit {
         this.loading = true;
         this.cdr.detectChanges();
 
-        this.mouvement.montantHTVA = this.totalBrut;
-        this.mouvement.montantTTC = this.totalTTC;
-
-        if (this.bon.date) {
-            this.mouvement.date = this.bon.date + 'T00:00:00';
-        } else {
-            this.mouvement.date = new Date().toISOString().slice(0, 19);
+        // 1. Format dates strictly
+        let movementDate = this.mouvement.date;
+        if (!movementDate) {
+            movementDate = new Date().toISOString().substring(0, 19);
+        } else if (movementDate.includes('T') && (movementDate.split(':').length === 2)) {
+            movementDate = movementDate + ':00';
         }
 
+        // 2. Build Extremely clean Movement Payload
+        const lines: any[] = (this.mouvement.ligneMouvement || [])
+            .filter(l => l.stock?.piece?.id)
+            .map(l => {
+                const line: any = {
+                    quantite: Number(l.quantite || 0),
+                    prixHTVA: Number(l.prixHTVA || 0),
+                    tauxTVA: Number(l.tauxTVA || 19),
+                    stock: { id: l.stock.id || null }
+                };
 
-        if (!this.mouvement.typeMouvement) {
-            if (this.bon.typeBon === TypeBon.ENTREE) this.mouvement.typeMouvement = TypeMouvement.ENTREE_RECEPTION;
-            else if (this.bon.typeBon === TypeBon.SORTIE) this.mouvement.typeMouvement = TypeMouvement.SORTIE_VENTE;
-            else if (this.bon.typeBon === TypeBon.RETOUR) this.mouvement.typeMouvement = TypeMouvement.ENTREE_RETOUR;
-        }
+                // Only send piece/detail if creating a NEW stock (id is null)
+                if (!l.stock.id) {
+                    if (l.stock.piece?.id) line.stock.piece = { id: l.stock.piece.id };
+                    if (l.stock.detailPiece?.id) line.stock.detailPiece = { id: l.stock.detailPiece.id };
+                }
 
-        const bonToSave = this.buildBonPayload();
+                if (l.id && l.id !== 0) line.id = l.id;
 
-        if (this.isEditMode && this.bon.id) {
-            this.logistiqueService.updateBon(this.bon.id, bonToSave).subscribe({
-                next: (savedBon) => { this.saveMouvement(savedBon.id!); },
-                error: (err) => this.handleError(err)
+                // Cleanup: remove id: null if present to be safe
+                if (line.stock.id === null) delete line.stock.id;
+
+                return line;
             });
-        } else {
-            this.logistiqueService.createBon(bonToSave).subscribe({
-                next: (savedBon) => { this.saveMouvement(savedBon.id!, true); },
-                error: (err) => this.handleError(err)
-            });
-        }
+
+        const mouvementToSave: any = {
+            date: movementDate,
+            montantHTVA: Number(this.totalBrut || 0),
+            montantTTC: Number(this.totalTTC || 0),
+            typeMouvement: this.mouvement.typeMouvement,
+            ligneMouvement: lines
+        };
+        if (this.mouvement.id) mouvementToSave.id = this.mouvement.id;
+
+        // 3. Final Bon Payload
+        const bonToSave: any = {
+            id: this.isEditMode ? this.bon.id : undefined,
+            numeroBon: (this.bon.numeroBon && this.bon.numeroBon !== '0') ? this.bon.numeroBon : undefined,
+            date: this.bon.date,
+            typeBon: this.bon.typeBon,
+            fournisseur: (this.isSupplierApplicable && this.bon.fournisseur?.id) ? { id: this.bon.fournisseur.id } : null,
+            bonOrigine: (this.isReturnMode && this.bon.bonOrigine?.id) ? { id: this.bon.bonOrigine.id } : null,
+            mouvement: mouvementToSave
+        };
+
+        console.log('Sending Bon Payload:', JSON.stringify(bonToSave, null, 2));
+
+        // 4. API Call
+        const apiCall = this.isEditMode && this.bon.id
+            ? this.logistiqueService.updateBon(this.bon.id, bonToSave)
+            : this.logistiqueService.createBon(bonToSave);
+
+        apiCall.subscribe({
+            next: () => this.handleSuccess(),
+            error: (err) => this.handleError(err)
+        });
+    }
+
+    private handleSuccess() {
+        this.loading = false;
+        this.notify('Le bon a été enregistré avec succès !', 'success');
+        setTimeout(() => {
+            if (isPlatformBrowser(this.platformId)) {
+                this.router.navigate(['/magasinier/bons']);
+            }
+        }, 1500);
     }
 
     private buildBonPayload(): any {
+        // This is a helper method used elsewhere if needed, but save() now handles it locally
         return {
             id: this.isEditMode ? this.bon.id : undefined,
             numeroBon: this.bon.numeroBon,
             date: this.bon.date,
             typeBon: this.bon.typeBon,
-            fournisseur: this.isSupplierApplicable && this.bon.fournisseur?.id ? { id: this.bon.fournisseur.id } : null,
-            bonOrigine: this.bon.bonOrigine?.id ? { id: this.bon.bonOrigine.id } : null
+            fournisseur: (this.isSupplierApplicable && this.bon.fournisseur?.id) ? { id: this.bon.fournisseur.id } : null,
+            bonOrigine: (this.isReturnMode && this.bon.bonOrigine?.id) ? { id: this.bon.bonOrigine.id } : null
         };
-    }
-
-
-    saveMouvement(bonId: number, isNewBon: boolean = false) {
-        const payload: any = {
-            id: this.mouvement.id,
-            date: this.mouvement.date,
-            montantHTVA: this.mouvement.montantHTVA,
-            montantTTC: this.mouvement.montantTTC,
-            typeMouvement: this.mouvement.typeMouvement,
-            bon: {
-                id: bonId,
-                bonOrigine: this.bon.bonOrigine ? { id: this.bon.bonOrigine.id } : null
-            },
-            ligneMouvement: (this.mouvement.ligneMouvement || [])
-                .filter(l => l.stock?.piece?.id)
-                .map(l => ({
-                    id: l.id ?? null,
-                    quantite: l.quantite,
-                    prixHTVA: l.prixHTVA ?? 0,
-                    tauxTVA: l.tauxTVA ?? 19,
-                    stock: {
-                        id: l.stock.id ?? null,
-                        piece: {
-                            id: l.stock.piece!.id,
-                            codeBarre: l.stock.piece!.codeBarre
-                        }
-                    }
-                }))
-        };
-
-        const onSuccess = () => {
-            this.loading = false;
-            this.notify('Bon enregistré avec succès !', 'success');
-            setTimeout(() => {
-                this.router.navigate(['/magasinier/bons']);
-            }, 1500);
-        };
-
-        const onError = (err: any) => {
-            if (isNewBon) {
-                console.warn('Movement failed, cleaning up orphan Bon ID:', bonId);
-                this.logistiqueService.deleteBon(bonId).subscribe({
-                    next: () => console.log('Cleanup successful'),
-                    error: (deleteErr) => console.error('Cleanup failed:', deleteErr)
-                });
-            }
-            this.handleError(err);
-        };
-
-        if (this.mouvement.id) {
-            this.logistiqueService.updateMouvement(this.mouvement.id, payload).subscribe({
-                next: onSuccess,
-                error: onError
-            });
-        } else {
-            this.logistiqueService.createMouvement(payload).subscribe({
-                next: onSuccess,
-                error: onError
-            });
-        }
     }
 
     handleError(err: any) {
         this.loading = false;
         console.error('API Error:', err);
-        const backendMessage = err.error?.message || (typeof err.error === 'string' ? err.error : null);
+        const backendMessage = err.error?.detail || err.error?.message || (typeof err.error === 'string' ? err.error : null);
         this.errors['global'] = backendMessage || 'Une erreur est survenue lors de la communication avec le serveur.';
 
         this.cdr.detectChanges();
-        window.scrollTo({ top: 0, behavior: 'auto' });
+        if (isPlatformBrowser(this.platformId)) {
+            window.scrollTo({ top: 0, behavior: 'auto' });
+        }
     }
 
     cancel() {
         this.router.navigate(['/magasinier/bons']);
+    }
+
+    // ─── Méthodes manquantes référencées par le template ───────────────────────
+
+    hasRole(role: string): boolean {
+        const roles = this.keycloak.getUserRoles() || [];
+        const normalize = (r: string) => r.toUpperCase().replace('ROLE_', '').replace(/\s+/g, '_');
+        const target = normalize(role);
+        return roles.some(r => normalize(r) === target);
+    }
+
+    reactivate(): void {
+        this.showReactivateConfirm = true;
+        this.cdr.detectChanges();
+    }
+
+    cancelReactivate(): void {
+        this.showReactivateConfirm = false;
+        this.cdr.detectChanges();
+    }
+
+    confirmReactivate(): void {
+        if (!this.bon.id) return;
+        this.loading = true;
+        this.logistiqueService.reactivateBon(this.bon.id).subscribe({
+            next: (updated) => {
+                this.bon = updated;
+                this.showReactivateConfirm = false;
+                this.loading = false;
+                this.notify('Bon réactivé avec succès !', 'success');
+                setTimeout(() => this.router.navigate(['/magasinier/bons']), 1500);
+            },
+            error: () => {
+                this.loading = false;
+                this.showReactivateConfirm = false;
+                this.notify('Erreur lors de la réactivation.', 'error');
+            }
+        });
     }
 
     notify(message: string, type: 'success' | 'error'): void {

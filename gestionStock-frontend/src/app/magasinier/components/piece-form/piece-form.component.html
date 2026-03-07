@@ -1,0 +1,611 @@
+<div class="confirm-modal-overlay" *ngIf="showConfirmModal">
+    <div class="confirm-modal-card">
+        <div style="text-align: center; padding: 10px 0;">
+            <div style="font-size: 48px; color: #ef4444; margin-bottom: 20px; line-height: 1;">&times;</div>
+            <h3 style="font-size: 19px; font-weight: 800; color: #0f172a; margin-bottom: 15px;">Supprimer l'option ?
+            </h3>
+            <p style="margin-bottom: 30px; color: #64748b; font-size: 15px; line-height: 1.6;">
+                Voulez-vous vraiment retirer <strong>"{{optionToRemove}}"</strong> pour l'attribut
+                <strong>{{champToRemoveFrom?.nom}}</strong> ?
+            </p>
+        </div>
+        <div class="confirm-modal-actions">
+            <button type="button" class="btn-confirm-cancel" (click)="cancelRemove()">Annuler</button>
+            <button type="button" class="btn-confirm-delete" (click)="confirmRemoveOption()">Supprimer</button>
+        </div>
+    </div>
+</div>
+
+<form #pieceForm="ngForm" (ngSubmit)="onFormSubmit(pieceForm)" class="piece-modal-form odoo-form-container">
+    <div class="odoo-header">
+        <button type="button" class="btn-back-top" (click)="onCancel()" title="Retour à la liste">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+        </button>
+        <div class="odoo-title-section">
+            <div class="odoo-breadcrumb-nav" (click)="onCancel()">
+                <span>Pièces détachées</span> /
+                <span>{{ newPiece.designation || 'Nouvelle' }}</span>
+            </div>
+            <div class="odoo-main-title">
+                <span class="odoo-star" [class.active]="!newPiece.archivee"></span>
+                <div style="flex: 1; display: flex; flex-direction: column;">
+                    <input type="text" [(ngModel)]="newPiece.designation" name="designation" #des="ngModel" required
+                        placeholder="Désignation de la pièce..." class="odoo-title-input"
+                        [class.is-invalid]="des.invalid && (des.dirty || des.touched || pieceForm.submitted)">
+                    <div class="error-msg-mini"
+                        *ngIf="des.invalid && (des.dirty || des.touched || pieceForm.submitted)">
+                        <span *ngIf="des.errors?.['required']">La désignation est obligatoire.</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <div class="odoo-image-section">
+            <div class="odoo-image-preview" (click)="fileInput.click()">
+                <img *ngIf="imagePreview" [src]="getImageUrl(imagePreview)" alt="Aperçu">
+                <div *ngIf="!imagePreview" class="camera-placeholder">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                        <circle cx="12" cy="13" r="4" />
+                    </svg>
+                </div>
+            </div>
+            <input type="file" #fileInput (change)="onFileSelected($event)" hidden accept="image/*">
+        </div>
+    </div>
+
+    <div class="odoo-unified-content">
+
+        <div class="form-section-tab-content">
+            <div class="form-section-group">
+                <h3 class="section-header">Informations de base</h3>
+                <div class="odoo-grid">
+                    <div class="odoo-group">
+                        <div class="odoo-field">
+                            <label class="odoo-label">Référence <span class="odoo-help-icon"
+                                    title="Référence interne">?</span></label>
+                            <div class="odoo-value">
+                                <input type="text" [(ngModel)]="newPiece.reference" name="reference" #ref="ngModel"
+                                    required (ngModelChange)="onReferenceChange($event)" pattern="^REF-.*"
+                                    class="odoo-input" placeholder="REF-000"
+                                    [class.is-invalid]="ref.invalid && (ref.dirty || ref.touched || pieceForm.submitted)">
+                                <div class="error-msg"
+                                    *ngIf="ref.invalid && (ref.dirty || ref.touched || pieceForm.submitted)">
+                                    <span *ngIf="ref.errors?.['required']">La référence est obligatoire.</span>
+                                    <span *ngIf="ref.errors?.['pattern']">La référence doit commencer par "REF-".</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="odoo-field">
+                            <label class="odoo-label">Code Barre</label>
+                            <div class="odoo-value">
+                                <input type="text" [(ngModel)]="newPiece.codeBarre" name="codeBarre" #cb="ngModel"
+                                    required class="odoo-input" placeholder="123456789"
+                                    [class.is-invalid]="cb.invalid && (cb.dirty || cb.touched || pieceForm.submitted)">
+                                <div class="error-msg"
+                                    *ngIf="cb.invalid && (cb.dirty || cb.touched || pieceForm.submitted)">
+                                    <span *ngIf="cb.errors?.['required']">Le code barre est obligatoire.</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="odoo-field">
+                            <label class="odoo-label">Catégorie <span class="attribute-required">*</span></label>
+                            <div class="odoo-value">
+                                <div class="custom-picker">
+                                    <div class="selected-display" (click)="toggleCategorySelector($event)"
+                                        *ngIf="newPiece.categorie?.nom"
+                                        [class.is-invalid]="pieceForm.submitted && !newPiece.categorie?.id">
+                                        <span class="value">{{ newPiece.categorie?.nom }}</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="m6 9 6 6 6-6" />
+                                        </svg>
+                                    </div>
+                                    <button type="button" class="odoo-input" *ngIf="!newPiece.categorie?.nom"
+                                        (click)="toggleCategorySelector($event)"
+                                        [class.is-invalid]="pieceForm.submitted && !newPiece.categorie?.id">Choisir une
+                                        catégorie...</button>
+                                    <div class="error-msg" *ngIf="pieceForm.submitted && !newPiece.categorie?.id">
+                                        <span>Veuillez sélectionner une catégorie.</span>
+                                    </div>
+
+                                    <div class="picker-dropdown" *ngIf="showCategorySelector">
+                                        <div class="picker-search-wrapper" (click)="$event.stopPropagation()">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                                stroke-linecap="round" stroke-linejoin="round"
+                                                class="picker-search-icon">
+                                                <circle cx="11" cy="11" r="8"></circle>
+                                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                            </svg>
+                                            <input type="text" [(ngModel)]="categorySearchTerm" name="catSearch"
+                                                placeholder="Rechercher une catégorie..."
+                                                class="odoo-input picker-search-input">
+                                        </div>
+                                        <div class="picker-list">
+                                            <div class="picker-item" *ngFor="let cat of filteredCategories"
+                                                (click)="selectCategory(cat)">
+                                                {{ cat.nom }}
+                                            </div>
+                                            <div class="picker-item add-new" (click)="openQuickAddCategory($event)">
+                                                + Nouvelle catégorie</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="odoo-group">
+                        <div class="odoo-field">
+                            <label class="odoo-label">Prix de vente <span class="attribute-required">*</span></label>
+                            <div class="odoo-value">
+                                <div style="display: flex; flex-direction: column;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="number" [(ngModel)]="newPiece.prixVente" name="prixVente"
+                                            #pv="ngModel" required min="0.01" class="odoo-input" style="width: 120px;"
+                                            placeholder="0"
+                                            [class.is-invalid]="pv.invalid && (pv.dirty || pv.touched || pieceForm.submitted)">
+                                        <span style="color: #64748b; font-weight: 600;">{{ entreprise?.devise?.symbole
+                                            ||
+                                            'DT' }}</span>
+                                    </div>
+                                    <div class="error-msg"
+                                        *ngIf="pv.invalid && (pv.dirty || pv.touched || pieceForm.submitted)">
+                                        <span *ngIf="pv.errors?.['required']">Le prix est obligatoire.</span>
+                                        <span *ngIf="pv.errors?.['min']">Le prix doit être supérieur à 0.</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="odoo-field">
+                            <label class="odoo-label">Taxes à la vente</label>
+                            <div class="odoo-value">
+                                <div class="odoo-input-group" style="width: 120px;">
+                                    <input type="number" [(ngModel)]="newPiece.tauxTVA" name="tauxTVA"
+                                        class="odoo-input" placeholder="0">
+                                    <span class="input-suffix">%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attributes & Variants Section -->
+            <div class="form-section-group" style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 25px;">
+                <h3 class="section-header">Attributs & Variantes</h3>
+                <p class="section-help-text">Ajoutez des attributs (Taille, Couleur, etc.) et leurs valeurs pour générer
+                    automatiquement les variantes.</p>
+
+                <div class="variants-config-container">
+                    <table class="variants-mgmt-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 200px;">Attribut</th>
+                                <th>Valeurs</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <ng-container *ngFor="let champ of parametres?.champsPersonnalises; let i = index">
+                                <tr *ngIf="champ.actif && champ.variante"
+                                    [class.has-variant-error]="variantErrors[champ.nom]">
+                                    <td class="attr-name-td">
+                                        <div class="attr-label-box">
+                                            <span class="dot"></span>
+                                            {{ champ.nom }}
+                                            <span class="attribute-required" *ngIf="champ.obligatoire">*</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="variant-pills-container">
+                                            <div class="variant-pill" *ngFor="let opt of getLocalOptions(champ)">
+                                                {{ opt }}
+                                                <span class="remove-opt" title="Supprimer"
+                                                    (click)="openConfirmRemove(champ, opt, $event)">&times;</span>
+                                            </div>
+                                            <div class="variant-add-wrapper">
+                                                <input type="text" class="variant-add-input"
+                                                    placeholder="Ajouter une valeur..."
+                                                    (keydown.enter)="$event.preventDefault(); addVariantOption(champ, $any($event.target))"
+                                                    [name]="'addvariantopt_' + i">
+                                                <span class="add-hint">Pressez Entrée</span>
+                                            </div>
+                                        </div>
+                                        <div class="error-msg-mini" *ngIf="variantErrors[champ.nom]">
+                                            <span>Veuillez ajouter au moins une valeur pour cet attribut.</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </ng-container>
+                        </tbody>
+                    </table>
+
+                    <div class="no-variants-empty" *ngIf="!parametres?.champsPersonnalises || !hasVisibleFields(true)">
+                        <div class="empty-icon">⚙️</div>
+                        <p>Aucun attribut de type "Variante" n'est configuré dans les paramètres.</p>
+                    </div>
+                </div>
+
+                <!-- Generated Variants Preview -->
+                <div class="variants-preview-section" *ngIf="newPiece.details && newPiece.details.length > 1"
+                    style="margin-top: 25px; background: #f8fafc; padding: 15px; border-radius: 8px;">
+                    <h4 class="sub-section-title"
+                        style="font-size: 13px; font-weight: 700; color: #64748b; margin-bottom: 12px; text-transform: uppercase;">
+                        Aperçu des variantes ({{ newPiece.details.length }})
+                    </h4>
+                    <div class="generated-variants-grid">
+                        <div class="gen-variant-tag" *ngFor="let detail of newPiece.details">
+                            {{ getVariantLabel(detail) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section-group" *ngIf="parametres?.champsPersonnalises && hasVisibleFields(false)"
+                style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 25px;">
+                <h3 class="section-header">Attributs Complémentaires</h3>
+                <div class="odoo-grid">
+                    <ng-container *ngFor="let champ of parametres?.champsPersonnalises; let i = index">
+                        <div class="odoo-field" *ngIf="champ.actif && !champ.variante">
+                            <label class="odoo-label">
+                                {{ champ.nom }}
+                                <span class="attribute-required" *ngIf="champ.obligatoire">*</span>
+                            </label>
+                            <div class="odoo-value">
+                                <ng-container [ngSwitch]="champ.type">
+                                    <input *ngSwitchCase="'TEXT'" type="text"
+                                        [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dynamic_' + i"
+                                        #dyn="ngModel" [required]="champ.obligatoire" class="odoo-input"
+                                        [placeholder]="champ.description || ''">
+
+                                    <input *ngSwitchCase="'EMAIL'" type="email"
+                                        [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dynamic_' + i"
+                                        #dyn="ngModel" [required]="champ.obligatoire" email class="odoo-input"
+                                        [placeholder]="champ.description || ''">
+
+                                    <input *ngSwitchCase="'URL'" type="url"
+                                        [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dynamic_' + i"
+                                        #dyn="ngModel" [required]="champ.obligatoire" class="odoo-input"
+                                        [placeholder]="champ.description || ''" pattern="https?://.+">
+
+                                    <textarea *ngSwitchCase="'TEXTAREA'"
+                                        [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dynamic_' + i"
+                                        #dyn="ngModel" [required]="champ.obligatoire" class="odoo-textarea"
+                                        [placeholder]="champ.description || ''"></textarea>
+
+                                    <input *ngSwitchCase="'NUMBER'" type="number"
+                                        [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dynamic_' + i"
+                                        #dyn="ngModel" [required]="champ.obligatoire" class="odoo-input">
+
+                                    <input *ngSwitchCase="'DATE'" type="date"
+                                        [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dynamic_' + i"
+                                        #dyn="ngModel" [required]="champ.obligatoire" class="odoo-input">
+
+                                    <select *ngSwitchCase="'SELECT'"
+                                        [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dynamic_' + i"
+                                        #dyn="ngModel" [required]="champ.obligatoire" class="odoo-select">
+                                        <option value="" disabled selected>Choisir...</option>
+                                        <option *ngFor="let opt of champ.options" [value]="opt">{{ opt }}</option>
+                                    </select>
+
+                                    <select *ngSwitchCase="'LISTE'"
+                                        [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dynamic_' + i"
+                                        #dyn="ngModel" [required]="champ.obligatoire" class="odoo-select">
+                                        <option value="" disabled selected>Choisir...</option>
+                                        <option *ngFor="let opt of champ.options" [value]="opt">{{ opt }}</option>
+                                    </select>
+
+                                    <label *ngSwitchCase="'BOOLEAN'" class="odoo-checkbox-group">
+                                        <input type="checkbox" [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]"
+                                            [name]="'dynamic_' + i">
+                                        {{ champ.nom }}
+                                    </label>
+                                </ng-container>
+                                <div class="error-msg-mini"
+                                    *ngIf="pieceForm.controls['dynamic_' + i]?.invalid && (pieceForm.controls['dynamic_' + i]?.dirty || pieceForm.controls['dynamic_' + i]?.touched || pieceForm.submitted)">
+                                    <span *ngIf="pieceForm.controls['dynamic_' + i]?.errors?.['required']">Ce champ est
+                                        obligatoire.</span>
+                                    <span *ngIf="pieceForm.controls['dynamic_' + i]?.errors?.['email']">Email
+                                        invalide.</span>
+                                    <span *ngIf="pieceForm.controls['dynamic_' + i]?.errors?.['pattern']">URL
+                                        invalide.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </ng-container>
+                </div>
+            </div>
+
+            <div class="form-section-group" style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 25px;">
+                <h3 class="section-header">Inventaire & Stock</h3>
+                <div class="odoo-grid">
+                    <div class="odoo-group">
+                        <div class="odoo-field">
+                            <label class="odoo-label">Seuil Minimum <span class="attribute-required">*</span></label>
+                            <div class="odoo-value">
+                                <input type="number" [(ngModel)]="newPiece.seuilMinimum" name="seuilMinimum"
+                                    #smin="ngModel" required min="0" class="odoo-input">
+                                <div class="error-msg"
+                                    *ngIf="smin.invalid && (smin.dirty || smin.touched || pieceForm.submitted)">
+                                    <span *ngIf="smin.errors?.['required']">Le seuil minimum est obligatoire.</span>
+                                    <span *ngIf="smin.errors?.['min']">Le seuil ne peut pas être négatif.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="odoo-group">
+                        <div class="odoo-field">
+                            <label class="odoo-label">Seuil Maximum <span class="attribute-required">*</span></label>
+                            <div class="odoo-value">
+                                <input type="number" [(ngModel)]="newPiece.seuilMaximum" name="seuilMaximum"
+                                    #smax="ngModel" required min="0" class="odoo-input"
+                                    [class.is-invalid]="newPiece.seuilMaximum < newPiece.seuilMinimum">
+                                <div class="error-msg"
+                                    *ngIf="(smax.invalid || newPiece.seuilMaximum < newPiece.seuilMinimum) && (smax.dirty || smax.touched || pieceForm.submitted)">
+                                    <span *ngIf="smax.errors?.['required']">Le seuil maximum est obligatoire.</span>
+                                    <span *ngIf="!smax.errors && newPiece.seuilMaximum < newPiece.seuilMinimum">Doit
+                                        être >= au seuil min.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section-group" style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 25px;">
+                <h3 class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    Produits Associés
+                    <button type="button" class="btn-odoo-action" (click)="toggleProductSelectorModal($event)"
+                        style="padding: 4px 12px; font-size: 13px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                            style="margin-right: 6px;">
+                            <path d="M5 12h14"></path>
+                            <path d="M12 5v14"></path>
+                        </svg>
+                        ASSOCIER
+                    </button>
+                </h3>
+                <div class="product-grid-mini" *ngIf="newPiece.produitsAssocies?.length">
+                    <div class="product-item-mini" *ngFor="let prod of newPiece.produitsAssocies; let i = index">
+                        <img [src]="getImageUrl(prod.imageUrl)" class="product-img-mini" alt="">
+                        <div class="product-info-mini">
+                            <span class="product-name-mini">{{ prod.designation }}</span>
+                            <span class="product-code-mini">{{ prod.code }}</span>
+                        </div>
+                        <button type="button" class="btn-remove-mini" (click)="removeAssociatedProduct(i)"
+                            title="Détacher">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M18 6 6 18" />
+                                <path d="m6 6 12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="empty-state-container" *ngIf="!newPiece.produitsAssocies?.length"
+                    style="padding: 20px 0; border: 1px dashed #e2e8f0; border-radius: 8px; text-align: center;">
+                    <div class="empty-state-text" style="color: #94a3b8; font-style: italic; font-size: 14px;">Aucun
+                        produit associé.</div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="odoo-footer-actions" style="flex-direction: column; align-items: flex-start; gap: 0;">
+        <div class="global-error-msg" *ngIf="pieceForm.submitted && (pieceForm.invalid || !newPiece.categorie?.id)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <span>Veuillez remplir tous les champs obligatoires correctement avant de continuer.</span>
+        </div>
+
+        <div style="display: flex; gap: 12px; width: 100%;">
+            <button type="submit" class="btn-odoo-primary">
+                {{ selectedPiece ? 'ENREGISTRER' : 'CRÉER' }}
+            </button>
+            <button type="button" class="btn-odoo-secondary" (click)="onCancel()">ANNULER</button>
+        </div>
+    </div>
+
+</form>
+
+<div class="product-selector-overlay" *ngIf="showProductSelector" (click)="toggleProductSelectorModal()">
+    <div class="product-selector-content" (click)="$event.stopPropagation()">
+        <header class="ps-header">
+            <h3>
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                    class="header-icon">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                sélectionnez des produits
+            </h3>
+            <button type="button" class="close-btn" (click)="toggleProductSelectorModal()" title="Fermer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </header>
+        <div class="ps-search">
+            <div class="search-input-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                    class="search-icon">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" [(ngModel)]="productSearchTerm" name="psSearch"
+                    placeholder="Rechercher un produit fini...">
+            </div>
+        </div>
+        <div class="ps-list">
+            <div class="ps-item" *ngFor="let prod of filteredProduitsSelection"
+                [class.selected]="isProductSelected(prod.id)" (click)="toggleProductSelection(prod)">
+                <img [src]="getImageUrl(prod.imageUrl)" alt="">
+                <div class="ps-info">
+                    <span class="ps-name">{{ prod.designation }}</span>
+                    <span class="ps-code">{{ prod.code }}</span>
+                </div>
+                <div class="ps-check" *ngIf="isProductSelected(prod.id)">✓</div>
+            </div>
+            <div class="ps-item add-new" (click)="openQuickAddProduct($event)">+ Nouveau produit</div>
+        </div>
+        <div class="ps-footer">
+            <span class="ps-selected-count">{{ getSelectedProductsCount() }} produit(s) sélectionné(s)</span>
+            <button type="button" class="btn-odoo-primary" (click)="toggleProductSelectorModal()">VALIDER</button>
+        </div>
+    </div>
+</div>
+
+<div class="quick-add-overlay" *ngIf="showQuickAddCategory" (click)="closeQuickAddCategory()">
+    <div class="quick-add-content premium-modal" style="max-width: 500px;" (click)="$event.stopPropagation()">
+        <header class="modal-premium-header">
+            <div class="header-left">
+                <div class="header-icon-box">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                </div>
+                <div class="header-text">
+                    <h3>Nouvelle Catégorie</h3>
+                    <p>Organisez vos pièces par catégorie</p>
+                </div>
+            </div>
+            <button type="button" class="btn-close-modal" (click)="closeQuickAddCategory()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </header>
+
+        <div class="modal-premium-body">
+            <div class="body-right" style="width: 100%;">
+                <div class="premium-field">
+                    <label>Nom de la catégorie <span class="required">*</span></label>
+                    <input type="text" [(ngModel)]="newCategory.nom" name="qcnom" placeholder="Ex: Moteurs, Freins..."
+                        class="premium-input">
+                </div>
+
+                <div class="premium-field">
+                    <label>Code <span class="required">*</span></label>
+                    <input type="text" [(ngModel)]="newCategory.code" name="qccode" placeholder="Ex: CAT-01"
+                        class="premium-input">
+                </div>
+            </div>
+        </div>
+
+        <footer class="modal-premium-footer">
+            <button type="button" class="btn-premium-secondary" (click)="closeQuickAddCategory()">Annuler</button>
+            <button type="button" class="btn-premium-primary" (click)="submitQuickAddCategory()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                    style="margin-right: 4px;">
+                    <path d="M5 12h14"></path>
+                    <path d="M12 5v14"></path>
+                </svg>
+                Ajouter
+            </button>
+        </footer>
+    </div>
+</div>
+
+<div class="quick-add-overlay" *ngIf="showQuickAddProduct" (click)="closeQuickAddProduct()">
+    <div class="quick-add-content premium-modal" (click)="$event.stopPropagation()">
+        <header class="modal-premium-header">
+            <div class="header-left">
+                <div class="header-icon-box">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m7.5 4.27 9 5.15" />
+                        <path
+                            d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                        <path d="m3.3 7 8.7 5 8.7-5" />
+                        <path d="M12 22V12" />
+                    </svg>
+                </div>
+                <div class="header-text">
+                    <h3>Ajouter un produit</h3>
+                    <p>Complétez les informations pour créer un nouveau produit fini</p>
+                </div>
+            </div>
+            <button type="button" class="btn-close-modal" (click)="closeQuickAddProduct()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </header>
+
+        <div class="modal-premium-body">
+            <div class="premium-body-grid">
+                <div class="body-left">
+                    <label class="premium-label-small">Image du produit</label>
+                    <div class="qa-premium-image-pick" [class.has-image]="newProductPreview"
+                        (click)="qpFileInput.click()">
+                        <img *ngIf="newProductPreview" [src]="newProductPreview" alt="Aperçu">
+                        <div *ngIf="!newProductPreview" class="image-placeholder-content">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path
+                                    d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                                <circle cx="12" cy="13" r="4" />
+                            </svg>
+                            <span>Ajouter une image</span>
+                        </div>
+                        <input type="file" #qpFileInput (change)="onQuickProductFileSelected($event)" hidden
+                            accept="image/*">
+                    </div>
+                </div>
+                <div class="body-right">
+                    <label class="premium-label-small">INFORMATIONS GÉNÉRALES</label>
+
+                    <div class="premium-field">
+                        <label>Code Produit <span class="required">*</span></label>
+                        <input type="text" [(ngModel)]="newProduct.code" name="qpcode" placeholder="Ex: PF-100"
+                            class="premium-input">
+                    </div>
+
+                    <div class="premium-field">
+                        <label>Désignation <span class="required">*</span></label>
+                        <input type="text" [(ngModel)]="newProduct.designation" name="qpnom"
+                            placeholder="Nom complet du produit" class="premium-input">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="modal-premium-footer">
+            <button type="button" class="btn-premium-secondary" (click)="closeQuickAddProduct()">Annuler</button>
+            <button type="button" class="btn-premium-primary" (click)="submitQuickAddProduct()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                    <polyline points="17 21 17 13 7 13 7 21" />
+                    <polyline points="7 3 7 8 15 8" />
+                </svg>
+                Enregistrer
+            </button>
+        </footer>
+    </div>
+</div>

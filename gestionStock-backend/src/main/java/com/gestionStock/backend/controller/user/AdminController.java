@@ -1,16 +1,29 @@
 package com.gestionStock.backend.controller.user;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.gestionStock.backend.entity.user.Role;
+import com.gestionStock.backend.entity.user.User;
 import com.gestionStock.backend.service.user.KeycloakAdminService;
 import com.gestionStock.backend.service.user.UserService;
+import com.gestionStock.backend.entity.entreprise.Entreprise;
 
 @RestController
 @RequestMapping("/api/admin/users")
@@ -27,26 +40,42 @@ public class AdminController {
 	@GetMapping
 	public ResponseEntity<?> getAllUsers() {
 		try {
+			List<User> dbUsers = userService.getAllUsersComplete();
+			if (dbUsers == null || dbUsers.isEmpty()) {
+				return ResponseEntity.ok(new ArrayList<>());
+			}
+
 			List<Map<String, Object>> keycloakUsers = adminService.getAllUsers();
-			List<com.gestionStock.backend.entity.user.User> dbUsers = userService.getAllUsersComplete();
 
 			Map<String, String> idToRole = new HashMap<>();
 			Map<String, String> emailToRole = new HashMap<>();
+			Set<String> allowedIds = new HashSet<>();
+			Set<String> allowedEmails = new HashSet<>();
 
-			for (com.gestionStock.backend.entity.user.User dbUser : dbUsers) {
+			for (User dbUser : dbUsers) {
 				if (dbUser.getRole() != null) {
 					if (dbUser.getId() != null) {
 						idToRole.put(dbUser.getId(), dbUser.getRole().name());
+						allowedIds.add(dbUser.getId());
 					}
 					if (dbUser.getEmail() != null) {
 						emailToRole.put(dbUser.getEmail(), dbUser.getRole().name());
+						allowedEmails.add(dbUser.getEmail());
 					}
 				}
 			}
 
+			List<Map<String, Object>> result = new ArrayList<>();
+
 			for (Map<String, Object> kcUser : keycloakUsers) {
 				String id = (String) kcUser.get("id");
 				String email = (String) kcUser.get("email");
+
+				boolean matchesEntreprise = (id != null && allowedIds.contains(id))
+						|| (email != null && allowedEmails.contains(email));
+				if (!matchesEntreprise) {
+					continue;
+				}
 
 				if (id != null && idToRole.containsKey(id)) {
 					kcUser.put("role", idToRole.get(id));
@@ -55,9 +84,11 @@ public class AdminController {
 				} else {
 					kcUser.put("role", "AUCUN");
 				}
+
+				result.add(kcUser);
 			}
 
-			return ResponseEntity.ok(keycloakUsers);
+			return ResponseEntity.ok(result);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -67,6 +98,13 @@ public class AdminController {
 
 	@PostMapping
 	public ResponseEntity<?> createUser(@RequestBody Map<String, Object> user) {
+		if (userService.getCurrentUserEntreprise() == null) {
+			Map<String, String> errorResponse = new HashMap<>();
+			errorResponse.put("message",
+					"Vous devez d'abord créer votre entreprise avant de pouvoir ajouter des utilisateurs.");
+			return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(errorResponse);
+		}
+
 		String email = (String) user.get("email");
 		String userId;
 
@@ -109,8 +147,17 @@ public class AdminController {
 						"AdminController: Erreur lors de l'assignation Keycloak (" + userRole + "): " + e.getMessage());
 			}
 
-			userService.provisionUserIfNeeded(userId, (String) user.get("firstName"), (String) user.get("lastName"),
+			User provisionedUser = userService.provisionUserIfNeeded(userId, (String) user.get("firstName"),
+					(String) user.get("lastName"),
 					email, userRole);
+
+			Entreprise currentEntreprise = userService.getCurrentUserEntreprise();
+			if (currentEntreprise != null && provisionedUser.getEntreprise() == null) {
+				provisionedUser.setEntreprise(currentEntreprise);
+				userService.createUser(provisionedUser); // Ceci effectue un save
+				System.out.println("AdminController: Entreprise " + currentEntreprise.getNom()
+						+ " assignée au nouvel utilisateur " + email);
+			}
 
 			System.out.println(
 					"AdminController: Utilisateur " + email + " synchronisé dans Postgres avec le rôle: " + userRole);

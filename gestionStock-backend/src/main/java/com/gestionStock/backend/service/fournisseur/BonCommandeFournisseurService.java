@@ -41,25 +41,56 @@ public class BonCommandeFournisseurService {
     private final StockRepository stockRepo;
 
     public List<BonCommandeFournisseur> getAll() {
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
+        if (entreprise == null) {
+            return java.util.List.of();
+        }
+
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
             String userId = jwt.getSubject();
 
-            boolean isAdmin = auth.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRATEUR"));
+            boolean hasFullAccess = auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRATEUR") ||
+                            a.getAuthority().equals("ROLE_AUDITEUR"));
 
-            if (isAdmin) {
-                return repository.findAll();
+            if (hasFullAccess) {
+                return repository.findByCreateurEntreprise(entreprise);
             } else {
                 return repository.findByCreateurId(userId);
             }
         }
-        return repository.findAll();
+        return java.util.List.of();
     }
 
     public BonCommandeFournisseur getById(Long id) {
-        return repository.findById(id)
+        BonCommandeFournisseur bon = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Bon de commande non trouvé"));
+
+        com.gestionStock.backend.entity.entreprise.Entreprise currentEntreprise = userService
+                .getCurrentUserEntreprise();
+
+        // Check enterprise isolation
+        if (bon.getCreateur() != null && bon.getCreateur().getEntreprise() != null) {
+            if (!bon.getCreateur().getEntreprise().equals(currentEntreprise)) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Interdit : Cette commande appartient à une autre entreprise.");
+            }
+        }
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
+            String userId = jwt.getSubject();
+            boolean hasFullAccess = auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRATEUR") ||
+                            a.getAuthority().equals("ROLE_AUDITEUR"));
+
+            if (!hasFullAccess && (bon.getCreateur() == null || !bon.getCreateur().getId().equals(userId))) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Vous n'avez pas l'autorisation d'accéder à cette commande.");
+            }
+        }
+        return bon;
     }
 
     private static boolean isUniquenessConstraintViolation(Throwable t) {
@@ -285,8 +316,7 @@ public class BonCommandeFournisseurService {
     }
 
     public BonCommandeFournisseur update(Long id, BonCommandeFournisseur bon) {
-        BonCommandeFournisseur existing = repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Bon de commande non trouvé"));
+        BonCommandeFournisseur existing = getById(id);
 
         boolean newlyReceived = existing.getStatut() != StatutCommande.RECUE && bon.getStatut() == StatutCommande.RECUE;
 
@@ -323,9 +353,7 @@ public class BonCommandeFournisseurService {
     }
 
     public void delete(Long id) {
-        if (!repository.existsById(id)) {
-            throw new EntityNotFoundException("Bon de commande non trouvé");
-        }
+        getById(id);
         repository.deleteById(id);
     }
 }

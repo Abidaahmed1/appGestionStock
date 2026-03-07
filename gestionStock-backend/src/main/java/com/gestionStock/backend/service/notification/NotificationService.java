@@ -1,6 +1,5 @@
 package com.gestionStock.backend.service.notification;
 
-import com.gestionStock.backend.entity.Stock.Stock;
 import com.gestionStock.backend.entity.notification.Notification;
 import com.gestionStock.backend.entity.notification.NotificationType;
 import com.gestionStock.backend.entity.user.Role;
@@ -10,6 +9,7 @@ import com.gestionStock.backend.repository.notification.NotificationRepository;
 import com.gestionStock.backend.repository.notification.NotificationTargetRepository;
 import com.gestionStock.backend.repository.stock.StockRepository;
 import com.gestionStock.backend.repository.user.UserRepository;
+import com.gestionStock.backend.service.user.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +27,7 @@ public class NotificationService {
     private final NotificationTargetRepository targetRepo;
     private final UserRepository userRepository;
     private final StockRepository stockRepository;
+    private final UserService userService;
 
     public List<Notification> getNotificationsForUser(String userId) {
         return targetRepo.findByUserIdOrderByDateDesc(userId).stream().map(nt -> {
@@ -62,15 +63,13 @@ public class NotificationService {
     public void createNotificationForRoles(String titre, String message, NotificationType type, List<Role> roles,
             Long relatedId) {
         List<User> users = new java.util.ArrayList<>();
-        if (roles != null && !roles.isEmpty()) {
-            users.addAll(userRepository.findByRoleIn(roles));
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
+
+        if (roles != null && !roles.isEmpty() && entreprise != null) {
+            users.addAll(userRepository.findByRoleInAndEntreprise(roles, entreprise));
         }
 
-        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder
-                .getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
-            userRepository.findById(jwt.getSubject()).ifPresent(users::add);
-        }
+        userService.getCurrentUser().ifPresent(users::add);
 
         java.util.Map<String, User> uniqueUsers = users.stream()
                 .collect(Collectors.toMap(User::getId, u -> u, (u1, u2) -> u1));

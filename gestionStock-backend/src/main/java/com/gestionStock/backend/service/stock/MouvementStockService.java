@@ -4,8 +4,10 @@ import com.gestionStock.backend.entity.Stock.MouvementStock;
 import com.gestionStock.backend.entity.Stock.LigneMouvement;
 import com.gestionStock.backend.entity.Stock.Stock;
 import com.gestionStock.backend.entity.Stock.TypeMouvement;
+import com.gestionStock.backend.entity.entreprise.Entreprise;
 import com.gestionStock.backend.repository.stock.MouvementStockRepository;
 import com.gestionStock.backend.repository.stock.StockRepository;
+import com.gestionStock.backend.service.user.UserService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
@@ -22,9 +24,13 @@ public class MouvementStockService {
     private final MouvementStockRepository mouvementRepo;
     private final StockRepository stockRepo;
     private final com.gestionStock.backend.repository.stock.BonRepository bonRepo;
+    private final UserService userService;
 
     public List<MouvementStock> getAll() {
-        return mouvementRepo.findAll();
+        Entreprise entreprise = userService.getCurrentUserEntreprise();
+        if (entreprise == null)
+            return java.util.List.of();
+        return mouvementRepo.findByBonEntreprise(entreprise);
     }
 
     public MouvementStock getById(Long id) {
@@ -33,11 +39,12 @@ public class MouvementStockService {
     }
 
     public List<MouvementStock> getByType(TypeMouvement typeMouvement) {
-        return mouvementRepo.findByTypeMouvement(typeMouvement);
+        return mouvementRepo.findByTypeMouvementAndBonEntreprise(typeMouvement, userService.getCurrentUserEntreprise());
     }
 
     public List<MouvementStock> getByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
-        return mouvementRepo.findByDateBetween(startDate, endDate);
+        return mouvementRepo.findByDateBetweenAndBonEntreprise(startDate, endDate,
+                userService.getCurrentUserEntreprise());
     }
 
     public MouvementStock save(MouvementStock mouvement) {
@@ -63,7 +70,6 @@ public class MouvementStockService {
                         if (newLine.getStock() != null && newLine.getStock().getPiece() != null) {
                             Long pieceId = newLine.getStock().getPiece().getId();
 
-                            // 1. Calculer la quantité initiale sortie/entrée
                             int originalQty = 0;
                             String pieceName = newLine.getStock().getPiece().getDesignation();
 
@@ -83,7 +89,6 @@ public class MouvementStockService {
                                                 + "' ne fait pas partie du document d'origine.");
                             }
 
-                            // 2. Calculer la quantité déjà retournée (hors bon actuel)
                             int alreadyReturnedQty = 0;
                             for (com.gestionStock.backend.entity.Stock.Bon otherReturn : otherReturns) {
                                 if (mouvement.getBon().getId() != null
@@ -175,7 +180,13 @@ public class MouvementStockService {
         }
 
         if (existingStock == null) {
-            existingStock = stockRepo.findByPieceId(pieceId).stream().findFirst().orElse(null);
+            if (incomingStock.getDetailPiece() != null && incomingStock.getDetailPiece().getId() != null) {
+                existingStock = stockRepo.findByDetailPieceId(incomingStock.getDetailPiece().getId()).orElse(null);
+            } else {
+                existingStock = stockRepo.findByPieceId(pieceId).stream()
+                        .filter(s -> s.getDetailPiece() == null)
+                        .findFirst().orElse(null);
+            }
         }
 
         if (existingStock == null) {
@@ -213,11 +224,7 @@ public class MouvementStockService {
             return;
         }
         Stock incomingStock = ligne.getStock();
-        if (incomingStock == null || incomingStock.getPiece() == null)
-            return;
-
-        Long pieceId = incomingStock.getPiece().getId();
-        if (pieceId == null)
+        if (incomingStock == null)
             return;
 
         Stock existingStock = null;
@@ -226,15 +233,27 @@ public class MouvementStockService {
         }
 
         if (existingStock == null) {
-            existingStock = stockRepo.findByPieceId(pieceId).stream().findFirst().orElse(null);
+            if (incomingStock.getDetailPiece() != null && incomingStock.getDetailPiece().getId() != null) {
+                existingStock = stockRepo.findByDetailPieceId(incomingStock.getDetailPiece().getId()).orElse(null);
+            } else if (incomingStock.getPiece() != null && incomingStock.getPiece().getId() != null) {
+                existingStock = stockRepo.findByPieceId(incomingStock.getPiece().getId()).stream()
+                        .filter(s -> s.getDetailPiece() == null)
+                        .findFirst().orElse(null);
+            }
         }
 
         if (existingStock == null) {
+            if (incomingStock.getPiece() == null || incomingStock.getPiece().getId() == null) {
+                return;
+            }
             existingStock = new Stock();
             existingStock.setPiece(incomingStock.getPiece());
+            existingStock.setDetailPiece(incomingStock.getDetailPiece());
             existingStock.setQuantite(0);
             existingStock.setType(com.gestionStock.backend.entity.Stock.TypeStock.DISPONIBLE);
         }
+
+        Long pieceId = existingStock.getPiece() != null ? existingStock.getPiece().getId() : null;
 
         int currentQuantity = existingStock.getQuantite();
         int changeQuantity = ligne.getQuantite();
@@ -266,5 +285,39 @@ public class MouvementStockService {
         }
 
         ligne.setStock(stockRepo.save(existingStock));
+    }
+
+    public Stock resolveStock(Stock incoming) {
+        if (incoming == null)
+            return null;
+
+        if (incoming.getId() != null) {
+            Stock found = stockRepo.findById(incoming.getId()).orElse(null);
+            if (found != null)
+                return found;
+        }
+
+        if (incoming.getDetailPiece() != null && incoming.getDetailPiece().getId() != null) {
+            Stock found = stockRepo.findByDetailPieceId(incoming.getDetailPiece().getId()).orElse(null);
+            if (found != null)
+                return found;
+        }
+
+        if (incoming.getPiece() != null && incoming.getPiece().getId() != null) {
+            return stockRepo.findByPieceId(incoming.getPiece().getId()).stream()
+                    .filter(s -> s.getDetailPiece() == null)
+                    .findFirst().orElse(null);
+        }
+
+        return null;
+    }
+
+    public void updateStockForMouvement(com.gestionStock.backend.entity.Stock.MouvementStock mouvement) {
+        if (mouvement == null || mouvement.getLigneMouvement() == null)
+            return;
+
+        for (LigneMouvement ligne : mouvement.getLigneMouvement()) {
+            updateStockQuantity(ligne, mouvement.getTypeMouvement());
+        }
     }
 }

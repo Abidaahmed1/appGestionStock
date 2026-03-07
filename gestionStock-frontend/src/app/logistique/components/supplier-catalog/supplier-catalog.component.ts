@@ -310,13 +310,16 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
         for (const item of this.pendingItems) {
             if (item._isNew || item._isModified) {
                 const payload = {
-                    ...item,
-                    fournisseur: this.supplier,
+                    id: item.id,
+                    prixAchat: item.prixAchat,
+                    qteMinACommander: item.qteMinACommander,
+                    tauxRemise: item.tauxRemise,
+                    estPrincipale: item.estPrincipale,
+                    piece: { id: item.piece.id },
+                    fournisseur: { id: this.supplier.id },
                     dateDebutValidite: item.dateDebutValidite ? item.dateDebutValidite + 'T00:00:00' : null,
                     dateFinValidite: item.dateFinValidite ? item.dateFinValidite + 'T23:59:59' : null
                 };
-                delete payload._isNew;
-                delete payload._isModified;
                 operations.push(this.logistiqueService.savePieceFournisseur(payload));
             }
         }

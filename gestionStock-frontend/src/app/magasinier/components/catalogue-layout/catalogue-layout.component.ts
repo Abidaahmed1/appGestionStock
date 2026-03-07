@@ -1,20 +1,23 @@
 import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
-import { PieceDetachee, ProduitFini } from '../../models/magasinier.models';
+import { PieceDetachee, ProduitFini, DetailPiece } from '../../models/magasinier.models';
 import { MagasinierService } from '../../services/magasinier.service';
 import { FormsModule } from '@angular/forms';
 import { EntrepriseService } from '../../../admin/services/entreprise.service';
 import { Entreprise } from '../../../admin/models/entreprise.model';
+import { ItemDetailViewComponent } from '../item-detail-view/item-detail-view.component';
 
 @Component({
     selector: 'app-catalogue-layout',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, ItemDetailViewComponent],
     templateUrl: './catalogue-layout.component.html',
     styleUrls: ['./catalogue-layout.component.css']
 })
 export class CatalogueLayoutComponent implements OnInit {
+    Math = Math;
+
     pieces: PieceDetachee[] = [];
     produits: ProduitFini[] = [];
     filteredPieces: PieceDetachee[] = [];
@@ -32,6 +35,15 @@ export class CatalogueLayoutComponent implements OnInit {
     categories: string[] = [];
     filterPieceSearch: string = '';
     entreprise: Entreprise | null = null;
+
+    // Composition Modal
+    showCompositionModal = false;
+    selectedProduitForComposition: ProduitFini | null = null;
+    compositionSearchTerm: string = '';
+    filteredCompositionList: PieceDetachee[] = [];
+
+    showDetailModal = false;
+    selectedItemForDetail: any = null;
 
     constructor(
         private magasinierService: MagasinierService,
@@ -104,7 +116,6 @@ export class CatalogueLayoutComponent implements OnInit {
 
         if (this.activeTab === 'pieces') {
             this.filteredPieces = this.pieces.filter(piece => {
-                // Search term filter
                 let matchesSearch = true;
                 if (term) {
                     if (this.searchCategory === 'all') {
@@ -199,14 +210,70 @@ export class CatalogueLayoutComponent implements OnInit {
         if (piece.stocks && Array.isArray(piece.stocks)) {
             return piece.stocks.reduce((sum: number, s: any) => sum + (s.quantite || 0), 0);
         }
+        if (piece.details && piece.details.length > 0) {
+            return piece.details.reduce((sum: number, dp: any) => sum + (dp.stock?.quantite || 0), 0);
+        }
         return 0;
     }
 
     getStockStatus(piece: PieceDetachee): string {
-        let status = 'INCONNU';
+        if (!piece) return 'INCONNU';
+
+        // If we have explicit stock entries with types
         if (piece.stocks && piece.stocks.length > 0) {
-            status = piece.stocks[0].type || 'INCONNU';
+            return (piece.stocks[0].type || 'INCONNU').replace(/_/g, ' ');
         }
-        return status.replace(/_/g, ' ');
+
+        // Otherwise calculate based on total stock and thresholds
+        const total = this.getTotalStock(piece);
+        if (total <= 0) return 'RUPTURE STOCK';
+        if (total < (piece.seuilMinimum || 0)) return 'EN REAPPROVISIONNEMENT';
+        return 'DISPONIBLE';
     }
+
+
+
+    // ==================== COMPOSITION MODAL ====================
+    showProductComposition(produit: ProduitFini): void {
+        this.selectedProduitForComposition = produit;
+        this.compositionSearchTerm = '';
+        this.showCompositionModal = true;
+        this.applyCompositionFilter();
+    }
+
+    closeCompositionModal(): void {
+        this.showCompositionModal = false;
+        this.selectedProduitForComposition = null;
+        this.filteredCompositionList = [];
+    }
+
+    applyCompositionFilter(): void {
+        const pieces = this.selectedProduitForComposition?.pieces || [];
+        if (!this.compositionSearchTerm) {
+            this.filteredCompositionList = pieces;
+            return;
+        }
+
+        const term = this.compositionSearchTerm.toLowerCase();
+        this.filteredCompositionList = pieces.filter(p =>
+            p.designation.toLowerCase().includes(term) ||
+            p.reference.toLowerCase().includes(term)
+        );
+    }
+
+    showDetail(item: any): void {
+        this.selectedItemForDetail = item;
+        this.showDetailModal = true;
+    }
+
+    closeDetailModal(): void {
+        this.showDetailModal = false;
+        this.selectedItemForDetail = null;
+        this.loadData();
+    }
+
+    isPiece(item: any): boolean {
+        return !!item && 'seuilMinimum' in item;
+    }
+
 }

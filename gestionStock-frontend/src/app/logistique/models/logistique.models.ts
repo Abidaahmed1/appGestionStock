@@ -40,6 +40,7 @@ export interface Bon {
     fournisseur?: Fournisseur;
     createur?: any;
     mouvement?: MouvementStock;
+    archived?: boolean;
 }
 
 export interface Stock {

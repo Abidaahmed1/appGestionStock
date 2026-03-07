@@ -57,7 +57,6 @@
         </div>
     </div>
 
-    <!-- Advanced Filter Panel -->
     <div class="advanced-filter-panel" *ngIf="showAdvancedFilter" (click)="$event.stopPropagation()">
         <div class="advanced-filter-header">
             <span class="advanced-filter-title">Filtres avancés</span>
@@ -219,14 +218,12 @@
         </div>
     </div>
 
-    <!-- Notification -->
     <div class="notification-toast" *ngIf="notification" [class.success]="notification.type === 'success'"
         [class.error]="notification.type === 'error'">
         <span class="msg">{{ notification.message }}</span>
         <button class="close-btn" (click)="notification = null">✕</button>
     </div>
 
-    <!-- Delete Confirmation Modal -->
     <div class="modal-overlay" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
         <div class="modal-content small confirm-danger" (click)="$event.stopPropagation()">
             <div class="confirm-icon danger">

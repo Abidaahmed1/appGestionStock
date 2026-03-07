@@ -15,6 +15,7 @@ import jakarta.servlet.ServletResponse;
 import com.gestionStock.backend.entity.user.Role;
 import java.util.Map;
 import java.util.List;
+import com.gestionStock.backend.entity.user.User;
 
 @Component
 public class UserProvisioningFilter implements Filter {

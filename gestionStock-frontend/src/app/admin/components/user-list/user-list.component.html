@@ -3,6 +3,27 @@
     <span class="msg">{{ notification.message }}</span>
     <button class="close-btn" (click)="notification = null">✕</button>
   </div>
+
+  <!-- Bannière avertissement : entreprise non configurée -->
+  <div class="no-entreprise-banner" *ngIf="hasEntreprise === false">
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+    </svg>
+    <span>
+      Vous devez d'abord <strong>créer votre entreprise</strong> avant de pouvoir ajouter des utilisateurs.
+    </span>
+    <button class="btn-go-settings" (click)="goToEntrepriseSettings()">
+      Aller aux paramètres
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+        <polyline points="12 5 19 12 12 19"></polyline>
+      </svg>
+    </button>
+  </div>
   <div class="header-section">
     <div class="header-left">
       <h1>
@@ -34,7 +55,9 @@
         </select>
       </div>
     </div>
-    <button class="btn-add" (click)="openCreateModal()">
+    <button class="btn-add" (click)="openCreateModal()" [disabled]="!hasEntreprise"
+      [title]="!hasEntreprise ? 'Créez d\'abord votre entreprise dans les paramètres' : 'Ajouter un utilisateur'"
+      [class.btn-add-disabled]="!hasEntreprise">
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
         stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -57,7 +80,20 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let user of filteredUsers">
+        <tr *ngIf="loadingUsers" class="loading-row">
+          <td colspan="6">
+            <div class="loading-cell">
+              <span class="spinner"></span>
+              <span>Chargement des utilisateurs...</span>
+            </div>
+          </td>
+        </tr>
+        <tr *ngIf="!loadingUsers && filteredUsers.length === 0">
+          <td colspan="6" class="empty-row">
+            <span>Aucun utilisateur à afficher. Créez une société dans les paramètres pour commencer.</span>
+          </td>
+        </tr>
+        <tr *ngFor="let user of (loadingUsers ? [] : filteredUsers)">
           <td>
             <div class="user-info">
               <span class="username">{{ user.username }}</span>

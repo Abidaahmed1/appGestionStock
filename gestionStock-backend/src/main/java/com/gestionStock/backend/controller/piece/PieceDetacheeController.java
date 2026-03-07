@@ -22,7 +22,7 @@ public class PieceDetacheeController {
     private final ImageService imageService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR')")
     public List<PieceDetachee> getAll() {
         return pieceService.findByActive();
     }
@@ -62,13 +62,17 @@ public class PieceDetacheeController {
 
     @DeleteMapping("/{codeBarre}")
     @PreAuthorize("hasRole('MAGASINIER')")
-    public ResponseEntity<Void> delete(@PathVariable String codeBarre) {
-        pieceService.delete(codeBarre);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<?> delete(@PathVariable String codeBarre) {
+        try {
+            pieceService.delete(codeBarre);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT).body(e.getMessage());
+        }
     }
 
     @GetMapping("/reference/{ref}")
-    @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR')")
     public ResponseEntity<PieceDetachee> getByReference(@PathVariable String ref) {
         PieceDetachee p = pieceService.findByReference(ref);
         if (p == null)

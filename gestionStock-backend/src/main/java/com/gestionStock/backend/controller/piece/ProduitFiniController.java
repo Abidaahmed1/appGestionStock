@@ -22,7 +22,7 @@ public class ProduitFiniController {
     private final ImageService imageService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'MAGASINIER', 'RESPONSABLE_LOGISTIQUE')")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR')")
     public List<ProduitFini> getAll() {
         return produitService.getAll();
     }

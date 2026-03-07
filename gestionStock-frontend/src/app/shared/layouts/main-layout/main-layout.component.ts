@@ -26,7 +26,10 @@ export class MainLayoutComponent implements OnInit {
             if (keycloakInstance && keycloakInstance.authenticated) {
                 const token = keycloakInstance.tokenParsed;
                 if (token) {
-                    this.username.set(token['preferred_username'] || token['name'] || '');
+                    const firstName = token['given_name'] || '';
+                    const lastName = token['family_name'] || '';
+                    const fullName = `${firstName} ${lastName}`.trim();
+                    this.username.set(fullName || token['preferred_username'] || token['name'] || '');
                 }
                 this.roles.set(this.keycloak.getUserRoles());
             }

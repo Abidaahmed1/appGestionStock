@@ -3,8 +3,9 @@ import { isPlatformBrowser } from '@angular/common';
 import { provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
-import { provideHttpClient, withFetch, withInterceptorsFromDi, HttpClient } from '@angular/common/http';
+import { provideHttpClient, withFetch, withInterceptorsFromDi, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { KeycloakService, KeycloakAngularModule } from 'keycloak-angular';
+import { AuthInterceptor } from './auth.interceptor';
 
 function initializeKeycloak(keycloak: KeycloakService, platformId: object) {
   return () => {
@@ -38,6 +39,11 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withFetch(), withInterceptorsFromDi()),
     provideClientHydration(),
     importProvidersFrom(KeycloakAngularModule),
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: AuthInterceptor,
+      multi: true
+    },
     {
       provide: APP_INITIALIZER,
       useFactory: initializeKeycloak,

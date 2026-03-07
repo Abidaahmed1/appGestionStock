@@ -182,7 +182,7 @@
                             </td>
                             <td>
                                 <input type="number" [(ngModel)]="ligne.qteCmd" class="table-input text-right"
-                                    [class.input-error]="errors['ligne_' + i + '_max']" (change)="validate()"
+                                    [class.input-error]="errors['ligne_' + i + '_max']" (input)="validate()"
                                     [disabled]="!isEditable">
                                 <div class="field-error-mini" *ngIf="errors['ligne_' + i + '_max']"
                                     [title]="errors['ligne_' + i + '_max']">

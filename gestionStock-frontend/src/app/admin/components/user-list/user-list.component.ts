@@ -1,18 +1,22 @@
 import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { AdminService } from '../../services/admin.service';
+import { EntrepriseService } from '../../services/entreprise.service';
 import { UserRepresentation } from '../../models/admin.models';
 import { FormsModule } from '@angular/forms';
+import { Router, RouterModule } from '@angular/router';
 
 @Component({
     selector: 'app-user-list',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, RouterModule],
     templateUrl: './user-list.component.html',
     styleUrl: './user-list.component.css'
 })
 export class UserListComponent implements OnInit {
     users: UserRepresentation[] = [];
+    loadingUsers = false;
+    hasEntreprise: boolean | null = null;
     showCreateModal = false;
     showDeleteModal = false;
     showRoleModal = false;
@@ -62,22 +66,47 @@ export class UserListComponent implements OnInit {
         });
     }
 
-    constructor(private adminService: AdminService, @Inject(PLATFORM_ID) private platformId: Object) { }
+    constructor(
+        private adminService: AdminService,
+        private entrepriseService: EntrepriseService,
+        private router: Router,
+        @Inject(PLATFORM_ID) private platformId: Object
+    ) { }
 
     ngOnInit() {
         if (isPlatformBrowser(this.platformId)) {
+            this.checkEntreprise();
             this.loadUsers();
         }
     }
 
+    checkEntreprise() {
+        this.entrepriseService.getCurrentEntreprise().subscribe({
+            next: (e) => {
+                this.hasEntreprise = !!(e && e.id);
+            },
+            error: () => {
+                this.hasEntreprise = false;
+            }
+        });
+    }
+
     loadUsers() {
+        this.loadingUsers = true;
         this.adminService.getAllUsers().subscribe({
             next: (data) => {
                 this.users = data;
+                this.loadingUsers = false;
             },
             error: (err) => {
-                console.error('Erreur lors du chargement des utilisateurs:', err);
-                this.notify('Erreur lors du chargement des utilisateurs.', 'error');
+                this.loadingUsers = false;
+                if (err.status === 403 || err.status === 404) {
+                    this.users = [];
+                    this.notify('Aucune entreprise n\'est associée à votre compte, la liste des utilisateurs est vide.', 'error');
+                } else {
+                    console.error('Erreur lors du chargement des utilisateurs:', err);
+                    this.notify('Erreur lors du chargement des utilisateurs.', 'error');
+                }
             }
         });
     }
@@ -94,8 +123,19 @@ export class UserListComponent implements OnInit {
     }
 
     openCreateModal() {
+        if (!this.hasEntreprise) {
+            this.notify(
+                'Vous devez d\'abord créer votre entreprise dans les paramètres avant d\'ajouter des utilisateurs.',
+                'error'
+            );
+            return;
+        }
         this.newUser = { role: 'MAGASINIER', password: '', confirmPassword: '' };
         this.showCreateModal = true;
+    }
+
+    goToEntrepriseSettings() {
+        this.router.navigate(['/admin/settings']);
     }
 
     closeCreateModal() {

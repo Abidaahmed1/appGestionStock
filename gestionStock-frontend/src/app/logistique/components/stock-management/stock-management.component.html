@@ -122,8 +122,15 @@
                 <tr *ngFor="let stock of filteredStocks"
                     [class.low-stock-row]="stock.quantite < (stock.piece?.seuilMinimum || 0)">
                     <td class="checkbox-cell" (click)="$event.stopPropagation()"><input type="checkbox"></td>
-                    <td *ngIf="isColumnVisible('designation')" class="designation-col">{{ stock.piece?.designation ||
-                        'N/A' }}
+                    <td *ngIf="isColumnVisible('designation')" class="designation-col">
+                        <div class="piece-info-cell">
+                            <span class="piece-name">{{ stock.piece?.designation || 'N/A' }}</span>
+                            <div *ngIf="stock.detailPiece?.attributs" class="piece-details-chip">
+                                <span *ngFor="let entry of stock.detailPiece.attributs | keyvalue" class="detail-item">
+                                    <span class="detail-key">{{ entry.key }}:</span> {{ entry.value }}
+                                </span>
+                            </div>
+                        </div>
                     </td>
                     <td *ngIf="isColumnVisible('reference')"><span class="code-badge">{{ stock.piece?.reference || 'N/A'
                             }}</span></td>

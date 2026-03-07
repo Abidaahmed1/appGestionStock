@@ -37,7 +37,7 @@ export const routes: Routes = [
                 path: 'magasinier/catalogue',
                 component: CatalogueLayoutComponent,
                 canActivate: [authGuard],
-                data: { roles: ['MAGASINIER', 'RESPONSABLE_LOGISTIQUE'] }
+                data: { roles: ['MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR'] }
             },
             {
                 path: 'magasinier/pieces',
@@ -55,25 +55,25 @@ export const routes: Routes = [
                 path: 'magasinier/stocks',
                 component: StockManagementComponent,
                 canActivate: [authGuard],
-                data: { roles: ['MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'ADMINISTRATEUR'] }
+                data: { roles: ['MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'ADMINISTRATEUR', 'AUDITEUR'] }
             },
             {
                 path: 'magasinier/bons',
                 component: BonListComponent,
                 canActivate: [authGuard],
-                data: { roles: ['MAGASINIER', 'ADMINISTRATEUR'] }
+                data: { roles: ['MAGASINIER', 'ADMINISTRATEUR', 'AUDITEUR'] }
             },
             {
                 path: 'magasinier/bons/nouveau',
                 loadComponent: () => import('./magasinier/components/bon-form/bon-form.component').then(m => m.BonFormComponent),
                 canActivate: [authGuard],
-                data: { roles: ['MAGASINIER', 'ADMINISTRATEUR'] }
+                data: { roles: ['MAGASINIER', 'ADMINISTRATEUR', 'AUDITEUR'] }
             },
             {
                 path: 'magasinier/bons/:id',
                 loadComponent: () => import('./magasinier/components/bon-form/bon-form.component').then(m => m.BonFormComponent),
                 canActivate: [authGuard],
-                data: { roles: ['MAGASINIER', 'ADMINISTRATEUR'] }
+                data: { roles: ['MAGASINIER', 'ADMINISTRATEUR', 'AUDITEUR'] }
             },
             {
                 path: 'logistique/fournisseurs',
@@ -104,7 +104,7 @@ export const routes: Routes = [
                 path: 'logistique/commandes',
                 component: CommandeFournisseurListComponent,
                 canActivate: [authGuard],
-                data: { roles: ['RESPONSABLE_LOGISTIQUE'] }
+                data: { roles: ['RESPONSABLE_LOGISTIQUE', 'AUDITEUR'] }
             },
             {
                 path: 'logistique/commandes/nouvelle',
@@ -116,7 +116,14 @@ export const routes: Routes = [
                 path: 'logistique/commandes/:id',
                 loadComponent: () => import('./logistique/components/commande-fournisseur-form/commande-fournisseur-form.component').then(m => m.CommandeFournisseurFormComponent),
                 canActivate: [authGuard],
-                data: { roles: ['RESPONSABLE_LOGISTIQUE'] }
+                data: { roles: ['RESPONSABLE_LOGISTIQUE', 'AUDITEUR'] }
+            },
+
+            {
+                path: 'logistique/bons-history',
+                loadComponent: () => import('./auditeur/bon-history/bon-history.component').then(m => m.BonHistoryComponent),
+                canActivate: [authGuard],
+                data: { roles: ['AUDITEUR'] }
             },
             {
                 path: 'logistique/tracking',

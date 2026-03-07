@@ -1,0 +1,230 @@
+<div class="admin-container">
+    <div class="notification-toast" *ngIf="notification" [class.success]="notification.type === 'success'"
+        [class.error]="notification.type === 'error'">
+        <span class="msg">{{ notification.message }}</span>
+        <button class="close-btn" (click)="notification = null">✕</button>
+    </div>
+
+    <div class="header-section">
+        <div class="header-left">
+            <h1>
+                <div class="title-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="3" y1="9" x2="21" y2="9"></line>
+                        <line x1="9" y1="21" x2="9" y2="9"></line>
+                    </svg>
+                </div>
+                Tableau d'Inventaire
+            </h1>
+            <div class="search-box">
+                <div class="search-input-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" [(ngModel)]="searchTerm" (input)="filterItems()"
+                        placeholder="Rechercher dans l'inventaire...">
+                </div>
+                <select class="category-select" [(ngModel)]="searchCategory" (change)="filterItems()">
+                    <option value="all">Tout</option>
+                    <option value="designation">Désignation</option>
+                    <option value="code">Code/Réf</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn" [class.active]="activeTab === 'pieces'" (click)="switchTab('pieces')">
+                Pièces
+            </button>
+            <button class="tab-btn" [class.active]="activeTab === 'produits'" (click)="switchTab('produits')">
+                Produits
+            </button>
+        </div>
+    </div>
+
+    <div class="content-grid-layout">
+        <div class="main-list-area">
+            <div class="table-container">
+                <table *ngIf="activeTab === 'pieces'">
+                    <thead>
+                        <tr>
+                            <th>Désignation</th>
+                            <th>Référence</th>
+                            <th>Code Barre</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let piece of filteredPieces" [class.selected]="selectedPiece?.id === piece.id"
+                            (click)="selectPiece(piece)">
+                            <td>
+                                <div class="item-cell">
+                                    <img [src]="piece.imageUrl || 'assets/images/default-piece.svg'" class="table-img"
+                                        onerror="this.onerror=null;this.src='assets/images/default-piece.svg'">
+                                    <span>{{ piece.designation }}</span>
+                                </div>
+                            </td>
+                            <td>{{ piece.reference }}</td>
+                            <td><code>{{ piece.codeBarre }}</code></td>
+                            <td>
+                                <span class="badge warning" *ngIf="piece.archivee">Archivé</span>
+                                <span class="badge" *ngIf="!piece.archivee">Actif</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <table *ngIf="activeTab === 'produits'">
+                    <thead>
+                        <tr>
+                            <th>Désignation</th>
+                            <th>Code Produit</th>
+                            <th>Nb Pièces</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let produit of filteredProduits"
+                            [class.selected]="selectedProduit?.id === produit.id" (click)="selectProduit(produit)">
+                            <td>
+                                <div class="item-cell">
+                                    <img [src]="produit.imageUrl || 'assets/images/default-produit.svg'"
+                                        class="table-img"
+                                        onerror="this.onerror=null;this.src='assets/images/default-produit.svg'">
+                                    <span>{{ produit.designation }}</span>
+                                </div>
+                            </td>
+                            <td><code>{{ produit.code }}</code></td>
+                            <td>
+                                <span class="role-badge" *ngIf="produit.pieces">{{ produit.pieces.length }}
+                                    pièces</span>
+                                <span class="role-badge" *ngIf="!produit.pieces">0 pièces</span>
+                            </td>
+                            <td>
+                                <span class="badge warning" *ngIf="produit.estArchivee">Archivé</span>
+                                <span class="badge" *ngIf="!produit.estArchivee">Actif</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="details-side-panel" *ngIf="selectedPiece || selectedProduit">
+            <div class="details-glass">
+                <div *ngIf="selectedPiece" class="details-content">
+                    <div class="details-header">
+                        <h2>{{ selectedPiece.designation }}</h2>
+                        <button class="close-btn" (click)="selectedPiece = null">✕</button>
+                    </div>
+
+                    <div class="details-body">
+                        <div class="image-showcase">
+                            <div class="detail-image">
+                                <img [src]="selectedPiece.imageUrl || 'assets/images/default-piece.svg'"
+                                    [alt]="selectedPiece.designation"
+                                    onerror="this.onerror=null;this.src='assets/images/default-piece.svg'">
+                                <label class="image-edit-btn">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <path
+                                            d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                                        <circle cx="12" cy="13" r="4" />
+                                    </svg>
+                                    <input type="file" (change)="uploadImage($event, 'piece', selectedPiece.id!)"
+                                        hidden>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="info-section">
+                            <h3>Spécifications</h3>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <span class="label">Réf.</span>
+                                    <span class="value">{{ selectedPiece.reference }}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="label">Prix</span>
+                                    <span class="value highlighted">{{ selectedPiece.prixAchat | currency:'TND'
+                                        }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="info-section">
+                            <h3>URL Image</h3>
+                            <div class="url-edit-wrapper">
+                                <input type="text" [(ngModel)]="selectedPiece.imageUrl" class="url-input">
+                                <button class="save-url-btn" (click)="updateImageFromUrl('piece', selectedPiece)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div *ngIf="selectedProduit" class="details-content">
+                    <div class="details-header">
+                        <h2>{{ selectedProduit.designation }}</h2>
+                        <button class="close-btn" (click)="selectedProduit = null">✕</button>
+                    </div>
+
+                    <div class="details-body">
+                        <div class="image-showcase">
+                            <div class="detail-image">
+                                <img [src]="selectedProduit.imageUrl || 'assets/images/default-produit.svg'"
+                                    [alt]="selectedProduit.designation"
+                                    onerror="this.onerror=null;this.src='assets/images/default-produit.svg'">
+                                <label class="image-edit-btn">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <path
+                                            d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                                        <circle cx="12" cy="13" r="4" />
+                                    </svg>
+                                    <input type="file" (change)="uploadImage($event, 'produit', selectedProduit.id!)"
+                                        hidden>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="info-section">
+                            <h3>Informations</h3>
+                            <div class="info-grid single-col">
+                                <div class="info-item">
+                                    <span class="label">Code Produit</span>
+                                    <span class="value">{{ selectedProduit.code }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="info-section">
+                            <h3>URL Image</h3>
+                            <div class="url-edit-wrapper">
+                                <input type="text" [(ngModel)]="selectedProduit.imageUrl" class="url-input">
+                                <button class="save-url-btn" (click)="updateImageFromUrl('produit', selectedProduit)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

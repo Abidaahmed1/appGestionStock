@@ -20,13 +20,13 @@ public class BonCommandeFournisseurController {
     private final BonCommandeFournisseurService service;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE')")
+    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR')")
     public List<BonCommandeFournisseur> getAll() {
         return service.getAll();
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE')")
+    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR')")
     public ResponseEntity<BonCommandeFournisseur> getById(@PathVariable Long id) {
         return ResponseEntity.ok(service.getById(id));
     }

@@ -42,6 +42,12 @@ export class PieceListComponent implements OnInit {
     selectedPieceForProducts: PieceDetachee | null = null;
     associatedProductsSearchTerm: string = '';
 
+    showVariantDetailsModal = false;
+    selectedPieceForVariants: PieceDetachee | null = null;
+    variantSearchTerm: string = '';
+    loadingVariants = false;
+    filteredVariantsList: DetailPiece[] = [];
+
 
     parametres: Parametre | null = null;
     private imageCache = new Map<string, string>();
@@ -297,8 +303,11 @@ export class PieceListComponent implements OnInit {
                 this.cdr.detectChanges();
             },
             error: (err) => {
-                this.notify('Erreur lors de la suppression', 'error');
-                console.error(err);
+                // 409 Conflict = piece has stock, extract backend message
+                const msg = typeof err.error === 'string'
+                    ? err.error
+                    : (err.error?.message || 'Erreur lors de la suppression');
+                this.notify(msg, 'error');
                 this.cancelDelete();
                 this.cdr.detectChanges();
             }
@@ -340,7 +349,6 @@ export class PieceListComponent implements OnInit {
 
     closeAssociatedProductsModal(): void {
         this.showAssociatedProductsModal = false;
-        // Clear data after a short delay so the closing animation stays smooth
         setTimeout(() => {
             this.selectedPieceForProducts = null;
             this.associatedProductsSearchTerm = '';
@@ -359,11 +367,10 @@ export class PieceListComponent implements OnInit {
     showAssociatedProducts(piece: PieceDetachee): void {
         this.selectedPieceForProducts = piece;
         this.associatedProductsSearchTerm = '';
-        this.associatedProductsList = []; // Empty initially to render modal quickly
+        this.associatedProductsList = [];
         this.loadingAssociated = true;
         this.showAssociatedProductsModal = true;
 
-        // Defer filtering and DOM creation to the next event loop tick
         setTimeout(() => {
             this.applyAssociatedFilter();
             this.loadingAssociated = false;
@@ -382,6 +389,42 @@ export class PieceListComponent implements OnInit {
             const designation = (p.designation || '').toLowerCase();
             const code = (p.code || '').toLowerCase();
             return designation.includes(term) || code.includes(term);
+        });
+    }
+
+    showVariantDetails(piece: PieceDetachee): void {
+        this.selectedPieceForVariants = piece;
+        this.variantSearchTerm = '';
+        this.loadingVariants = true;
+        this.showVariantDetailsModal = true;
+
+        setTimeout(() => {
+            this.applyVariantFilter();
+            this.loadingVariants = false;
+            this.cdr.detectChanges();
+        }, 150);
+    }
+
+    closeVariantDetailsModal(): void {
+        this.showVariantDetailsModal = false;
+        setTimeout(() => {
+            this.selectedPieceForVariants = null;
+            this.filteredVariantsList = [];
+            this.cdr.detectChanges();
+        }, 200);
+    }
+
+    applyVariantFilter(): void {
+        const variants = this.selectedPieceForVariants?.details || [];
+        if (!this.variantSearchTerm) {
+            this.filteredVariantsList = variants;
+            return;
+        }
+
+        const term = this.variantSearchTerm.toLowerCase();
+        this.filteredVariantsList = variants.filter(v => {
+            const label = this.getVariantLabel(v).toLowerCase();
+            return label.includes(term);
         });
     }
 
@@ -497,6 +540,13 @@ export class PieceListComponent implements OnInit {
         return detail._label;
     }
 
+    getVariantAttributes(detail: any): string[] {
+        const attributes = detail.attributs || {};
+        return Object.entries(attributes)
+            .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && String(value).trim() !== '')
+            .map(([key, value]) => `${key} : ${value}`);
+    }
+
     isArray(obj: any): boolean {
         return Array.isArray(obj);
     }
@@ -513,5 +563,15 @@ export class PieceListComponent implements OnInit {
 
         piece._unassignedStock = stock;
         return stock;
+    }
+
+    getVariantColorClass(label: string): string {
+        const colors = ['v-yellow', 'v-teal', 'v-blue', 'v-pink-red', 'v-purple', 'v-lavender'];
+        let hash = 0;
+        for (let i = 0; i < label.length; i++) {
+            hash = label.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const index = Math.abs(hash) % colors.length;
+        return colors[index];
     }
 }

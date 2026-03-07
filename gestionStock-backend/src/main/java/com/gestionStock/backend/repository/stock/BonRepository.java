@@ -7,21 +7,54 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
+
+import com.gestionStock.backend.entity.entreprise.Entreprise;
 
 @Repository
 public interface BonRepository extends JpaRepository<Bon, Long> {
-    Optional<Bon> findByNumeroBon(String numeroBon);
+        java.util.Optional<Bon> findByNumeroBon(String numeroBon);
 
-    List<Bon> findByTypeBon(TypeBon typeBon);
+        List<Bon> findByArchivedFalse();
 
-    List<Bon> findByDateBetween(LocalDate startDate, LocalDate endDate);
+        List<Bon> findByArchivedFalseAndEntreprise(Entreprise entreprise);
 
-    @org.springframework.data.jpa.repository.Query("SELECT b.numeroBon FROM Bon b WHERE b.numeroBon LIKE :prefix% ORDER BY b.numeroBon DESC")
-    java.util.List<String> findNumeroBonByPrefix(
-            @org.springframework.web.bind.annotation.RequestParam("prefix") String prefix);
+        List<Bon> findByArchivedTrueAndEntreprise(Entreprise entreprise);
 
-    boolean existsByNumeroBon(String numeroBon);
+        List<Bon> findByCreateurIdAndArchivedFalseAndEntreprise(String createurId, Entreprise entreprise);
 
-    java.util.List<Bon> findByBonOrigineId(Long bonOrigineId);
+        List<Bon> findByCreateurIdAndArchivedTrueAndEntreprise(String createurId, Entreprise entreprise);
+
+        List<Bon> findByTypeBonAndArchivedFalseAndEntreprise(TypeBon typeBon, Entreprise entreprise);
+
+        List<Bon> findByTypeBonAndCreateurIdAndArchivedFalseAndEntreprise(TypeBon typeBon, String createurId,
+                        Entreprise entreprise);
+
+        List<Bon> findByDateBetweenAndArchivedFalseAndEntreprise(LocalDate startDate, LocalDate endDate,
+                        Entreprise entreprise);
+
+        List<Bon> findByDateBetweenAndCreateurIdAndArchivedFalseAndEntreprise(LocalDate startDate, LocalDate endDate,
+                        String createurId, Entreprise entreprise);
+
+        List<Bon> findByArchivedTrue();
+
+        List<Bon> findByCreateurIdAndArchivedFalse(String createurId);
+
+        List<Bon> findByCreateurIdAndArchivedTrue(String createurId);
+
+        List<Bon> findByTypeBonAndArchivedFalse(TypeBon typeBon);
+
+        List<Bon> findByTypeBonAndCreateurIdAndArchivedFalse(TypeBon typeBon, String createurId);
+
+        List<Bon> findByDateBetweenAndArchivedFalse(LocalDate startDate, LocalDate endDate);
+
+        List<Bon> findByDateBetweenAndCreateurIdAndArchivedFalse(LocalDate startDate, LocalDate endDate,
+                        String createurId);
+
+        @org.springframework.data.jpa.repository.Query("SELECT b.numeroBon FROM Bon b WHERE b.numeroBon LIKE :prefix% ORDER BY b.numeroBon DESC")
+        java.util.List<String> findNumeroBonByPrefix(
+                        @org.springframework.data.repository.query.Param("prefix") String prefix);
+
+        boolean existsByNumeroBon(String numeroBon);
+
+        java.util.List<Bon> findByBonOrigineId(Long bonOrigineId);
 }

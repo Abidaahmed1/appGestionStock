@@ -2,6 +2,7 @@ package com.gestionStock.backend.service.fournisseur;
 
 import com.gestionStock.backend.entity.fournisseur.Fournisseur;
 import com.gestionStock.backend.repository.fournisseur.FournisseurRepository;
+import com.gestionStock.backend.service.user.UserService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
@@ -15,9 +16,10 @@ import java.util.List;
 public class FournisseurService {
 
     private final FournisseurRepository fournisseurRepo;
+    private final UserService userService;
 
     public List<Fournisseur> getAll() {
-        return fournisseurRepo.findByArchiveeFalse();
+        return fournisseurRepo.findByArchiveeFalseAndEntreprise(userService.getCurrentUserEntreprise());
     }
 
     public Fournisseur getById(Long id) {
@@ -32,6 +34,7 @@ public class FournisseurService {
         if (fournisseur.getId() == null && fournisseurRepo.existsByEmail(fournisseur.getEmail())) {
             throw new IllegalStateException("Un fournisseur avec cet email existe déjà");
         }
+        fournisseur.setEntreprise(userService.getCurrentUserEntreprise());
         return fournisseurRepo.save(fournisseur);
     }
 

@@ -17,6 +17,7 @@ import { Entreprise } from '../../../admin/models/entreprise.model';
     styleUrl: './commande-fournisseur-list.component.css'
 })
 export class CommandeFournisseurListComponent implements OnInit {
+    readonly StatutCommande = StatutCommande;
     commandes: BonCommandeFournisseur[] = [];
     fournisseurs: Fournisseur[] = [];
     pieces: any[] = [];
@@ -204,28 +205,43 @@ export class CommandeFournisseurListComponent implements OnInit {
         const { type, cmd } = this.pendingAction;
         if (!cmd.id) return;
 
-        let successMsg = '';
-        let errorMsg = '';
+        const targetStatut = type === 'RECEIVE' ? StatutCommande.RECUE : StatutCommande.ANNULEE;
+        const successMsg = type === 'RECEIVE' ? 'Réception validée avec succès' : 'Commande annulée';
+        const errorMsg = type === 'RECEIVE' ? 'Erreur lors de la validation' : 'Erreur lors de l’annulation';
 
-        if (type === 'RECEIVE') {
-            cmd.statut = StatutCommande.RECUE;
-            successMsg = 'Réception validée avec succès';
-            errorMsg = 'Erreur lors de la validation';
-        } else if (type === 'CANCEL') {
-            cmd.statut = StatutCommande.ANNULEE;
-            successMsg = 'Commande annulée';
-            errorMsg = 'Erreur lors de l\'annulation';
-        }
+        // Extremely clean payload - only IDs and primitive values
+        const payload: any = {
+            id: cmd.id,
+            numeroCmd: cmd.numeroCmd,
+            dateCmd: cmd.dateCmd,
+            dateArrivee: (cmd.dateArrivee && cmd.dateArrivee !== '') ? cmd.dateArrivee : null,
+            statut: targetStatut,
+            fournisseur: { id: cmd.fournisseur?.id },
+            lignes: cmd.lignes?.map(l => ({
+                id: l.id,
+                qteCmd: l.qteCmd,
+                prixAchat: l.prixAchat,
+                taxe: l.taxe,
+                remise: l.remise,
+                piece: { id: l.piece?.id || l.piece },
+                detailPiece: l.detailPiece?.id ? { id: l.detailPiece.id } : null
+            }))
+        };
 
         this.closeConfirmModal();
         this.cdr.detectChanges();
 
-        this.logistiqueService.updateCommandeFournisseur(cmd.id, cmd).subscribe({
+        this.logistiqueService.updateCommandeFournisseur(cmd.id, payload).subscribe({
             next: () => {
                 this.notify(successMsg, 'success');
                 this.loadCommandes();
             },
-            error: () => this.notify(errorMsg, 'error')
+            error: (err) => {
+                console.error('Update error:', err);
+                const detail = err.error?.message || (typeof err.error === 'string' ? err.error : 'Erreur réseau');
+                this.notify(`${errorMsg} : ${detail}`, 'error');
+                this.loadCommandes();
+            }
         });
     }
 
@@ -300,6 +316,22 @@ export class CommandeFournisseurListComponent implements OnInit {
         if (this.filterMontantMax != null && !isNaN(this.filterMontantMax)) {
             list = list.filter(cmd => this.getCommandeTTC(cmd) <= this.filterMontantMax!);
         }
+
+        // Sort by status priority: EN_ATTENTE (1), RECUE (2), ANNULEE (3)
+        list.sort((a, b) => {
+            const priority: Record<string, number> = {
+                [StatutCommande.EN_ATTENTE]: 1,
+                [StatutCommande.RECUE]: 2,
+                [StatutCommande.ANNULEE]: 3
+            };
+            const pA = priority[a.statut] || 99;
+            const pB = priority[b.statut] || 99;
+
+            if (pA !== pB) return pA - pB;
+
+            // Secondary sort by date (newest first)
+            return new Date(b.dateCmd).getTime() - new Date(a.dateCmd).getTime();
+        });
 
         return list;
     }
@@ -376,5 +408,12 @@ export class CommandeFournisseurListComponent implements OnInit {
         this.notification = { message, type };
         setTimeout(() => this.notification = null, 3000);
         this.cdr.detectChanges();
+    }
+
+    isAuditeur(): boolean {
+        return this.userRoles.some(r =>
+            r.toLowerCase() === 'auditeur' ||
+            r.toLowerCase() === 'role_auditeur'
+        );
     }
 }

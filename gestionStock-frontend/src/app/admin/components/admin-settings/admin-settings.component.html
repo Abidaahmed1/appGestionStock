@@ -1,0 +1,126 @@
+<div class="admin-settings-container">
+    <section class="settings-section">
+        <header class="section-header">
+            <h2>Utilisateurs</h2>
+        </header>
+        <div class="section-content">
+            <div class="invite-column">
+                <h3>Rechercher des utilisateurs</h3>
+                <div class="invite-form">
+                    <input type="text" [(ngModel)]="searchTerm" (input)="searchUsers()"
+                        placeholder="Rechercher par nom ou e-mail">
+                    <button class="btn-primary" (click)="searchUsers()">Rechercher</button>
+                </div>
+                <div class="pending-invitations" *ngIf="searchTerm && searchResults.length > 0">
+                    <span class="label">Résultats de la recherche :</span>
+                    <div class="invitation-chips">
+                        <span class="chip" *ngFor="let user of searchResults">
+                            {{ user.firstName }} {{ user.lastName }} ({{ user.email }})
+                        </span>
+                    </div>
+                </div>
+                <div class="pending-invitations" *ngIf="searchTerm && searchResults.length === 0">
+                    <span class="label">Aucun utilisateur trouvé</span>
+                </div>
+            </div>
+            <div class="info-column">
+                <div class="info-item">
+                    <div class="info-icon text-purple">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="info-text">
+                        <span class="count">{{ activeUsers }} Utilisateurs actifs</span>
+                        <a routerLink="/admin/users" class="action-link">
+                            <span class="arrow">&rarr;</span> Gérer les utilisateurs
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <section class="settings-section">
+        <header class="section-header">
+            <h2>Sociétés</h2>
+        </header>
+        <div class="section-content">
+            <!-- Entreprise card -->
+            <div class="company-column">
+                <div class="company-card" *ngIf="entreprise; else noEntreprise">
+                        <!-- Info -->
+                        <div class="company-card-header">
+                            <div class="company-logo-small">
+                                <img *ngIf="getLogoUrl(entreprise.logoUrl)" [src]="getLogoUrl(entreprise.logoUrl)"
+                                    [alt]="entreprise.nom" (error)="entreprise.logoUrl = ''">
+                                <i *ngIf="!getLogoUrl(entreprise.logoUrl)" class="fas fa-building"></i>
+                            </div>
+                            <div class="company-info">
+                                <h3>{{ entreprise.nom }}</h3>
+                                <div class="company-details-grid">
+                                    <p *ngIf="entreprise.adresse">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        {{ entreprise.adresse }}
+                                        <span *ngIf="entreprise.codePostal">, {{ entreprise.codePostal }}</span>
+                                        <span *ngIf="entreprise.pays"> — {{ entreprise.pays.nom }}</span>
+                                    </p>
+                                    <p *ngIf="entreprise.email">
+                                        <i class="fas fa-envelope"></i> {{ entreprise.email }}
+                                    </p>
+                                    <p *ngIf="entreprise.telephone">
+                                        <i class="fas fa-phone"></i> {{ entreprise.telephone }}
+                                    </p>
+                                    <p *ngIf="entreprise.devise">
+                                        <i class="fas fa-money-bill-wave"></i>
+                                        {{ entreprise.devise.nom }} ({{ entreprise.devise.code }} {{
+                                        entreprise.devise.symbole }})
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <ng-template #noEntreprise>
+                        <div class="company-card empty-card">
+                            <i class="fas fa-building fa-2x"></i>
+                            <p>Aucune société configurée</p>
+                        </div>
+                    </ng-template>
+            </div>
+            <div class="info-column">
+                <div class="info-item">
+                    <div class="info-text">
+                        <span class="count">{{ entreprise ? 1 : 0 }} Société</span>
+                        <a [routerLink]="entreprise ? ['/admin/entreprise', entreprise.id] : ['/admin/entreprise']"
+                            class="action-link">
+                            <span class="arrow">&rarr;</span>
+                            {{ entreprise ? 'Modifier la société' : 'Créer une société' }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="settings-section">
+        <header class="section-header">
+            <h2>Personnalisation des Pièces</h2>
+        </header>
+        <div class="section-content">
+            <div class="info-column-full">
+                <p class="description">Configurez des attributs dynamiques pour vos pièces détachées selon vos besoins
+                    métiers.</p>
+                <div class="info-item">
+                    <div class="info-text">
+                        <a routerLink="/admin/parametres" class="action-link">
+                            <span class="arrow">&rarr;</span> Personnaliser les champs des pièces
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<div class="floating-btn">
+    <button class="btn-purple-round">#</button>
+</div>

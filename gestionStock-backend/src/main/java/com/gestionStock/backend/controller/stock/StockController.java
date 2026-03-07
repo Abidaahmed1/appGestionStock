@@ -19,31 +19,31 @@ public class StockController {
     private final StockService stockService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER', 'AUDITEUR')")
     public ResponseEntity<List<Stock>> getAll() {
         return ResponseEntity.ok(stockService.getAll());
     }
 
     @GetMapping("/type/{type}")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER', 'AUDITEUR')")
     public ResponseEntity<List<Stock>> getByType(@PathVariable TypeStock type) {
         return ResponseEntity.ok(stockService.getByType(type));
     }
 
     @GetMapping("/piece/{pieceId}")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER', 'AUDITEUR')")
     public ResponseEntity<List<Stock>> getByPiece(@PathVariable Long pieceId) {
         return ResponseEntity.ok(stockService.getByPiece(pieceId));
     }
 
     @GetMapping("/low-stock")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER', 'AUDITEUR')")
     public ResponseEntity<List<Stock>> getLowStockItems() {
         return ResponseEntity.ok(stockService.getLowStockItems());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER')")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE', 'MAGASINIER', 'AUDITEUR')")
     public ResponseEntity<Stock> getById(@PathVariable Long id) {
         return ResponseEntity.ok(stockService.getById(id));
     }

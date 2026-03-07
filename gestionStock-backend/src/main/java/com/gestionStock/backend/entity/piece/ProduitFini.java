@@ -10,6 +10,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
+import com.gestionStock.backend.entity.entreprise.Entreprise;
+
 @Entity
 @Getter
 @Setter
@@ -20,6 +22,10 @@ public class ProduitFini {
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private Long id;
+
+	@ManyToOne
+	@JoinColumn(name = "entreprise_id")
+	private Entreprise entreprise;
 
 	@NotBlank(message = "Le code produit est obligatoire")
 	@Pattern(regexp = "^PF-.*", message = "Le code du produit fini doit commencer par PF-")

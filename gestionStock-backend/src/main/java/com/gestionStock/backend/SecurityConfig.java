@@ -21,6 +21,9 @@ public class SecurityConfig {
 	@Autowired
 	private JwtAuthConverter jwtAuthConverter;
 
+	@Autowired
+	private com.gestionStock.backend.service.user.UserProvisioningFilter userProvisioningFilter;
+
 	@Bean
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
@@ -32,7 +35,9 @@ public class SecurityConfig {
 						.requestMatchers("/api/entreprises/**").authenticated()
 						.requestMatchers("/api/admin/**").hasRole("ADMINISTRATEUR").requestMatchers("/api/**")
 						.authenticated().anyRequest().permitAll())
-				.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter)));
+				.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter)))
+				.addFilterAfter(userProvisioningFilter,
+						org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter.class);
 
 		return http.build();
 	}
@@ -44,7 +49,7 @@ public class SecurityConfig {
 
 		configuration.setAllowedOrigins(List.of("http://localhost:4200"));
 
-		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 
 		configuration.setAllowedHeaders(List.of("*"));
 		configuration.setAllowCredentials(true);

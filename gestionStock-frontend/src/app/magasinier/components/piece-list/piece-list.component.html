@@ -86,13 +86,11 @@
                 </div>
                 <div class="filter-col actions-col">
                     <label>&nbsp;</label>
-                    <button class="btn-reset" (click)="resetFilters()">
+                    <button class="btn-reset-filter-piece" (click)="resetFilters()">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
-                            <path d="M21 3v5h-5"></path>
-                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
-                            <path d="M3 21v-5h5"></path>
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                            <path d="M3 3v5h5"></path>
                         </svg>
                         Réinitialiser
                     </button>
@@ -156,7 +154,6 @@
                     </div>
 
                     <div class="stock-info-section">
-                        <!-- Case 1: Exploded Variant Card -->
                         <div *ngIf="piece.variantDetail" class="stock-header single-variant">
                             <span class="label">Stock Disponible :</span>
                             <span class="total-badge" [class.out]="getTotalStock(piece) <= 0">
@@ -164,82 +161,83 @@
                             </span>
                         </div>
 
-                        <!-- Case 2: Main Piece Card with Variants -->
-                        <ng-container *ngIf="!piece.variantDetail && piece.details && piece.details.length > 0">
-                            <div class="stock-header">
-                                <span class="label">Stock par variante</span>
-                                <span class="total-badge">{{ getTotalStock(piece) }} au total</span>
-                            </div>
-                            <div class="variants-tags">
-                                <div class="variant-badge" *ngFor="let detail of piece.details"
-                                    [class.out]="(detail.stock?.quantite || 0) <= 0">
-                                    <span class="v-name">{{ getVariantLabel(detail) }}</span>
-                                    <span class="v-qty">{{ detail.stock?.quantite || 0 }}</span>
-                                </div>
-                                <div class="variant-badge warning" *ngIf="getUnassignedStock(piece) > 0">
-                                    <span class="v-name">Non-assigné</span>
-                                    <span class="v-qty">{{ getUnassignedStock(piece) }}</span>
-                                </div>
-                            </div>
-                        </ng-container>
+                        <div *ngIf="!piece.variantDetail && piece.details && piece.details.length > 0"
+                            class="stock-header">
+                            <span class="label">Stock par variante :</span>
+                            <span class="total-badge" [class.out]="getTotalStock(piece) <= 0">
+                                {{ getTotalStock(piece) }} au total
+                            </span>
+                        </div>
 
                         <div *ngIf="!piece.variantDetail && (!piece.details || piece.details.length === 0)"
                             class="stock-header">
-                            <span class="label">Stock Disponible</span>
+                            <span class="label">Stock Disponible :</span>
                             <span class="total-badge" [class.out]="getTotalStock(piece) <= 0">
                                 {{ getTotalStock(piece) }}
                             </span>
                         </div>
                     </div>
                 </div>
+
                 <div class="card-footer">
-                    <button class="btn-view-associated"
-                        *ngIf="piece.produitsAssocies && piece.produitsAssocies.length > 0"
-                        (click)="showAssociatedProducts(piece)" title="Voir les produits associés">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
-                        </svg>
-                        {{ piece.produitsAssocies.length }} produit{{ piece.produitsAssocies.length > 1 ? 's' : '' }}
-                    </button>
-                    <button class="btn-variants-indicator" *ngIf="piece.details && piece.details.length > 1"
-                        (click)="openEditModal(piece)" title="Gérer les variantes">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path
-                                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
-                            </path>
-                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                            <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                        </svg>
-                        {{ piece.details.length }} variantes
-                    </button>
+                    <div class="footer-buttons">
+                        <button class="btn-view-associated"
+                            *ngIf="piece.produitsAssocies && piece.produitsAssocies.length > 0"
+                            (click)="showAssociatedProducts(piece)" title="Voir les produits associés">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                            </svg>
+                            {{ piece.produitsAssocies.length }} produit{{ piece.produitsAssocies.length > 1 ? 's' : ''
+                            }}
+                        </button>
+
+                        <button class="btn-view-variants-sober"
+                            *ngIf="!piece.variantDetail && piece.details && piece.details.length > 0"
+                            (click)="showVariantDetails(piece)" title="Inventaire par variante">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path
+                                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                                </path>
+                            </svg>
+                            Voir {{ piece.details.length }} variantes
+                        </button>
+                    </div>
+
                     <span class="price-tag">{{ piece.prixVente | number:'1.2-2' }} {{ entreprise?.devise?.symbole ||
                         'DT' }}</span>
                 </div>
             </div>
-        </div>
 
-        <div class="empty-state" *ngIf="filteredPiecesList.length === 0">
-            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path
-                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
-                </path>
-                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                <line x1="12" y1="22.08" x2="12" y2="12"></line>
-            </svg>
-            <p>Aucune pièce détachée trouvée</p>
-            <div class="sub-text">Commencez par ajouter votre première pièce détachée au catalogue pour gérer votre
-                stock
-                efficacement.</div>
-            <button class="btn-create-first" (click)="openCreateModal()" *ngIf="canManage()">
-                + Ajouter une pièce
-            </button>
+            <div class="empty-state" *ngIf="filteredPiecesList.length === 0">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path
+                        d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                    </path>
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+                <p>Aucune pièce détachée trouvée</p>
+                <div class="sub-text">Commencez par ajouter votre première pièce détachée au catalogue pour gérer
+                    votre
+                    stock
+                    efficacement.</div>
+                <button class="btn-create-first" (click)="openCreateModal()" *ngIf="canManage()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Ajouter une pièce
+                </button>
+            </div>
         </div>
     </ng-container>
 
-    <!-- Unified Piece Form (Inline instead of Modal) -->
     <app-piece-form *ngIf="showCreateModal" [selectedPiece]="selectedPiece" [categories]="categories"
         [produitsFinis]="produitsFinis" [parametres]="parametres" (save)="handleSavePiece($event)"
         (cancel)="closeCreateModal()" (quickAddCategory)="handleQuickAddCategory($event)"
@@ -269,7 +267,6 @@
 </div>
 
 
-<!-- Associated Products View (List Only) -->
 <div class="modal-overlay" *ngIf="showAssociatedProductsModal" (click)="closeAssociatedProductsModal()">
     <div class="modal-content associated-modal" (click)="$event.stopPropagation()">
         <div class="associated-modal-header">
@@ -320,6 +317,84 @@
             <div class="associated-empty" *ngIf="loadingAssociated"
                 style="color: #64748b; font-size: 14px; padding: 20px;">
                 <p>Chargement...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Variant Detail Modal (New) -->
+<div class="modal-overlay" *ngIf="showVariantDetailsModal" (click)="closeVariantDetailsModal()">
+    <div class="modal-content associated-modal variant-inventory-modal" (click)="$event.stopPropagation()">
+        <div class="associated-modal-header variant-inventory-header">
+            <div class="associated-modal-title-block">
+                <div class="variant-header-icon-container">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path
+                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                        </path>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="variant-modal-title">Inventaire par Variantes</h2>
+                    <p class="variant-modal-subtitle" *ngIf="selectedPieceForVariants">
+                        Stock global pour <strong>{{ selectedPieceForVariants.designation }}</strong>
+                    </p>
+                </div>
+            </div>
+            <button class="btn-close-variant-modal" (click)="closeVariantDetailsModal()" type="button" title="Fermer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <div class="associated-modal-body variant-inventory-body">
+            <div class="variant-inventory-toolbar">
+                <div class="variant-search-container">
+                    <div class="search-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                    </div>
+                    <input type="text" class="variant-search-input" [(ngModel)]="variantSearchTerm"
+                        (ngModelChange)="applyVariantFilter()"
+                        placeholder="Rechercher une variante (couleur, taille...)...">
+                </div>
+                <div class="total-stock-premium-badge">
+                    <span class="label">STOCK TOTAL :</span>
+                    <span class="banner-qty">{{ getTotalStock(selectedPieceForVariants) }}</span>
+                </div>
+            </div>
+
+            <div class="variant-inventory-grid">
+                <div class="variant-inv-card-premium" *ngFor="let variant of filteredVariantsList"
+                    [class.critical]="(variant.stock?.quantite || 0) <= 0">
+                    <div class="variant-inv-info">
+                        <div class="variant-inv-label-group">
+                            <span class="v-pill-attr-sober" *ngFor="let attr of getVariantAttributes(variant)">{{ attr
+                                }}</span>
+                        </div>
+                        <code class="variant-inv-ref-sober">REF -VAR{{ variant.id }}</code>
+                    </div>
+                    <div class="variant-inv-stock-right">
+                        <div class="variant-stock-pill"
+                            [attr.data-status]="(variant.stock?.quantite || 0) > 0 ? 'DISPONIBLE' : 'RUPTURE_STOCK'">
+                            {{ variant.stock?.quantite || 0 }} unités —
+                            {{ (variant.stock?.quantite || 0) > 0 ? 'Disponible' : 'Rupture' }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="associated-empty" *ngIf="filteredVariantsList.length === 0">
+                <p>Aucune variante trouvée</p>
             </div>
         </div>
     </div>

@@ -73,6 +73,10 @@ export class LogistiqueService {
         return this.http.get<Bon[]>(`${this.baseUrl}/bons`);
     }
 
+    getBonsHistory(): Observable<Bon[]> {
+        return this.http.get<Bon[]>(`${this.baseUrl}/bons/history`);
+    }
+
     getBonById(id: number): Observable<Bon> {
         return this.http.get<Bon>(`${this.baseUrl}/bons/${id}`);
     }
@@ -98,6 +102,10 @@ export class LogistiqueService {
 
     deleteBon(id: number): Observable<void> {
         return this.http.delete<void>(`${this.baseUrl}/bons/${id}`);
+    }
+
+    reactivateBon(id: number): Observable<Bon> {
+        return this.http.patch<Bon>(`${this.baseUrl}/bons/${id}/reactivate`, {});
     }
 
 

@@ -1,6 +1,7 @@
 package com.gestionStock.backend.entity.Stock;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -26,13 +27,13 @@ public class MouvementStock {
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private Long id;
 	private LocalDateTime date;
-	private double montantHTVA;
-	private double montantTTC;
+	private Double montantHTVA;
+	private Double montantTTC;
 	@Enumerated(EnumType.STRING)
 	private TypeMouvement typeMouvement;
 	@com.fasterxml.jackson.annotation.JsonManagedReference
 	@OneToMany(mappedBy = "mouvementStock", cascade = CascadeType.ALL, orphanRemoval = true)
-	private Set<LigneMouvement> ligneMouvement = new HashSet<>();
+	private List<LigneMouvement> ligneMouvement = new java.util.ArrayList<>();
 	@OneToOne
 	private Bon bon;
 

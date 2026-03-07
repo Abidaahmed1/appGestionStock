@@ -6,9 +6,14 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import com.gestionStock.backend.entity.entreprise.Entreprise;
+
 public interface ProduitFiniRepository extends JpaRepository<ProduitFini, Long> {
 	List<ProduitFini> findByEstArchiveeFalse();
 
-	boolean existsByCode(String code);
+	List<ProduitFini> findByEstArchiveeFalseAndEntreprise(Entreprise entreprise);
 
+	List<ProduitFini> findByEntreprise(Entreprise entreprise);
+
+	boolean existsByCode(String code);
 }

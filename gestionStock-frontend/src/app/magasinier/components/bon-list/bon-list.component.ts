@@ -227,7 +227,6 @@ export class BonListComponent implements OnInit {
         switch (type) {
             case 'ENTREE_RECEPTION': return 'Réception';
             case 'ENTREE_RETOUR':
-                // Specific logic for Maintenance Return
                 if (bon.bonOrigine?.mouvement?.typeMouvement === 'SORTIE_MAINTENANCE') {
                     return 'Retour Maintenance';
                 }
@@ -262,7 +261,6 @@ export class BonListComponent implements OnInit {
         const type = bon.mouvement?.typeMouvement;
         if (!type) return '';
 
-        // Use 'retour' class for all return types for consistent coloring
         if (type.includes('RETOUR')) return 'retour';
 
         if (type.startsWith('ENTREE')) return 'entree';

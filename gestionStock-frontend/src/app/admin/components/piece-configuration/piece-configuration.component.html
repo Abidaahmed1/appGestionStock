@@ -1,0 +1,240 @@
+<div class="delete-confirmation-overlay" *ngIf="fieldToDelete !== null">
+    <div class="confirmation-card">
+        <div class="confirm-icon">
+            <i class="fas fa-trash-alt"></i>
+        </div>
+        <h3>Supprimer le champ ?</h3>
+        <p>Voulez-vous vraiment supprimer le champ <strong>"{{ champs[fieldToDelete]?.nom || 'ce champ' }}"</strong> ?
+            Cette action est irréversible.</p>
+        <div class="confirm-actions">
+            <button class="btn-cancel" (click)="fieldToDelete = null">ANNULER</button>
+            <button class="btn-confirm" (click)="confirmerSuppression()">SUPPRIMER</button>
+        </div>
+    </div>
+</div>
+
+<div class="delete-confirmation-overlay" *ngIf="showBulkConfirm">
+    <div class="confirmation-card">
+        <div class="confirm-icon">
+            <i class="fas fa-trash-alt"></i>
+        </div>
+        <h3>Supprimer la sélection ?</h3>
+        <p>Voulez-vous vraiment supprimer tous les champs sélectionnés ? Cette action supprimera définitivement les
+            attributs choisis.</p>
+        <div class="confirm-actions">
+            <button class="btn-cancel" (click)="showBulkConfirm = false">ANNULER</button>
+            <button class="btn-confirm" (click)="confirmerSuppressionGroupee()">SUPPRIMER TOUT</button>
+        </div>
+    </div>
+</div>
+
+<div class="config-container">
+    <div class="notification-toast" *ngIf="notification" [class.success]="notification.type === 'success'"
+        [class.error]="notification.type === 'error'">
+        <i class="fas"
+            [ngClass]="{'fa-check-circle': notification.type === 'success', 'fa-exclamation-circle': notification.type === 'error'}"></i>
+        <span class="msg">{{ notification.message }}</span>
+        <button class="close-btn" (click)="notification = null">×</button>
+    </div>
+
+    <div class="header-nav">
+        <div class="breadcrumb">
+            <span (click)="goBack()" class="link">Configuration Système</span>
+            <span class="separator">/</span>
+            <span class="current">Personnalisation des Pièces</span>
+        </div>
+        <div class="actions">
+            <button class="btn-save" (click)="save()">ENREGISTRER</button>
+            <button class="btn-discard" (click)="goBack()">ABANDONNER</button>
+        </div>
+    </div>
+
+    <div class="main-card">
+        <div class="card-header">
+            <div class="title-with-icon">
+                <i class="fas fa-cog text-muted"></i>
+                <div class="title-desc">
+                    <span class="upper">Paramétrage</span>
+                    <h1>Champs Personnalisés</h1>
+                </div>
+            </div>
+        </div>
+
+        <div *ngIf="errorMessage" class="error-banner">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>{{ errorMessage }}</span>
+            <button (click)="loadParametres()">RÉESSAYER</button>
+        </div>
+
+        <div class="tabs">
+            <div class="tab-buttons">
+                <button class="tab-link" [class.active]="activeTab === 'info'" (click)="activeTab = 'info'">
+                    Informations générales
+                </button>
+                <button class="tab-link" [class.active]="activeTab === 'attributes'" (click)="activeTab = 'attributes'">
+                    Attributs & Variantes
+                </button>
+            </div>
+
+            <div class="bulk-actions-container" *ngIf="isAnySelected && activeTab === 'attributes'">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="#c53030" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    <span class="selection-text">{{ getSelectedCount() }} sélectionné(s)</span>
+                </div>
+                <button (click)="ouvrirConfirmationGroupee()" class="btn-bulk-delete-simple" title="Tout supprimer">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    <span>SUPPRIMER</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="tab-content" *ngIf="activeTab === 'attributes'">
+            <table class="odoo-table">
+                <thead>
+                    <tr>
+                        <th class="selection-col">
+                            <input type="checkbox" [(ngModel)]="selectAll" (change)="toggleSelectAll()"
+                                class="odoo-checkbox">
+                        </th>
+                        <th class="drag-handle-col"></th>
+                        <th style="width: 180px;">Attribut</th>
+                        <th style="width: 130px;">Type de champ</th>
+                        <th class="check-col">Requis</th>
+                        <th class="check-col">Variante</th>
+                        <th>V. Défaut</th>
+                        <th>Description</th>
+                        <th class="check-col">Actif</th>
+                        <th>Valeurs / Options</th>
+                        <th class="actions-col"></th>
+                    </tr>
+                </thead>
+                <tbody *ngIf="!loading">
+                    <tr *ngFor="let champ of champs; let i = index" [class.row-selected]="$any(champ).selected">
+                        <td class="selection-col">
+                            <input type="checkbox" [(ngModel)]="$any(champ).selected" (change)="onSelectionChange()"
+                                class="odoo-checkbox">
+                        </td>
+                        <td class="drag-handle-col">
+                            <i class="fas fa-grip-vertical text-muted"></i>
+                        </td>
+                        <td>
+                            <input type="text" [(ngModel)]="champ.nom" placeholder="ex: Couleur..." class="odoo-input">
+                        </td>
+                        <td>
+                            <select [(ngModel)]="champ.type" (change)="onTypeChange(i)" class="odoo-select">
+                                <option *ngFor="let t of typesChamps" [value]="t.value">{{ t.label }}</option>
+                            </select>
+                        </td>
+                        <td class="check-col">
+                            <input type="checkbox" [(ngModel)]="champ.obligatoire" class="odoo-checkbox">
+                        </td>
+                        <td class="check-col">
+                            <input type="checkbox" [(ngModel)]="champ.variante" class="odoo-checkbox"
+                                title="Marquer comme attribut variant (ex: taille, couleur)">
+                        </td>
+                        <td>
+                            <input type="text" [(ngModel)]="champ.defaultValue" placeholder="Valeur par def..."
+                                class="odoo-input">
+                        </td>
+                        <td>
+                            <input type="text" [(ngModel)]="champ.description" placeholder="Aide utilisateur..."
+                                class="odoo-input">
+                        </td>
+                        <td class="check-col">
+                            <input type="checkbox" [(ngModel)]="champ.actif" class="odoo-checkbox">
+                        </td>
+                        <td class="options-cell">
+                            <ng-container *ngIf="champ.variante || champ.type === 'SELECT'">
+                                <div class="options-container">
+                                    <div class="option-pill" *ngFor="let opt of champ.options; let j = index">
+                                        {{ opt }}
+                                        <i class="fa-solid fa-xmark" title="Supprimer"
+                                            (click)="champ.options.splice(j, 1)"></i>
+                                    </div>
+                                    <input type="text" placeholder="Ajouter une valeur..."
+                                        (keyup.enter)="addOption(champ, $any($event.target))" class="inline-input">
+                                </div>
+                                <span class="options-hint" *ngIf="champ.options.length === 0">
+                                    Tapez une valeur et appuyez Entrée
+                                </span>
+                            </ng-container>
+                            <ng-container *ngIf="!champ.variante && champ.type !== 'SELECT'">
+                                <span class="text-muted italic">Automatique</span>
+                            </ng-container>
+                        </td>
+                        <td class="actions-col">
+                            <button (click)="supprimerLigne(i)" title="Supprimer"
+                                style="background: none; border: none; padding: 4px; cursor: pointer; color: #ef4444;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path
+                                        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                    </path>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                    <tr class="add-line-row">
+                        <td colspan="11">
+                            <button class="btn-add-line" (click)="ajouterLigne()">
+                                <i class="fas fa-plus"></i> Ajouter une ligne
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="loading-overlay" *ngIf="loading">
+                <div class="spinner"></div>
+            </div>
+
+            <div class="warning-footer" *ngIf="champs.length > 0">
+                <p><strong>Avertissement:</strong> l'ajout ou la suppression des attributs permettra de structurer les
+                    données techniques de vos pièces détachées. Ces modifications s'appliqueront à toutes les pièces
+                    existantes.</p>
+            </div>
+        </div>
+
+        <div class="tab-content" *ngIf="activeTab === 'info'">
+            <div class="tab-info-header">
+                <h3>Champs Standards (Système)</h3>
+                <p>Ces champs sont inclus par défaut dans l'application et ne peuvent pas être renommés ou supprimés.
+                </p>
+            </div>
+
+            <table class="odoo-table readonly-table">
+                <thead>
+                    <tr>
+                        <th style="width: 250px;">Attribut Standard</th>
+                        <th style="width: 200px;">Type Système</th>
+                        <th>Description / Usage</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let attr of defaultAttributes">
+                        <td>
+                            <span class="standard-badge">Système</span>
+                            <strong>{{ attr.nom }}</strong>
+                        </td>
+                        <td>
+                            <code class="type-code">{{ attr.type }}</code>
+                        </td>
+                        <td>
+                            <span class="text-muted">{{ attr.description }}</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

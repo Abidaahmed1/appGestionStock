@@ -16,7 +16,14 @@
                 <button (click)="save()" class="btn btn-primary" [disabled]="loading" *ngIf="!isEditMode">
                     CRÉER
                 </button>
-                <span class="badge-readonly" *ngIf="isEditMode"> Bon validé — lecture seule</span>
+                <span class="badge-readonly" *ngIf="isEditMode && !bon?.archived"> Bon validé — lecture seule</span>
+                <span class="badge-archived" *ngIf="bon?.archived"> ⚠ Bon Annulé — Historique</span>
+
+                <button (click)="reactivate()" class="btn btn-success"
+                    *ngIf="bon?.archived && hasRole('ROLE_AUDITEUR')">
+                    RÉACTIVER
+                </button>
+
                 <button (click)="print()" class="btn btn-outline" *ngIf="isEditMode" [disabled]="loading">
                     IMPRIMER
                 </button>
@@ -54,39 +61,6 @@
         </div>
         <div class="form-grid">
             <div class="form-column">
-                <div class="form-group" [class.has-error]="errors['fournisseur']">
-                    <label>Fournisseur <span class="required-star" *ngIf="isSupplierApplicable">*</span></label>
-                    <div class="input-wrapper">
-                        <div class="searchable-dropdown"
-                            (click)="(!isEditMode && isSupplierApplicable) && onDropdownClick($event)">
-                            <div class="search-input-wrapper">
-                                <input type="text" [ngModel]="getSupplierDisplayValue()"
-                                    (ngModelChange)="(!isEditMode && isSupplierApplicable) && (supplierSearchText = $event); filterFournisseurs()"
-                                    (click)="(!isEditMode && isSupplierApplicable) && toggleSupplierDropdown($event)"
-                                    [placeholder]="isSupplierApplicable ? 'Choisir un fournisseur...' : 'Non applicable pour ce document'"
-                                    [class.input-error]="errors['fournisseur']" class="form-control"
-                                    [readonly]="isEditMode || !isSupplierApplicable"
-                                    [class.readonly-field]="isEditMode || !isSupplierApplicable">
-                            </div>
-
-                            <div class="dropdown-results"
-                                *ngIf="showSupplierDropdown && !isEditMode && isSupplierApplicable">
-                                <div class="results-scroll">
-                                    <div *ngFor="let f of filteredFournisseurs" (click)="selectFournisseur(f)"
-                                        class="result-item">
-                                        <span class="item-name">{{ f.nom }}</span>
-                                        <span class="item-code" *ngIf="f.code">({{ f.code }})</span>
-                                    </div>
-                                    <div class="no-results" *ngIf="filteredFournisseurs.length === 0">
-                                        Aucun fournisseur trouvé
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="field-error" *ngIf="errors['fournisseur']">{{ errors['fournisseur'] }}</div>
-                </div>
-
                 <div class="form-group">
                     <label>Type de Bon</label>
                     <div class="input-wrapper">
@@ -137,6 +111,39 @@
                     </div>
                     <div class="field-error" *ngIf="errors['numeroBonOrigine']">{{ errors['numeroBonOrigine'] }}</div>
                 </div>
+                <div class="form-group" [class.has-error]="errors['fournisseur']">
+                    <label>Fournisseur <span class="required-star" *ngIf="isSupplierApplicable">*</span></label>
+                    <div class="input-wrapper">
+                        <div class="searchable-dropdown"
+                            (click)="(!isEditMode && isSupplierApplicable) && onDropdownClick($event)">
+                            <div class="search-input-wrapper">
+                                <input type="text" [ngModel]="getSupplierDisplayValue()"
+                                    (ngModelChange)="(!isEditMode && isSupplierApplicable) && (supplierSearchText = $event); filterFournisseurs()"
+                                    (click)="(!isEditMode && isSupplierApplicable) && toggleSupplierDropdown($event)"
+                                    [placeholder]="isSupplierApplicable ? 'Choisir un fournisseur...' : 'Non applicable pour ce document'"
+                                    [class.input-error]="errors['fournisseur']" class="form-control"
+                                    [readonly]="isEditMode || !isSupplierApplicable"
+                                    [class.readonly-field]="isEditMode || !isSupplierApplicable">
+                            </div>
+
+                            <div class="dropdown-results"
+                                *ngIf="showSupplierDropdown && !isEditMode && isSupplierApplicable">
+                                <div class="results-scroll">
+                                    <div *ngFor="let f of filteredFournisseurs" (click)="selectFournisseur(f)"
+                                        class="result-item">
+                                        <span class="item-name">{{ f.nom }}</span>
+                                        <span class="item-code" *ngIf="f.code">({{ f.code }})</span>
+                                    </div>
+                                    <div class="no-results" *ngIf="filteredFournisseurs.length === 0">
+                                        Aucun fournisseur trouvé
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field-error" *ngIf="errors['fournisseur']">{{ errors['fournisseur'] }}</div>
+                </div>
+
             </div>
 
             <div class="form-column">
@@ -302,8 +309,8 @@
             <div class="po-party-box">
                 <div class="po-party-label">EMETTEUR</div>
                 <div class="po-party-content">
-                    <div class="po-party-name" *ngIf="bon.createur">{{ bon.createur.firstName }} {{
-                        bon.createur.lastName }}</div>
+                    <div class="po-party-name" *ngIf="bon?.createur">{{ bon?.createur?.firstName }} {{
+                        bon?.createur?.lastName }}</div>
                     <div class="po-party-detail">Responsable Magasin</div>
                 </div>
             </div>
@@ -382,7 +389,24 @@
         </div>
     </div>
 
-    <!-- Notification -->
+    <div class="modal-overlay" *ngIf="showReactivateConfirm" (click)="cancelReactivate()">
+        <div class="modal-content small confirm-info" (click)="$event.stopPropagation()">
+            <div class="confirm-icon info">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6"></path>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+            </div>
+            <h3>Réactiver le bon</h3>
+            <p>Êtes-vous sûr de vouloir réactiver le bon <strong>{{ bon.numeroBon }}</strong> ?</p>
+            <p class="info-text">Cette action rétablira les quantités en stock associées à ce document.</p>
+            <div class="modal-actions">
+                <button class="btn btn-outline" (click)="cancelReactivate()">Annuler</button>
+                <button class="btn btn-primary" (click)="confirmReactivate()">Confirmer la réactivation</button>
+            </div>
+        </div>
+    </div>
+
     <div class="notification-toast" *ngIf="notification" [class.success]="notification.type === 'success'"
         [class.error]="notification.type === 'error'">
         <span class="msg">{{ notification.message }}</span>
