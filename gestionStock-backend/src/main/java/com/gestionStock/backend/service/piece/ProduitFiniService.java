@@ -1,30 +1,30 @@
 package com.gestionStock.backend.service.piece;
 
 import com.gestionStock.backend.exceptions.ProduitException;
-
 import com.gestionStock.backend.entity.piece.ProduitFini;
 import com.gestionStock.backend.entity.piece.PieceDetachee;
 import com.gestionStock.backend.repository.piece.ProduitFiniRepository;
 import com.gestionStock.backend.service.user.UserService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 @Transactional
 public class ProduitFiniService {
 
+    private static final Object PRODUIT_LOCK = new Object();
     private final ProduitFiniRepository produitRepo;
     private final UserService userService;
+    private final com.gestionStock.backend.entity.parametre.NumerotationService numerotationService;
 
     public List<ProduitFini> getAll() {
         com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
         if (entreprise == null) {
-            // Aucun utilisateur ou aucune entreprise associée : retourner une liste vide
             return java.util.List.of();
         }
         return produitRepo.findByEstArchiveeFalseAndEntreprise(entreprise);
@@ -32,6 +32,16 @@ public class ProduitFiniService {
 
     public ProduitFini save(ProduitFini produit) {
         com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
+
+        if (produit.getCode() == null || produit.getCode().trim().isEmpty()
+                || "AUTO".equalsIgnoreCase(produit.getCode())) {
+            synchronized (PRODUIT_LOCK) {
+                produit.setCode(numerotationService.generateNextNumber("PRODUIT"));
+            }
+        } else {
+            numerotationService.validateReference("PRODUIT", produit.getCode());
+        }
+
         if (entreprise != null && produitRepo.existsByCodeAndEntreprise(produit.getCode(), entreprise)) {
             throw new ProduitException("Un produit avec ce code existe déjà.");
         }
@@ -63,9 +73,11 @@ public class ProduitFiniService {
             entreprise = userService.getCurrentUserEntreprise();
         }
 
-        if (!existing.getCode().equals(produit.getCode())
-                && produitRepo.existsByCodeAndEntreprise(produit.getCode(), entreprise)) {
-            throw new ProduitException("Un autre produit utilise déjà ce code.");
+        if (!existing.getCode().equals(produit.getCode())) {
+            numerotationService.validateReference("PRODUIT", produit.getCode());
+            if (produitRepo.existsByCodeAndEntreprise(produit.getCode(), entreprise)) {
+                throw new ProduitException("Un autre produit utilise déjà ce code.");
+            }
         }
 
         existing.setCode(produit.getCode());
@@ -74,7 +86,6 @@ public class ProduitFiniService {
             existing.setImageUrl(produit.getImageUrl());
         }
 
-        // Ensure enterprise is kept!
         if (existing.getEntreprise() == null) {
             existing.setEntreprise(userService.getCurrentUserEntreprise());
         }

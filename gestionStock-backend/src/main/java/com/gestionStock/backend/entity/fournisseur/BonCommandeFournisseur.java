@@ -38,7 +38,7 @@ public class BonCommandeFournisseur {
 
 	private Long id;
 	@Column
-	private Long numeroCmd;
+	private String numeroCmd;
 	private LocalDateTime dateCmd;
 	private LocalDate dateArrivee;
 

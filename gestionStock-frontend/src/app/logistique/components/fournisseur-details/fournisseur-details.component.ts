@@ -23,6 +23,8 @@ export class FournisseurDetailsComponent implements OnInit {
     activeTab: string = 'articles';
     validationErrors: any = {};
     hasOrderDraft = false;
+    isAutoCode = true;
+    parametres: any = null;
 
 
 
@@ -50,12 +52,65 @@ export class FournisseurDetailsComponent implements OnInit {
                     this.notify(history.state.message, 'success');
                 }, 100);
             }
+            this.loadParametres();
         }
+    }
+
+    loadParametres() {
+        this.magasinierService.getAllParametres().subscribe({
+            next: (data) => {
+                if (data && data.length > 0) {
+                    this.parametres = data[0];
+                    if (!this.isEdit) {
+                        this.isAutoCode = this.isModuleAuto('FOURNISSEUR');
+                        this.fournisseur.code = this.isAutoCode ? 'AUTO' : '';
+                    }
+                    this.cdr.detectChanges();
+                }
+            },
+            error: (err) => console.error('Erreur chargement paramètres:', err)
+        });
+    }
+
+    isModuleAuto(moduleName: string): boolean {
+        const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+        return config ? config.automatique !== false : true;
+    }
+
+    getPrefix(moduleName: string): string {
+        const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+        let prefix = config?.prefix || '';
+        if (prefix) {
+            const date = new Date();
+            prefix = prefix
+                .replace('%YYYY%', date.getFullYear().toString())
+                .replace('%YY%', date.getFullYear().toString().substring(2))
+                .replace('%MM%', (date.getMonth() + 1).toString().padStart(2, '0'))
+                .replace('%DD%', date.getDate().toString().padStart(2, '0'));
+        }
+        return prefix;
+    }
+
+    getFormatExplanation(moduleName: string): string {
+        const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+        const prefix = config?.prefix || '';
+        
+        let parts = [];
+        if (prefix.includes('%YYYY%')) parts.push("l'année sur 4 chiffres");
+        else if (prefix.includes('%YY%')) parts.push("l'année sur 2 chiffres");
+        
+        if (prefix.includes('%MM%')) parts.push("le mois sur 2 chiffres");
+        if (prefix.includes('%DD%')) parts.push("le jour sur 2 chiffres");
+        
+        if (parts.length > 0) {
+            return `Astuce : La référence inclut ${parts.join(', ')} suivis d'un numéro de séquence.`;
+        }
+        return 'Séquence simple (sans date)';
     }
 
     initNewFournisseur(): Fournisseur {
         return {
-            code: '',
+            code: 'AUTO',
             nom: '',
             adresse: '',
             email: '',
@@ -67,6 +122,7 @@ export class FournisseurDetailsComponent implements OnInit {
         this.logistiqueService.getFournisseurById(id).subscribe({
             next: (data) => {
                 this.fournisseur = data;
+                this.isAutoCode = this.fournisseur.code === 'AUTO';
             },
             error: () => this.notify('Erreur lors du chargement', 'error')
         });
@@ -83,7 +139,7 @@ export class FournisseurDetailsComponent implements OnInit {
         if (!this.fournisseur.code) {
             this.validationErrors.code = true;
             hasErrors = true;
-        } else if (!this.fournisseur.code.startsWith('FOUR-')) {
+        } else if (this.fournisseur.code !== 'AUTO' && this.fournisseur.code.length < 2) {
             this.validationErrors.codePattern = true;
             hasErrors = true;
         }
@@ -113,7 +169,7 @@ export class FournisseurDetailsComponent implements OnInit {
             if (this.validationErrors.telLength) {
                 errorMsg = 'Le numéro de téléphone doit contenir exactement 8 chiffres.';
             } else if (this.validationErrors.codePattern) {
-                errorMsg = 'Le code du fournisseur doit commencer par FOUR-';
+                errorMsg = 'Le code du fournisseur est invalide.';
             }
             this.notify(errorMsg, 'error');
             return;
@@ -150,15 +206,7 @@ export class FournisseurDetailsComponent implements OnInit {
                 }
             },
             error: (err) => {
-                let msg = err.error?.message || 'Erreur lors de l\'enregistrement';
-                if (err.error?.details) {
-                    const detailsStr = Object.values(err.error.details).join(', ');
-                    if (detailsStr) {
-                        msg = msg + ': ' + detailsStr;
-                    }
-                } else if (typeof err.error === 'string') {
-                    msg = err.error;
-                }
+                const msg = this.extractErrorMessage(err, 'Erreur lors de l\'enregistrement du fournisseur.');
                 this.notify(msg, 'error');
             }
         });
@@ -198,8 +246,32 @@ export class FournisseurDetailsComponent implements OnInit {
         }
     }
 
+
+    extractErrorMessage(err: any, defaultMsg: string): string {
+        if (typeof err.error === 'object' && err.error !== null) {
+            if (err.error?.details && typeof err.error.details === 'object') {
+                const detailsStr = Object.values(err.error.details).join(', ');
+                if (detailsStr) return detailsStr;
+            }
+            const m = err.error?.message || err.error?.error || err.error?.detail;
+            if (m && typeof m === 'string' && m.length < 300 && !m.includes('com.') && !m.includes('java.')) {
+                return m;
+            }
+        }
+        if (typeof err.error === 'string' && err.error.length < 250
+            && !err.error.includes('com.') && !err.error.includes('at ')) {
+            return err.error;
+        }
+        if (err.status === 400) return 'Données invalides. Veuillez vérifier les champs saisis.';
+        if (err.status === 409) return 'Ce code fournisseur existe déjà.';
+        if (err.status === 404) return 'Fournisseur introuvable.';
+        if (err.status === 500) return 'Une erreur serveur est survenue. Veuillez réessayer.';
+        return defaultMsg;
+    }
+
     setTab(tab: string) {
         this.activeTab = tab;
         this.cdr.detectChanges();
     }
+
 }

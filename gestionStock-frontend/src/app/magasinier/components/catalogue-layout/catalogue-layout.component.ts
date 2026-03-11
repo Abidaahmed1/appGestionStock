@@ -120,12 +120,12 @@ export class CatalogueLayoutComponent implements OnInit {
                     if (this.searchCategory === 'all') {
                         matchesSearch = piece.designation.toLowerCase().includes(term) ||
                             piece.reference.toLowerCase().includes(term) ||
-                            (piece.codeBarre?.toLowerCase().includes(term) || false);
+                            (piece.details?.some(d => d.codeBarre?.toLowerCase().includes(term)) ?? false);
                     } else if (this.searchCategory === 'designation') {
                         matchesSearch = piece.designation.toLowerCase().includes(term);
                     } else if (this.searchCategory === 'code') {
                         matchesSearch = piece.reference.toLowerCase().includes(term) ||
-                            (piece.codeBarre?.toLowerCase().includes(term) || false);
+                            (piece.details?.some(d => d.codeBarre?.toLowerCase().includes(term)) ?? false);
                     }
                 }
 

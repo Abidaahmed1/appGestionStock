@@ -27,6 +27,12 @@ public class PieceDetacheeController {
         return pieceService.findByActive();
     }
 
+    @PostMapping("/upload-image-front/{id}")
+    @PreAuthorize("hasRole('MAGASINIER')")
+    public ResponseEntity<?> uploadImageFront(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+        return uploadImage(id, file); // Alias for consistency via internal call
+    }
+
     @PostMapping("/upload-image/{id}")
     @PreAuthorize("hasRole('MAGASINIER')")
     public ResponseEntity<?> uploadImage(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
@@ -40,12 +46,14 @@ public class PieceDetacheeController {
                 return ResponseEntity.notFound().build();
             }
             return ResponseEntity.ok(updated);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Erreur lors du stockage de l'image: " + e.getMessage());
         }
     }
+
+   
+
+
 
     @PostMapping
     @PreAuthorize("hasRole('MAGASINIER')")
@@ -60,11 +68,11 @@ public class PieceDetacheeController {
         return ResponseEntity.ok(pieceService.update(id, piece));
     }
 
-    @DeleteMapping("/{codeBarre}")
+    @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('MAGASINIER')")
-    public ResponseEntity<?> delete(@PathVariable String codeBarre) {
+    public ResponseEntity<?> delete(@PathVariable Long id) {
         try {
-            pieceService.delete(codeBarre);
+            pieceService.delete(id);
             return ResponseEntity.noContent().build();
         } catch (IllegalStateException e) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT).body(e.getMessage());

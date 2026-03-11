@@ -26,10 +26,20 @@ export interface ChampPersonnalise {
     _showAddInput?: boolean;
 }
 
+export interface NumerotationConfig {
+    module: string;
+    prefix: string;
+    numeroDebut: string;
+    redemarrer: string;
+    automatique?: boolean;
+    actif: boolean;
+}
+
 export interface Parametre {
     id?: number;
     entreprise?: any;
     champsPersonnalises: ChampPersonnalise[];
+    numerotationConfigs: NumerotationConfig[];
 }
 
 @Injectable({
@@ -66,5 +76,13 @@ export class ParametreService {
 
     updateParametre(id: number, parametre: Parametre): Observable<Parametre> {
         return this.http.put<Parametre>(`${this.apiUrl}/${id}`, parametre);
+    }
+
+    getNumerotationConfigs(): Observable<NumerotationConfig[]> {
+        return this.http.get<NumerotationConfig[]>(`${this.apiUrl}/numerotation`);
+    }
+
+    updateNumerotationConfigs(parametreId: number, configs: NumerotationConfig[]): Observable<Parametre> {
+        return this.http.put<Parametre>(`${this.apiUrl}/${parametreId}/numerotation`, configs);
     }
 }

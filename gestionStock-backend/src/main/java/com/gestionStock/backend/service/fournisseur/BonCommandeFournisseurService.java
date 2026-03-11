@@ -3,9 +3,7 @@ package com.gestionStock.backend.service.fournisseur;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -39,6 +37,7 @@ public class BonCommandeFournisseurService {
     private final UserService userService;
     private final NotificationService notificationService;
     private final StockRepository stockRepo;
+    private final com.gestionStock.backend.entity.parametre.NumerotationService numerotationService;
 
     public List<BonCommandeFournisseur> getAll() {
         com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
@@ -92,50 +91,7 @@ public class BonCommandeFournisseurService {
         return bon;
     }
 
-    private static boolean isUniquenessConstraintViolation(Throwable t) {
-        for (Throwable x = t; x != null; x = x.getCause()) {
-            if (x instanceof DataIntegrityViolationException) {
-                return true;
-            }
-            String name = x.getClass().getSimpleName();
-            if (name.contains("ConstraintViolation") || name.contains("DataIntegrity")) {
-                return true;
-            }
-            String msg = x.getMessage();
-            if (msg != null) {
-                String m = msg.toLowerCase();
-                if (m.contains("unique") || m.contains("duplicate") || m.contains("constraint")
-                        || m.contains("violation")) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
 
-    private long generateNumeroCmd(long minExclusive,
-            com.gestionStock.backend.entity.entreprise.Entreprise entreprise) {
-        LocalDate now = LocalDate.now();
-        String aa = String.valueOf(now.getYear()).substring(2);
-        String mm = String.format("%02d", now.getMonthValue());
-
-        long rangeStart = Long.parseLong(aa + mm + "00001");
-        long rangeEnd = Long.parseLong(aa + mm + "99999");
-
-        Long maxExisting = repository.findMaxNumeroCmdBetweenAndEntreprise(rangeStart, rangeEnd, entreprise);
-        long next = maxExisting == null ? rangeStart : (maxExisting + 1);
-        if (minExclusive > 0 && next <= minExclusive) {
-            next = minExclusive + 1;
-        }
-        if (next > rangeEnd) {
-            throw new FournisseurException("Plafond de commandes atteint pour ce mois (" + aa + "-" + mm + ").");
-        }
-        return next;
-    }
-
-    private long generateNumeroCmd(com.gestionStock.backend.entity.entreprise.Entreprise entreprise) {
-        return generateNumeroCmd(0L, entreprise);
-    }
 
     private void validateBon(BonCommandeFournisseur bon) {
         if (bon.getDateArrivee() != null) {
@@ -171,8 +127,15 @@ public class BonCommandeFournisseurService {
             bon.setDateCmd(LocalDateTime.now());
             com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
             bon.setEntreprise(entreprise);
-            synchronized (NUMERO_CMD_LOCK) {
-                bon.setNumeroCmd(generateNumeroCmd(entreprise));
+            if (bon.getNumeroCmd() == null || bon.getNumeroCmd().isEmpty() || "0".equals(bon.getNumeroCmd()) || "AUTO".equalsIgnoreCase(bon.getNumeroCmd())) {
+                synchronized (NUMERO_CMD_LOCK) {
+                    bon.setNumeroCmd(numerotationService.generateNextNumber("BON_COMMANDE"));
+                }
+            } else {
+                numerotationService.validateReference("BON_COMMANDE", bon.getNumeroCmd());
+                if (repository.findByNumeroCmd(bon.getNumeroCmd()).isPresent()) {
+                    throw new IllegalStateException("Une commande avec ce numéro (" + bon.getNumeroCmd() + ") existe déjà");
+                }
             }
             if (bon.getStatut() == null) {
                 bon.setStatut(StatutCommande.EN_ATTENTE);
@@ -227,34 +190,10 @@ public class BonCommandeFournisseurService {
 
         BonCommandeFournisseur savedBon;
         if (isNew) {
-            final int maxAttempts = 3;
-            savedBon = null;
-            for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-                try {
-                    savedBon = persistHelper.persist(bon);
-                    break;
-                } catch (Exception e) {
-                    if (!isUniquenessConstraintViolation(e) || attempt == maxAttempts) {
-                        throw e;
-                    }
-
-                    bon.setId(null);
-                    if (bon.getLignes() != null) {
-                        bon.getLignes().forEach(ligne -> ligne.setId(null));
-                    }
-
-                    long lastNumero = Optional.ofNullable(bon.getNumeroCmd()).orElse(0L);
-                    com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService
-                            .getCurrentUserEntreprise();
-                    synchronized (NUMERO_CMD_LOCK) {
-                        bon.setNumeroCmd(generateNumeroCmd(lastNumero, entreprise));
-                    }
-                    System.err.println("[BonCommandeFournisseur] Conflit d'unicité (tentative " + attempt + "/"
-                            + maxAttempts + "), retry avec numeroCmd=" + bon.getNumeroCmd());
-                }
-            }
-            if (savedBon == null) {
-                throw new IllegalStateException("Persist failed after retries");
+            try {
+                savedBon = persistHelper.persist(bon);
+            } catch (Exception e) {
+                throw new RuntimeException("Erreur lors de la sauvegarde du bon de commande: " + e.getMessage(), e);
             }
         } else {
             savedBon = repository.save(bon);

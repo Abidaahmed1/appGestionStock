@@ -8,7 +8,6 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import com.gestionStock.backend.entity.Stock.Stock;
-import com.gestionStock.backend.entity.parametre.Parametre;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -18,6 +17,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
+import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -43,7 +43,12 @@ public class DetailPiece {
     @JsonIgnoreProperties({ "details", "stock", "produitsAssocies" })
     private PieceDetachee piece;
 
+    private String codeBarre;
 
+    @Min(value = 0, message = "Le prix ne peut pas être négatif")
+    private Double prixVente = 0.0;
+    @Min(value = 0, message = "Le taux TVA ne peut pas être négatif")
+    private Double tauxTVA = 0.0;
 
     @OneToOne
     @JsonIgnoreProperties({ "detailPiece", "piece" })

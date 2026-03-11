@@ -32,6 +32,7 @@ public class PieceFournisseur {
 	private Double prixAchat;
 	private Integer qteMinACommander;
 	private Double tauxRemise;
+	private Integer nbJoursLivraison;
 	private Boolean estPrincipale;
 	private LocalDateTime dateDebutValidite;
 	private LocalDateTime dateFinValidite;

@@ -20,6 +20,7 @@ export class ProduitListComponent implements OnInit {
     selectedProduit: ProduitFini | null = null;
     newProduit: ProduitFini = this.initNewProduit();
     notification: { message: string, type: 'success' | 'error' } | null = null;
+    parametres: any = null;
     searchTerm: string = '';
     searchCategory: string = 'all';
     entreprise: Entreprise | null = null;
@@ -28,6 +29,7 @@ export class ProduitListComponent implements OnInit {
     imagePreview: string | null = null;
     showDeleteConfirm = false;
     itemToDelete: any = null;
+    isAutoCode = true;
 
 
     showAssociatedPiecesModal = false;
@@ -54,7 +56,56 @@ export class ProduitListComponent implements OnInit {
             this.cdr.detectChanges();
             this.loadProduits();
             this.loadEntreprise();
+            this.loadParametres();
         }
+    }
+
+    loadParametres() {
+        this.magasinierService.getAllParametres().subscribe({
+            next: (data) => {
+                if (data && data.length > 0) {
+                    this.parametres = data[0];
+                    this.cdr.detectChanges();
+                }
+            },
+            error: (err) => console.error('Erreur chargement paramètres:', err)
+        });
+    }
+
+    isModuleAuto(moduleName: string): boolean {
+        const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+        return config ? config.automatique !== false : true;
+    }
+
+    getPrefix(moduleName: string): string {
+        const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+        let prefix = config?.prefix || '';
+        if (prefix) {
+            const date = new Date();
+            prefix = prefix
+                .replace('%YYYY%', date.getFullYear().toString())
+                .replace('%YY%', date.getFullYear().toString().substring(2))
+                .replace('%MM%', (date.getMonth() + 1).toString().padStart(2, '0'))
+                .replace('%DD%', date.getDate().toString().padStart(2, '0'));
+        }
+        return prefix;
+    }
+
+    getFormatExplanation(moduleName: string): string {
+        const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+        const prefix = config?.prefix || '';
+        
+        let parts = [];
+        if (prefix.includes('%YYYY%')) parts.push("l'année sur 4 chiffres");
+        else if (prefix.includes('%YY%')) parts.push("l'année sur 2 chiffres");
+        
+        if (prefix.includes('%MM%')) parts.push("le mois sur 2 chiffres");
+        if (prefix.includes('%DD%')) parts.push("le jour sur 2 chiffres");
+        
+        if (parts.length > 0) {
+            return `Astuce : Le numéro inclut ${parts.join(', ')} suivis d'une séquence.`;
+        }
+        return 'Séquence simple (sans date)';
     }
 
     hasRole(role: string): boolean {
@@ -71,7 +122,7 @@ export class ProduitListComponent implements OnInit {
 
     initNewProduit(): ProduitFini {
         return {
-            code: '',
+            code: 'AUTO',
             designation: '',
             pieces: [],
             estArchivee: false,
@@ -143,7 +194,9 @@ export class ProduitListComponent implements OnInit {
 
     openCreateModal(): void {
         this.selectedProduit = null;
+        this.isAutoCode = this.isModuleAuto('PRODUIT');
         this.newProduit = this.initNewProduit();
+        this.newProduit.code = this.isAutoCode ? 'AUTO' : '';
         this.selectedFile = null;
         this.imagePreview = null;
         this.showCreateModal = true;
@@ -155,7 +208,18 @@ export class ProduitListComponent implements OnInit {
         this.newProduit = { ...produit };
         this.selectedFile = null;
         this.imagePreview = produit.imageUrl || null;
+        this.isAutoCode = this.newProduit.code === 'AUTO';
         this.showCreateModal = true;
+        this.cdr.detectChanges();
+    }
+
+    toggleAutoCode(val: boolean): void {
+        this.isAutoCode = val;
+        if (val) {
+            this.newProduit.code = 'AUTO';
+        } else if (this.newProduit.code === 'AUTO') {
+            this.newProduit.code = '';
+        }
         this.cdr.detectChanges();
     }
 
@@ -165,8 +229,12 @@ export class ProduitListComponent implements OnInit {
     }
 
     saveProduit(): void {
+        const payload: any = { ...this.newProduit };
+        delete payload.pieces;
+        delete payload.entreprise;
+
         if (this.selectedProduit && this.selectedProduit.id) {
-            this.magasinierService.updateProduit(this.selectedProduit.id, this.newProduit).subscribe({
+            this.magasinierService.updateProduit(this.selectedProduit.id, payload).subscribe({
                 next: (saved) => {
                     if (this.selectedFile && saved.id) {
                         this.doUpload(this.selectedFile, saved.id, 'Produit mis à jour');
@@ -178,13 +246,13 @@ export class ProduitListComponent implements OnInit {
                     this.cdr.detectChanges();
                 },
                 error: (err) => {
-                    const msg = err.error?.message || err.error || 'Erreur lors de la mise à jour';
+                    const msg = this.extractErrorMessage(err, 'Erreur lors de la mise à jour du produit.');
                     this.notify(msg, 'error');
                     this.cdr.detectChanges();
                 }
             });
         } else {
-            this.magasinierService.createProduit(this.newProduit).subscribe({
+            this.magasinierService.createProduit(payload).subscribe({
                 next: (saved) => {
                     if (this.selectedFile && saved.id) {
                         this.doUpload(this.selectedFile, saved.id, 'Produit créé');
@@ -196,7 +264,7 @@ export class ProduitListComponent implements OnInit {
                     this.cdr.detectChanges();
                 },
                 error: (err) => {
-                    const msg = err.error?.message || err.error || 'Erreur lors de la création';
+                    const msg = this.extractErrorMessage(err, 'Erreur lors de la création du produit.');
                     this.notify(msg, 'error');
                     this.cdr.detectChanges();
                 }
@@ -226,7 +294,7 @@ export class ProduitListComponent implements OnInit {
             },
             error: (err) => {
                 console.error('Error deleting product:', err);
-                const msg = err.error?.message || err.error || 'Erreur lors de l\'archivage';
+                const msg = this.extractErrorMessage(err, 'Erreur lors de l\'archivage du produit.');
                 this.notify(msg, 'error');
                 this.cdr.detectChanges();
             }
@@ -240,9 +308,35 @@ export class ProduitListComponent implements OnInit {
             setTimeout(() => {
                 this.notification = null;
                 this.cdr.detectChanges();
-            }, 5000);
+            }, 6000);
         }
     }
+
+    /**
+     * Extracts a user-friendly error message from an HTTP error.
+     * Avoids exposing raw technical/JSON errors to the user.
+     */
+    extractErrorMessage(err: any, defaultMsg: string): string {
+        // If there's a clean backend message, use it
+        if (typeof err.error === 'object' && err.error !== null) {
+            const m = err.error?.message || err.error?.error || err.error?.detail;
+            if (m && typeof m === 'string' && m.length < 300 && !m.includes('com.') && !m.includes('java.')) {
+                return m;
+            }
+        }
+        // String body - only use if short and human readable
+        if (typeof err.error === 'string' && err.error.length < 250
+            && !err.error.includes('com.') && !err.error.includes('at ')) {
+            return err.error;
+        }
+        // HTTP status fallbacks
+        if (err.status === 400) return 'Données invalides. Veuillez vérifier les champs saisis.';
+        if (err.status === 409) return 'Ce code existe déjà. Veuillez en choisir un autre.';
+        if (err.status === 404) return 'Produit introuvable.';
+        if (err.status === 500) return 'Une erreur serveur est survenue. Veuillez réessayer.';
+        return defaultMsg;
+    }
+
 
     getImageUrl(url: string | null | undefined): string {
         if (!url) return 'assets/images/default-produit.svg';
@@ -275,7 +369,7 @@ export class ProduitListComponent implements OnInit {
                 const matchesPiece = p.pieces?.some(piece =>
                     piece.designation.toLowerCase().includes(term) ||
                     piece.reference.toLowerCase().includes(term) ||
-                    piece.codeBarre.toLowerCase().includes(term)
+                    (piece.details?.some(d => (d.codeBarre || '').toLowerCase().includes(term)) ?? false)
                 );
                 return matchesBasic || matchesPiece;
             }
@@ -285,7 +379,7 @@ export class ProduitListComponent implements OnInit {
                 return p.pieces?.some(piece =>
                     piece.designation.toLowerCase().includes(term) ||
                     piece.reference.toLowerCase().includes(term) ||
-                    piece.codeBarre.toLowerCase().includes(term)
+                    (piece.details?.some(d => (d.codeBarre || '').toLowerCase().includes(term)) ?? false)
                 );
             }
             return true;
@@ -308,7 +402,7 @@ export class ProduitListComponent implements OnInit {
             pieces = pieces.filter(p =>
                 (p.designation || '').toLowerCase().includes(term) ||
                 (p.reference || '').toLowerCase().includes(term) ||
-                (p.codeBarre || '').toString().toLowerCase().includes(term)
+                p.details?.some(d => (d.codeBarre || '').toLowerCase().includes(term))
             );
         }
 

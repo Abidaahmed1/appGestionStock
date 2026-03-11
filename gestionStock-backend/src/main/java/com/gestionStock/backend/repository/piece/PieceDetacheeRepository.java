@@ -14,14 +14,6 @@ public interface PieceDetacheeRepository extends JpaRepository<PieceDetachee, Lo
 
     public List<PieceDetachee> findByEntreprise(Entreprise entreprise);
 
-    public boolean existsByCodeBarre(String code);
-
-    public boolean existsByCodeBarreAndEntreprise(String code, Entreprise entreprise);
-
-    public PieceDetachee findByCodeBarre(String code);
-
-    public PieceDetachee findByCodeBarreAndEntreprise(String code, Entreprise entreprise);
-
     public boolean existsByReference(String reference);
 
     public boolean existsByReferenceAndEntreprise(String reference, Entreprise entreprise);

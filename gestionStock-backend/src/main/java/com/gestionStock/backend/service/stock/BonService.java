@@ -18,10 +18,12 @@ import lombok.AllArgsConstructor;
 @Transactional
 public class BonService {
 
+    private static final Object NUMERO_BON_LOCK = new Object();
     private final BonRepository bonRepo;
     private final com.gestionStock.backend.service.user.UserService userService;
     private final MouvementStockService mouvementService;
     private final com.gestionStock.backend.service.notification.NotificationService notificationService;
+    private final com.gestionStock.backend.entity.parametre.NumerotationService numerotationService;
 
     public List<Bon> getAll() {
         String[] userInfo = getCurrentUserIdAndRole();
@@ -117,49 +119,29 @@ public class BonService {
                 "ROLE_RESPONSABLE_LOGISTIQUE".equals(role);
     }
 
-    private synchronized String generateNextNumeroBon(TypeBon type,
-            com.gestionStock.backend.entity.entreprise.Entreprise entreprise) {
-        String prefix = "";
-        if (type == TypeBon.ENTREE)
-            prefix = "BE";
-        else if (type == TypeBon.SORTIE)
-            prefix = "BS";
-        else if (type == TypeBon.RETOUR)
-            prefix = "BR";
-        else
-            prefix = "B";
-
-        LocalDate now = LocalDate.now();
-        String yy = String.valueOf(now.getYear()).substring(2);
-        String mm = String.format("%02d", now.getMonthValue());
-
-        String basePrefix = prefix + yy + mm + "00";
-        List<String> matches = bonRepo.findNumeroBonByPrefixAndEntreprise(basePrefix, entreprise);
-
-        int sequence = 1;
-        if (!matches.isEmpty()) {
-            String last = matches.get(0);
-            try {
-                String seqPart = last.substring(basePrefix.length());
-                sequence = Integer.parseInt(seqPart) + 1;
-            } catch (Exception e) {
-                sequence = matches.size() + 1;
-            }
-        }
-
-        return basePrefix + sequence;
+    private String getNumerotationModule(TypeBon type) {
+        return switch (type) {
+            case ENTREE -> "BON_ENTREE";
+            case SORTIE -> "BON_SORTIE";
+            case RETOUR -> "BON_RETOUR";
+        };
     }
 
     public Bon save(Bon bon) {
         boolean isNew = bon.getId() == null || bon.getId().equals(0L);
-        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
 
         if (isNew) {
             bon.setId(null);
-            if (bon.getNumeroBon() == null || bon.getNumeroBon().isEmpty() || bon.getNumeroBon().equals("0")) {
-                bon.setNumeroBon(generateNextNumeroBon(bon.getTypeBon(), entreprise));
-            } else if (bonRepo.existsByNumeroBon(bon.getNumeroBon())) {
-                throw new IllegalStateException("Un bon avec ce numéro (" + bon.getNumeroBon() + ") existe déjà");
+            if (bon.getNumeroBon() == null || bon.getNumeroBon().isEmpty() || "0".equals(bon.getNumeroBon())
+                    || "AUTO".equalsIgnoreCase(bon.getNumeroBon())) {
+                synchronized (NUMERO_BON_LOCK) {
+                    bon.setNumeroBon(numerotationService.generateNextNumber(getNumerotationModule(bon.getTypeBon())));
+                }
+            } else {
+                numerotationService.validateReference(getNumerotationModule(bon.getTypeBon()), bon.getNumeroBon());
+                if (bonRepo.existsByNumeroBon(bon.getNumeroBon())) {
+                    throw new IllegalStateException("Un bon avec ce numéro (" + bon.getNumeroBon() + ") existe déjà");
+                }
             }
 
             if (bon.getDate() == null) {
@@ -199,9 +181,11 @@ public class BonService {
             }
         } else {
             Bon existing = getById(bon.getId());
-            if (bon.getNumeroBon() != null && !existing.getNumeroBon().equals(bon.getNumeroBon()) &&
-                    bonRepo.existsByNumeroBon(bon.getNumeroBon())) {
-                throw new IllegalStateException("Un autre bon utilise déjà ce numéro (" + bon.getNumeroBon() + ")");
+            if (bon.getNumeroBon() != null && !existing.getNumeroBon().equals(bon.getNumeroBon())) {
+                numerotationService.validateReference(getNumerotationModule(bon.getTypeBon()), bon.getNumeroBon());
+                if (bonRepo.existsByNumeroBon(bon.getNumeroBon())) {
+                    throw new IllegalStateException("Un autre bon utilise déjà ce numéro (" + bon.getNumeroBon() + ")");
+                }
             }
         }
 
@@ -224,9 +208,25 @@ public class BonService {
             }
         }
 
-        Bon savedBon = bonRepo.save(bon);
+        Bon savedBon = null;
+        int maxAttempts = 3;
+        for (int i = 0; i < maxAttempts; i++) {
+            try {
+                savedBon = bonRepo.save(bon);
+                break;
+            } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                if (i == maxAttempts - 1)
+                    throw e;
+                // Force a new number generation for next attempt
+                if (isNew) {
+                    bon.setNumeroBon(null);
+                } else {
+                    throw e;
+                }
+            }
+        }
 
-        if (savedBon.getMouvement() != null) {
+        if (savedBon != null && savedBon.getMouvement() != null) {
             mouvementService.updateStockForMouvement(savedBon.getMouvement());
         }
 

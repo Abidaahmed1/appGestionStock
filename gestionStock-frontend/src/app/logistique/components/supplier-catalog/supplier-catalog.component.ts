@@ -27,7 +27,7 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
     showResults: boolean = false;
     catalogFilterTerm: string = '';
 
-    validationErrors: { piece?: string; prix?: string; dates?: string, tauxRemise?: string } = {};
+    validationErrors: { piece?: string; prix?: string; dates?: string, tauxRemise?: string, nbJoursLivraison?: string } = {};
     notification: { message: string; type: 'success' | 'error' } | null = null;
 
 
@@ -43,6 +43,7 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
         prixAchat: 0,
         qteMinACommander: 1,
         tauxRemise: 0,
+        nbJoursLivraison: 0,
         estPrincipale: false,
         dateDebutValidite: '',
         dateFinValidite: ''
@@ -153,7 +154,7 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
         const term = this.searchTerm.toLowerCase();
         return this.allPieces.filter(p =>
             p.designation.toLowerCase().includes(term) ||
-            p.codeBarre.toLowerCase().includes(term)
+            (p.details?.some((d: any) => (d.codeBarre || '').toLowerCase().includes(term)) ?? false)
         );
     }
 
@@ -162,7 +163,7 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
         const term = this.catalogFilterTerm.toLowerCase();
         return this.pendingItems.filter(item =>
             item.piece?.designation?.toLowerCase().includes(term) ||
-            item.piece?.codeBarre?.toLowerCase().includes(term)
+            (item.piece?.details?.some((d: any) => (d.codeBarre || '').toLowerCase().includes(term)) ?? false)
         );
     }
 
@@ -172,7 +173,7 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
 
     selectPiece(piece: any) {
         this.newEntry.piece = piece;
-        this.searchTerm = `[${piece.codeBarre}] ${piece.designation}`;
+        this.searchTerm = `[${piece.details?.[0]?.codeBarre || '-'}] ${piece.designation}`;
         this.showResults = false;
         if (isPlatformBrowser(this.platformId)) {
             this.cdr.detectChanges();
@@ -207,6 +208,11 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
         if (entry.tauxRemise < 0) {
             this.validationErrors.tauxRemise = 'tauxRemise';
             errors.push('Le taux de remise doit être supérieur à 0');
+        }
+
+        if (entry.nbJoursLivraison < 0) {
+            this.validationErrors.nbJoursLivraison = 'nbJoursLivraison';
+            errors.push('Le délai de livraison ne peut pas être négatif');
         }
 
         if (entry.dateDebutValidite && entry.dateFinValidite) {
@@ -323,6 +329,7 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
                     prixAchat: item.prixAchat,
                     qteMinACommander: item.qteMinACommander,
                     tauxRemise: item.tauxRemise,
+                    nbJoursLivraison: item.nbJoursLivraison,
                     estPrincipale: item.estPrincipale,
                     piece: { id: item.piece.id },
                     fournisseur: { id: this.supplier.id },
@@ -356,6 +363,7 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
             prixAchat: 0,
             qteMinACommander: 1,
             tauxRemise: 0,
+            nbJoursLivraison: 0,
             estPrincipale: false,
             dateDebutValidite: '',
             dateFinValidite: ''

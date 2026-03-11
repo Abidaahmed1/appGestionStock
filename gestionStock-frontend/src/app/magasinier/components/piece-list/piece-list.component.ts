@@ -3,7 +3,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { KeycloakService } from 'keycloak-angular';
 import { MagasinierService } from '../../services/magasinier.service';
-import { PieceDetachee, Categorie, ProduitFini, Parametre, ChampPersonnalise, DetailPiece, Stock } from '../../models/magasinier.models';
+import { PieceDetachee, Categorie, ProduitFini, Parametre, ChampPersonnalise, DetailPiece, Stock, Unite } from '../../models/magasinier.models';
 import { EntrepriseService } from '../../../admin/services/entreprise.service';
 import { Entreprise } from '../../../admin/models/entreprise.model';
 
@@ -28,6 +28,8 @@ export class PieceListComponent implements OnInit {
     userRoles: string[] = [];
     categories: Categorie[] = [];
     produitsFinis: ProduitFini[] = [];
+    unites: Unite[] = [];
+    formError: string | null = null;
 
     showAdvancedFilters = false;
     filterCategory: string = 'all';
@@ -42,11 +44,10 @@ export class PieceListComponent implements OnInit {
     selectedPieceForProducts: PieceDetachee | null = null;
     associatedProductsSearchTerm: string = '';
 
-    showVariantDetailsModal = false;
-    selectedPieceForVariants: PieceDetachee | null = null;
-    variantSearchTerm: string = '';
-    loadingVariants = false;
-    filteredVariantsList: DetailPiece[] = [];
+
+    // New properties for Master-Detail view
+    activePiece: PieceDetachee | null = null;
+    activeTab: string = 'overview'; // For detail view tabs
 
 
     parametres: Parametre | null = null;
@@ -68,6 +69,7 @@ export class PieceListComponent implements OnInit {
             this.loadCategories();
             this.loadProduits();
             this.loadParametres();
+            this.loadUnites();
             this.loadEntreprise();
         }
     }
@@ -86,12 +88,20 @@ export class PieceListComponent implements OnInit {
 
 
 
-    uploadImage(event: Event, type: 'piece' | 'produit', id: number): void {
-        const input = event.target as HTMLInputElement;
-        if (input.files && input.files[0]) {
-            const file = input.files[0];
-            this.doUpload(file, id);
-        }
+
+    deletePieceImage(id: number): void {
+        //  if (!confirm('Voulez-vous vraiment supprimer cette image ?')) return;
+        this.magasinierService.deletePieceImage(id).subscribe({
+            next: () => {
+                this.notify('Image supprimée', 'success');
+                this.loadPieces();
+                if (this.activePiece?.id === id) {
+                    this.activePiece.imageUrl = undefined;
+                }
+                this.cdr.detectChanges();
+            },
+            error: (err: any) => this.notify('Erreur lors de la suppression', 'error')
+        });
     }
 
     private doUpload(file: File, id: number, successMessage: string = 'Image mise à jour'): void {
@@ -106,7 +116,7 @@ export class PieceListComponent implements OnInit {
                     this.selectedPiece = updatedPiece;
                 }
             },
-            error: (err) => {
+            error: (err: any) => {
                 const msg = typeof err.error === 'string' ? err.error : (err.error?.message || 'Erreur lors du chargement de l\'image');
                 this.notify(msg, 'error');
             }
@@ -122,7 +132,7 @@ export class PieceListComponent implements OnInit {
                 this.applyFilters();
                 this.cdr.detectChanges();
             },
-            error: (err) => {
+            error: (err: any) => {
                 this.notify('Erreur lors du chargement des pièces', 'error');
                 this.loading = false;
                 this.cdr.detectChanges();
@@ -136,7 +146,7 @@ export class PieceListComponent implements OnInit {
                 this.entreprise = data;
                 this.cdr.detectChanges();
             },
-            error: (err) => console.error('Erreur chargement entreprise:', err)
+            error: (err: any) => console.error('Erreur chargement entreprise:', err)
         });
     }
 
@@ -146,7 +156,7 @@ export class PieceListComponent implements OnInit {
                 this.categories = data || [];
                 this.cdr.detectChanges();
             },
-            error: (err) => {
+            error: (err: any) => {
                 console.error('Error loading categories:', err);
                 this.cdr.detectChanges();
             }
@@ -156,7 +166,17 @@ export class PieceListComponent implements OnInit {
     loadProduits(): void {
         this.magasinierService.getProduits().subscribe({
             next: (data) => this.produitsFinis = data,
-            error: (err) => console.error('Error loading products:', err)
+            error: (err: any) => console.error('Error loading products:', err)
+        });
+    }
+
+    loadUnites(): void {
+        this.magasinierService.getUnites().subscribe({
+            next: (data) => {
+                this.unites = data || [];
+                this.cdr.detectChanges();
+            },
+            error: (err: any) => console.error('Error loading units:', err)
         });
     }
 
@@ -167,7 +187,7 @@ export class PieceListComponent implements OnInit {
                 this.notify('Catégorie ajoutée', 'success');
                 this.cdr.detectChanges();
             },
-            error: (err) => this.notify('Erreur lors de l\'ajout de la catégorie', 'error')
+            error: (err: any) => this.notify('Erreur lors de l\'ajout de la catégorie', 'error')
         });
     }
 
@@ -185,13 +205,13 @@ export class PieceListComponent implements OnInit {
                     formData.append('file', data.file);
                     this.magasinierService.uploadProduitImage(prod.id, formData).subscribe({
                         next: (updated) => finalize(updated),
-                        error: (err) => finalize(prod)
+                        error: (err: any) => finalize(prod)
                     });
                 } else {
                     finalize(prod);
                 }
             },
-            error: (err) => this.notify('Erreur lors de l\'ajout du produit', 'error')
+            error: (err: any) => this.notify('Erreur lors de l\'ajout du produit', 'error')
         });
     }
 
@@ -205,17 +225,19 @@ export class PieceListComponent implements OnInit {
                     this.cdr.detectChanges();
                 }
             },
-            error: (err) => console.error('Erreur chargement paramètres:', err)
+            error: (err: any) => console.error('Erreur chargement paramètres:', err)
         });
     }
 
     openCreateModal(): void {
         this.selectedPiece = null;
+        this.formError = null;
         this.showCreateModal = true;
     }
 
     openEditModal(piece: PieceDetachee): void {
         this.selectedPiece = piece;
+        this.formError = null;
         this.showCreateModal = true;
         this.cdr.detectChanges();
     }
@@ -230,10 +252,10 @@ export class PieceListComponent implements OnInit {
         const pieceData = data.piece;
         const file = data.file;
 
-        if (pieceData.prixVente <= 0) {
-            this.notify('Le prix d\'achat doit être supérieur à 0', 'error');
-            return;
-        }
+        // if (pieceData.prixVente <= 0) {
+        //     this.notify('Le prix d\'achat doit être supérieur à 0', 'error');
+        //     return;
+        // }
 
         if (this.selectedPiece && this.selectedPiece.id) {
             this.magasinierService.updatePiece(this.selectedPiece.id, pieceData).subscribe({
@@ -246,9 +268,10 @@ export class PieceListComponent implements OnInit {
                     }
                     this.closeCreateModal();
                 },
-                error: (err) => {
-                    const errorMsg = err.error?.message || err.error || 'Erreur lors de la mise à jour';
-                    this.notify(typeof errorMsg === 'string' ? errorMsg : 'Erreur réseau', 'error');
+                error: (err: any) => {
+                    const errorMsg = this.extractErrorMessage(err, 'Erreur lors de la mise à jour de la pièce.');
+                    this.formError = errorMsg;
+                    this.notify(errorMsg, 'error');
                 }
             });
         } else {
@@ -262,10 +285,10 @@ export class PieceListComponent implements OnInit {
                     }
                     this.closeCreateModal();
                 },
-                error: (err) => {
-                    const errorMsg = err.error?.message || err.error || 'Erreur lors de la création';
-                    this.notify(typeof errorMsg === 'string' ? errorMsg : 'Erreur de validation. Vérifiez les champs.', 'error');
-                    console.error('Save error details:', err.error);
+                error: (err: any) => {
+                    const errorMsg = this.extractErrorMessage(err, 'Erreur lors de la création de la pièce.');
+                    this.formError = errorMsg;
+                    this.notify(errorMsg, 'error');
                 }
             });
         }
@@ -283,24 +306,43 @@ export class PieceListComponent implements OnInit {
         this.cdr.detectChanges();
     }
 
-    deletePiece(codeBarre: string): void {
-        this.magasinierService.deletePiece(codeBarre).subscribe({
+    deletePiece(id: number): void {
+        this.magasinierService.deletePiece(id).subscribe({
             next: () => {
                 this.notify('Pièce supprimée avec succès', 'success');
                 this.loadPieces();
                 this.cancelDelete();
                 this.cdr.detectChanges();
             },
-            error: (err) => {
-                // 409 Conflict = piece has stock, extract backend message
-                const msg = typeof err.error === 'string'
-                    ? err.error
-                    : (err.error?.message || 'Erreur lors de la suppression');
+            error: (err: any) => {
+                const msg = this.extractErrorMessage(err, 'Erreur lors de la suppression de la pièce.');
                 this.notify(msg, 'error');
                 this.cancelDelete();
                 this.cdr.detectChanges();
             }
         });
+    }
+
+    /**
+     * Extracts a user-friendly error message from an HTTP error.
+     * Avoids exposing raw technical/JSON errors to the user.
+     */
+    extractErrorMessage(err: any, defaultMsg: string): string {
+        if (typeof err.error === 'object' && err.error !== null) {
+            const m = err.error?.message || err.error?.error || err.error?.detail;
+            if (m && typeof m === 'string' && m.length < 300 && !m.includes('com.') && !m.includes('java.')) {
+                return m;
+            }
+        }
+        if (typeof err.error === 'string' && err.error.length < 250
+            && !err.error.includes('com.') && !err.error.includes('at ')) {
+            return err.error;
+        }
+        if (err.status === 400) return 'Données invalides. Veuillez vérifier les champs saisis.';
+        if (err.status === 409) return 'Ce code existe déjà ou la pièce est liée à un stock.';
+        if (err.status === 404) return 'Pièce introuvable.';
+        if (err.status === 500) return 'Une erreur serveur est survenue. Veuillez réessayer.';
+        return defaultMsg;
     }
 
     notify(message: string, type: 'success' | 'error'): void {
@@ -381,41 +423,6 @@ export class PieceListComponent implements OnInit {
         });
     }
 
-    showVariantDetails(piece: PieceDetachee): void {
-        this.selectedPieceForVariants = piece;
-        this.variantSearchTerm = '';
-        this.loadingVariants = true;
-        this.showVariantDetailsModal = true;
-
-        setTimeout(() => {
-            this.applyVariantFilter();
-            this.loadingVariants = false;
-            this.cdr.detectChanges();
-        }, 150);
-    }
-
-    closeVariantDetailsModal(): void {
-        this.showVariantDetailsModal = false;
-        setTimeout(() => {
-            this.selectedPieceForVariants = null;
-            this.filteredVariantsList = [];
-            this.cdr.detectChanges();
-        }, 200);
-    }
-
-    applyVariantFilter(): void {
-        const variants = this.selectedPieceForVariants?.details || [];
-        if (!this.variantSearchTerm) {
-            this.filteredVariantsList = variants;
-            return;
-        }
-
-        const term = this.variantSearchTerm.toLowerCase();
-        this.filteredVariantsList = variants.filter(v => {
-            const label = this.getVariantLabel(v).toLowerCase();
-            return label.includes(term);
-        });
-    }
 
     toggleAdvancedFilters(): void {
         this.showAdvancedFilters = !this.showAdvancedFilters;
@@ -436,11 +443,20 @@ export class PieceListComponent implements OnInit {
     filteredPiecesList: PieceDetachee[] = [];
 
     pieceTrackBy(index: number, piece: PieceDetachee): string | number {
-        return piece.id || piece.codeBarre || index;
+        return piece.id || index;
     }
 
     produitTrackBy(index: number, produit: ProduitFini): string | number {
         return produit.id || produit.code || index;
+    }
+
+    variantTrackBy(index: number, variant: any): string | number {
+        return variant.id || index;
+    }
+
+    switchTab(tab: string): void {
+        this.activeTab = tab;
+        this.cdr.detectChanges();
     }
 
     applyFilters(): void {
@@ -451,12 +467,12 @@ export class PieceListComponent implements OnInit {
             results = results.filter(p => {
                 const designation = (p.designation || '').toLowerCase();
                 const reference = (p.reference || '').toLowerCase();
-                const codeBarre = (p.codeBarre || '').toString().toLowerCase();
+                const hasCodeBarreMatch = p.details?.some(d => (d.codeBarre || '').toLowerCase().includes(term));
 
                 if (this.searchCategory === 'all') {
                     const matchesBasic = designation.includes(term) ||
                         reference.includes(term) ||
-                        codeBarre.includes(term);
+                        hasCodeBarreMatch;
                     const matchesProduct = p.produitsAssocies?.some(prod =>
                         (prod.designation || '').toLowerCase().includes(term) ||
                         (prod.code || '').toLowerCase().includes(term)
@@ -465,7 +481,7 @@ export class PieceListComponent implements OnInit {
                 }
                 if (this.searchCategory === 'reference') return reference.includes(term);
                 if (this.searchCategory === 'designation') return designation.includes(term);
-                if (this.searchCategory === 'codeBarre') return codeBarre.includes(term);
+                if (this.searchCategory === 'codeBarre') return hasCodeBarreMatch;
                 if (this.searchCategory === 'produit') {
                     return !!p.produitsAssocies?.some(prod =>
                         (prod.designation || '').toLowerCase().includes(term) ||
@@ -498,6 +514,21 @@ export class PieceListComponent implements OnInit {
         }
 
         this.filteredPiecesList = results;
+
+        // Ensure activePiece is still in the filtered list
+        if (this.activePiece && !this.filteredPiecesList.find(p => p.id === this.activePiece?.id)) {
+            this.activePiece = null;
+        }
+    }
+
+    selectPiece(piece: PieceDetachee): void {
+        this.activePiece = piece;
+        this.cdr.detectChanges();
+    }
+
+    closeDetail(): void {
+        this.activePiece = null;
+        this.cdr.detectChanges();
     }
 
     getTotalStock(piece: any): number {
@@ -530,10 +561,15 @@ export class PieceListComponent implements OnInit {
     }
 
     getVariantAttributes(detail: any): string[] {
+        if (detail._attrList) return detail._attrList;
+
         const attributes = detail.attributs || {};
-        return Object.entries(attributes)
+        const list = Object.entries(attributes)
             .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && String(value).trim() !== '')
             .map(([key, value]) => `${key} : ${value}`);
+
+        detail._attrList = list;
+        return list;
     }
 
     isArray(obj: any): boolean {
@@ -563,4 +599,6 @@ export class PieceListComponent implements OnInit {
         const index = Math.abs(hash) % colors.length;
         return colors[index];
     }
+
+
 }

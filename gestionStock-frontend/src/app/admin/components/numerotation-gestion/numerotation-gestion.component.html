@@ -1,0 +1,106 @@
+<div class="settings-container">
+    <header class="settings-header">
+        <div class="header-content">
+            <h1>Personnalisation des numéros</h1>
+            <p>Définissez les préfixes et les formats de numérotation pour chaque module.</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn-primary" (click)="save()" [disabled]="saving">
+                <i class="fas" [className]="saving ? 'fa-spinner fa-spin' : 'fa-save'"></i>
+                Enregistrer
+            </button>
+        </div>
+
+    </header>
+
+    <section class="settings-info">
+        <div class="info-card">
+            <h3><i class="fas fa-info-circle"></i> Guide des Placeholders</h3>
+            <ul>
+                <li><strong>%YYYY%</strong> : Année fiscale (ex: 2026)</li>
+                <li><strong>%YY%</strong> : Année abrégée (ex: 26)</li>
+                <li><strong>%MM%</strong> : Mois en chiffres (01-12)</li>
+                <li><strong>%DD%</strong> : Jour du mois (01-31)</li>
+            </ul>
+        </div>
+    </section>
+    <div *ngIf="notification" class="alert-box" [class]="notification.type">
+        {{ notification.message }}
+        <button class="close-btn" (click)="notification = null">&times;</button>
+    </div>
+
+    <section class="settings-card">
+        <div class="card-header">
+            <h2>Modifier la série</h2>
+        </div>
+
+        <div class="table-container" *ngIf="!loading; else skeleton">
+            <table class="series-table">
+                <thead>
+                    <tr>
+                        <th width="15%">MODULE</th>
+                        <th width="12%">GÉNÉRATION</th>
+                        <th width="23%">PRÉFIXE</th>
+                        <th width="10%">NUMÉRO DÉBUT</th>
+                        <th width="20%">REDÉMARRER</th>
+                        <th width="20%">APERÇU</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let config of configs">
+                        <td class="module-name">{{ getModuleName(config.module) }}</td>
+                        <td>
+                            <div class="generation-toggle">
+                                <button type="button" class="toggle-btn" [class.active]="config.automatique !== false"
+                                    (click)="config.automatique = true" title="Automatique">
+                                    <i class="fas fa-robot"></i>
+                                </button>
+                                <button type="button" class="toggle-btn" [class.active]="config.automatique === false"
+                                    (click)="config.automatique = false" title="Manuel">
+                                    <i class="fas fa-keyboard"></i>
+                                </button>
+                            </div>
+                        </td>
+                        <td class="prefix-input-col">
+                            <div class="prefix-input-wrapper">
+                                <input type="text" [(ngModel)]="config.prefix" placeholder="Ex: CN-%DD%%YY%-">
+                                <div class="placeholder-dropdown">
+                                    <button class="insert-btn" type="button" title="Insérer un placeholder">
+                                        <i class="fas fa-plus-circle"></i>
+                                    </button>
+                                    <div class="dropdown-content">
+                                        <button (click)="insertPlaceholder(config, '%YYYY%')">Année (4
+                                            chiffres)</button>
+                                        <button (click)="insertPlaceholder(config, '%YY%')">Année (2 chiffres)</button>
+                                        <button (click)="insertPlaceholder(config, '%MM%')">Mois (01-12)</button>
+                                        <button (click)="insertPlaceholder(config, '%DD%')">Jour (01-31)</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <input type="text" [(ngModel)]="config.numeroDebut" class="mini-input">
+                        </td>
+                        <td>
+                            <select [(ngModel)]="config.redemarrer" class="form-select">
+                                <option value="AUCUN">Aucun</option>
+                                <option value="ANNUEL">Annuel</option>
+                                <option value="MENSUEL">Mensuel</option>
+                            </select>
+                        </td>
+                        <td class="preview-col">
+                            <span class="preview-badge">{{ getPreview(config) }}</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <ng-template #skeleton>
+            <div class="skeleton-container">
+                <div class="skeleton-row" *ngFor="let i of [1,2,3,4]"></div>
+            </div>
+        </ng-template>
+    </section>
+
+</div>

@@ -32,4 +32,9 @@ public class Parametre {
     @Builder.Default
     private List<ChampPersonnalise> champsPersonnalises = new ArrayList<>();
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    @Builder.Default
+    private List<NumerotationConfig> numerotationConfigs = new ArrayList<>();
+
 }

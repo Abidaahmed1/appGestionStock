@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { PieceDetachee, ProduitFini, Categorie, Parametre } from '../models/magasinier.models';
+import { PieceDetachee, ProduitFini, Categorie, Parametre, Unite } from '../models/magasinier.models';
 
 @Injectable({
     providedIn: 'root'
@@ -27,8 +27,8 @@ export class MagasinierService {
         return this.http.get<PieceDetachee>(`${this.baseUrl}/pieces/reference/${ref}`);
     }
 
-    deletePiece(codeBarre: string): Observable<void> {
-        return this.http.delete<void>(`${this.baseUrl}/pieces/${codeBarre}`);
+    deletePiece(id: number): Observable<void> {
+        return this.http.delete<void>(`${this.baseUrl}/pieces/${id}`);
     }
 
     getProduits(): Observable<ProduitFini[]> {
@@ -51,8 +51,16 @@ export class MagasinierService {
         return this.http.post<PieceDetachee>(`${this.baseUrl}/pieces/upload-image/${id}`, formData);
     }
 
+    deletePieceImage(id: number): Observable<void> {
+        return this.http.delete<void>(`${this.baseUrl}/pieces/delete-image/${id}`);
+    }
+
     uploadProduitImage(id: number, formData: FormData): Observable<ProduitFini> {
         return this.http.post<ProduitFini>(`${this.baseUrl}/produits/upload-image/${id}`, formData);
+    }
+
+    deleteProduitImage(id: number): Observable<void> {
+        return this.http.delete<void>(`${this.baseUrl}/produits/delete-image/${id}`);
     }
 
 
@@ -74,5 +82,9 @@ export class MagasinierService {
 
     updateParametre(id: number, parametre: Parametre): Observable<Parametre> {
         return this.http.put<Parametre>(`${this.baseUrl}/parametres/${id}`, parametre);
+    }
+
+    getUnites(): Observable<Unite[]> {
+        return this.http.get<Unite[]>(`${this.baseUrl}/unites`);
     }
 }

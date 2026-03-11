@@ -124,6 +124,20 @@ public class ParametreService {
         return List.of(TypeChamp.values());
     }
 
+    public Parametre updateNumerotationConfigs(Long parametreId, List<NumerotationConfig> configs) {
+        Parametre parametre = parametreRepository.findById(parametreId)
+                .orElseThrow(() -> new RuntimeException("Paramètre non trouvé avec l'ID: " + parametreId));
+
+        parametre.setNumerotationConfigs(configs);
+        return parametreRepository.save(parametre);
+    }
+
+    public List<NumerotationConfig> getNumerotationConfigs() {
+        return getCurrentParametre()
+                .map(Parametre::getNumerotationConfigs)
+                .orElse(List.of());
+    }
+
     public boolean validerValeurChamp(ChampPersonnalise champ, String valeur) {
         if (valeur == null || valeur.trim().isEmpty()) {
             return !champ.isObligatoire();

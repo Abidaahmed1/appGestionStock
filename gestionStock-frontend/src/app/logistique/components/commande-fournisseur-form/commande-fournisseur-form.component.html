@@ -56,11 +56,11 @@
         <div class="title-section centered-title">
             <h1 class="main-title">
                 Commande N°:
-                <span class="order-num-text" *ngIf="commande.numeroCmd !== 0; else newBadge">
+                <span class="order-num-text" *ngIf="commande.numeroCmd && commande.numeroCmd !== 'AUTO'; else newBadge">
                     {{ commande.numeroCmd }}
                 </span>
                 <ng-template #newBadge>
-                    <span class="badge-new">Nouveau (En attente de génération)</span>
+                    <span class="badge-new">Nouveau (Génération AUTO)</span>
                 </ng-template>
             </h1>
         </div>
@@ -99,6 +99,33 @@
                     <div class="field-error" *ngIf="errors['fournisseur']">{{ errors['fournisseur'] }}</div>
                 </div>
 
+                <div class="form-group" *ngIf="isEditMode || !isAutoNumeroCmd">
+                    <label>Numéro de commande <span class="required-star" *ngIf="!isAutoNumeroCmd">*</span></label>
+                    <div class="input-wrapper">
+                        <ng-container *ngIf="isAutoNumeroCmd">
+                            <div class="auto-info-badge">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                Généré automatiquement ({{ getPrefix('BON_COMMANDE') }}...)
+                            </div>
+                            <small class="format-hint info-text" style="display: block; margin-top: 4px; color: #666; font-size: 0.85em;">
+                                <i class="fas fa-info-circle" style="margin-right: 4px;"></i> {{ getFormatExplanation('BON_COMMANDE') }}
+                            </small>
+                        </ng-container>
+
+                        <ng-container *ngIf="!isAutoNumeroCmd">
+                            <input type="text" [(ngModel)]="commande.numeroCmd" name="numeroCmd"
+                                [placeholder]="'Ex: ' + getPrefix('BON_COMMANDE') + '100'" 
+                                class="form-control" [disabled]="!isEditable" required>
+                            <i class="icon-help" [title]="getFormatExplanation('BON_COMMANDE')">?</i>
+                            <small class="format-hint info-text" style="display: block; margin-top: 4px; color: #666; font-size: 0.85em;">
+                                <i class="fas fa-info-circle" style="margin-right: 4px;"></i> {{ getFormatExplanation('BON_COMMANDE') }}
+                            </small>
+                        </ng-container>
+                    </div>
+                    <div class="field-error" *ngIf="errors['numeroCmd']">{{ errors['numeroCmd'] }}</div>
+                </div>
+
+
                 <div class="form-group">
                     <label>Référence fournisseur</label>
                     <div class="input-wrapper">
@@ -114,7 +141,7 @@
                     <label>Échéance de commande</label>
                     <div class="input-wrapper">
                         <input type="datetime-local" [(ngModel)]="commande.dateCmd" name="date" class="form-control"
-                            [disabled]="!isEditable">
+                            [disabled]="!isEditable" (ngModelChange)="calculateExpectedArrival()">
                         <i class="icon-help">?</i>
                     </div>
                 </div>
@@ -180,8 +207,8 @@
                             </td>
                             <td>
                                 <input type="number" [(ngModel)]="ligne.qteCmd" class="table-input text-right"
-                                    [class.input-error]="errors['ligne_' + i + '_max']" (input)="validate()"
-                                    [disabled]="!isEditable">
+                                    [class.input-error]="errors['ligne_' + i + '_max']"
+                                    (ngModelChange)="onQuantityChange(i)" [disabled]="!isEditable">
                                 <div class="field-error-mini" *ngIf="errors['ligne_' + i + '_max']"
                                     [title]="errors['ligne_' + i + '_max']">
                                     ⚠ Seuil max.
@@ -250,11 +277,12 @@
                                         <th class="text-right">Prix Achat</th>
                                         <th class="text-right">Remise</th>
                                         <th class="text-right">Qte Min</th>
+                                        <th class="text-right">Jours Livr.</th>
 
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr *ngFor="let pf of getComparisonForPiece(line.piece.id)"
+                                    <tr *ngFor="let pf of getComparisonForPiece(line.piece.id, line.qteCmd)"
                                         [class.is-principal]="pf.estPrincipale"
                                         [class.current-supplier]="pf.fournisseur.id === commande.fournisseur?.id">
                                         <td>
@@ -268,6 +296,7 @@
                                             entreprise?.devise?.symbole || 'DT' }}</td>
                                         <td class="text-right">{{ pf.tauxRemise || 0 }}%</td>
                                         <td class="text-right">{{ pf.qteMinACommander || 1 }}</td>
+                                        <td class="text-right">{{ pf.nbJoursLivraison || 0 }}</td>
                                         <td class="text-right">
                                             <span class="badge-principal" *ngIf="pf.estPrincipale">Principal</span>
                                         </td>
@@ -275,7 +304,7 @@
                                 </tbody>
                             </table>
                             <div class="no-comparison"
-                                *ngIf="line.piece && getComparisonForPiece(line.piece.id).length === 0">
+                                *ngIf="line.piece && getComparisonForPiece(line.piece.id, line.qteCmd).length === 0">
                                 Aucun autre fournisseur trouvé pour ce produit sur cette période.
                             </div>
                         </div>

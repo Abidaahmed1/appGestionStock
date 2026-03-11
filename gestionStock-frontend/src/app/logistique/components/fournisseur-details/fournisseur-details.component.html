@@ -86,11 +86,26 @@
                 <div class="grid-col">
                     <div class="detail-row">
                         <label>Réf. Interne (Code)</label>
-                        <input type="text" [(ngModel)]="fournisseur.code" class="detail-input"
-                            [class.input-error]="validationErrors.code || validationErrors.codePattern" required>
-                        <small class="error-text" *ngIf="validationErrors.code">La référence est obligatoire</small>
-                        <small class="error-text" *ngIf="validationErrors.codePattern">La référence doit commencer par
-                            FOUR-</small>
+
+                        <ng-container *ngIf="isAutoCode">
+                            <div class="auto-info-badge">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                Généré automatiquement ({{ getPrefix('FOURNISSEUR') }}...)
+                            </div>
+                            <small class="format-hint info-text" style="display: block; margin-top: 4px; color: #666; font-size: 0.85em;">
+                                <i class="fas fa-info-circle" style="margin-right: 4px;"></i> {{ getFormatExplanation('FOURNISSEUR') }}
+                            </small>
+                        </ng-container>
+
+                        <ng-container *ngIf="!isAutoCode">
+                            <input type="text" [(ngModel)]="fournisseur.code" [placeholder]="'Ex: ' + getPrefix('FOURNISSEUR') + '001'"
+                                class="detail-input" [class.input-error]="validationErrors.code"
+                                style="margin-top: 8px; animation: slideDown 0.2s ease-out;">
+                            <small class="format-hint info-text" style="display: block; margin-top: 4px; color: #666; font-size: 0.85em;">
+                                <i class="fas fa-info-circle" style="margin-right: 4px;"></i> {{ getFormatExplanation('FOURNISSEUR') }}
+                            </small>
+                            <small class="error-text" *ngIf="validationErrors.code">{{ validationErrors.code }}</small>
+                        </ng-container>
                     </div>
                 </div>
             </div>

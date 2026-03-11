@@ -40,6 +40,7 @@ public class PieceFournisseurService {
             toUpdate.setPrixAchat(pieceFournisseur.getPrixAchat());
             toUpdate.setQteMinACommander(pieceFournisseur.getQteMinACommander());
             toUpdate.setTauxRemise(pieceFournisseur.getTauxRemise());
+            toUpdate.setNbJoursLivraison(pieceFournisseur.getNbJoursLivraison());
             toUpdate.setEstPrincipale(pieceFournisseur.getEstPrincipale());
             toUpdate.setDateDebutValidite(pieceFournisseur.getDateDebutValidite());
             toUpdate.setDateFinValidite(pieceFournisseur.getDateFinValidite());

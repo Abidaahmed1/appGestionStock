@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, inject, ChangeDetectorRef, ChangeDetectionStrategy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { PieceDetachee, Categorie, ProduitFini, Parametre, ChampPersonnalise } from '../../models/magasinier.models';
+import { PieceDetachee, Categorie, ProduitFini, Parametre, ChampPersonnalise, Unite, NumerotationConfig } from '../../models/magasinier.models';
 import { MagasinierService } from '../../services/magasinier.service';
 import { EntrepriseService } from '../../../admin/services/entreprise.service';
 import { Entreprise } from '../../../admin/models/entreprise.model';
@@ -19,6 +19,7 @@ export class PieceFormComponent implements OnInit, OnChanges {
     @Input() categories: Categorie[] = [];
     @Input() produitsFinis: ProduitFini[] = [];
     @Input() parametres: Parametre | null = null;
+    @Input() unites: Unite[] = [];
     @Input() showModal: boolean = false;
 
     @Output() save = new EventEmitter<{ piece: PieceDetachee, file: File | null }>();
@@ -37,8 +38,8 @@ export class PieceFormComponent implements OnInit, OnChanges {
 
     showQuickAddCategory = false;
     showQuickAddProduct = false;
-    newCategory: Categorie = { nom: '', code: '', description: '' };
-    newProduct: ProduitFini = { code: '', designation: '' };
+    newCategory: Categorie = { nom: '', code: 'AUTO', description: '' };
+    newProduct: ProduitFini = { code: 'AUTO', designation: '' };
     quickProductFile: File | null = null;
     newProductPreview: string | null = null;
     showConfirmModal = false;
@@ -46,11 +47,22 @@ export class PieceFormComponent implements OnInit, OnChanges {
     champToRemoveFrom: any = null;
     confirmEvent: MouseEvent | null = null;
     variantErrors: { [key: string]: boolean } = {};
+    isAutoReference: boolean = true;
+    isAutoCategoryCode: boolean = true;
+    isAutoProductCode: boolean = true;
 
     private cdr = inject(ChangeDetectorRef);
     private magasinierService = inject(MagasinierService);
     private entrepriseService = inject(EntrepriseService);
     entreprise: Entreprise | null = null;
+    barcodeDuplicates: Set<number> = new Set();
+    @Input() set errorMessage(value: string | null) {
+        if (value) {
+            this.handleBackendError(value);
+        }
+    }
+    backendBarcodeErrors: Set<string> = new Set();
+
 
     ngOnInit() {
         this.resetForm();
@@ -81,12 +93,27 @@ export class PieceFormComponent implements OnInit, OnChanges {
     resetForm() {
         if (this.selectedPiece) {
             const pieceToUse = (this.selectedPiece as any).originalPiece || this.selectedPiece;
+
+            const normalizedDetails = (pieceToUse.details || []).map((d: any) => {
+                const newD = { ...d };
+                if (!newD.attributs) newD.attributs = {};
+                if (this.parametres?.champsPersonnalises) {
+                    this.parametres.champsPersonnalises.forEach(champ => {
+                        if (newD[champ.nom] !== undefined) {
+                            if (newD.attributs[champ.nom] === undefined) {
+                                newD.attributs[champ.nom] = newD[champ.nom];
+                            }
+                            delete newD[champ.nom];
+                        }
+                    });
+                }
+                return newD;
+            });
+
             this.newPiece = {
                 ...pieceToUse,
                 categorie: pieceToUse.categorie ? { ...pieceToUse.categorie } : { nom: '' },
-                details: pieceToUse.details && pieceToUse.details.length > 0 ?
-                    pieceToUse.details.map((d: any) => ({ ...d, attributs: { ...d.attributs } })) :
-                    [{ attributs: {} }]
+                details: normalizedDetails.length > 0 ? normalizedDetails : [{ attributs: {} }]
             };
             this.imagePreview = pieceToUse.imageUrl || null;
         } else {
@@ -95,21 +122,70 @@ export class PieceFormComponent implements OnInit, OnChanges {
         }
         this.selectedFile = null;
         this.initializeDynamicFields();
+
+        if (!this.selectedPiece) {
+            this.isAutoReference = this.isModuleAuto('PIECE');
+            this.newPiece.reference = this.isAutoReference ? 'AUTO' : '';
+            this.isAutoCategoryCode = this.isModuleAuto('CATEGORIE');
+            this.isAutoProductCode = this.isModuleAuto('PRODUIT');
+            this.generateVariations();
+        } else {
+            this.isAutoReference = this.newPiece.reference === 'AUTO';
+            this.isAutoCategoryCode = this.isModuleAuto('CATEGORIE');
+            this.isAutoProductCode = this.isModuleAuto('PRODUIT');
+        }
+        this.syncComplementaryAttributes();
+    }
+
+    isModuleAuto(moduleName: string): boolean {
+        const config = this.parametres?.numerotationConfigs?.find((c: NumerotationConfig) => c.module === moduleName);
+        return config ? config.automatique !== false : true;
+    }
+
+    getPrefix(moduleName: string): string {
+        const config = this.parametres?.numerotationConfigs?.find((c: NumerotationConfig) => c.module === moduleName);
+        let prefix = config?.prefix || '';
+        if (prefix) {
+            const date = new Date();
+            prefix = prefix
+                .replace('%YYYY%', date.getFullYear().toString())
+                .replace('%YY%', date.getFullYear().toString().substring(2))
+                .replace('%MM%', (date.getMonth() + 1).toString().padStart(2, '0'))
+                .replace('%DD%', date.getDate().toString().padStart(2, '0'));
+        }
+        return prefix;
+    }
+
+    getFormatExplanation(moduleName: string): string {
+        const config = this.parametres?.numerotationConfigs?.find((c: NumerotationConfig) => c.module === moduleName);
+        const prefix = config?.prefix || '';
+        
+        let parts = [];
+        if (prefix.includes('%YYYY%')) parts.push("l'année sur 4 chiffres");
+        else if (prefix.includes('%YY%')) parts.push("l'année sur 2 chiffres");
+        
+        if (prefix.includes('%MM%')) parts.push("le mois sur 2 chiffres");
+        if (prefix.includes('%DD%')) parts.push("le jour sur 2 chiffres");
+        
+        if (parts.length > 0) {
+            return `Astuce : Le numéro inclut ${parts.join(', ')} suivis d'une séquence.`;
+        }
+        return 'Séquence simple (sans date)';
     }
 
     initNewPiece(): PieceDetachee {
         return {
-            codeBarre: '',
             designation: '',
             prixVente: 0,
-            reference: '',
+            reference: 'AUTO',
             seuilMinimum: 0,
-            seuilMaximum: 0,
+            seuilMaximum: 100,
             tauxTVA: 0,
             archivee: false,
             categorie: { nom: '' },
+            unite: undefined,
             imageUrl: '',
-            details: [{ attributs: {} }]
+            details: [{ attributs: {}, codeBarre: '' }]
         };
     }
 
@@ -178,7 +254,7 @@ export class PieceFormComponent implements OnInit, OnChanges {
                         Object.entries(templateDetail.attributs).forEach(([k, v]) => {
                             cleanAttributs[k] = v;
                         });
-                        this.newPiece.details = [{ attributs: cleanAttributs }];
+                        this.newPiece.details = [{ attributs: cleanAttributs, codeBarre: templateDetail.codeBarre || '' }];
                     }
                     this.cdr.detectChanges();
                 }
@@ -236,8 +312,9 @@ export class PieceFormComponent implements OnInit, OnChanges {
             event.stopPropagation();
             event.preventDefault();
         }
+        this.isAutoCategoryCode = this.isModuleAuto('CATEGORIE');
+        this.newCategory = { nom: '', code: this.isAutoCategoryCode ? 'AUTO' : '', description: '' };
         this.showQuickAddCategory = true;
-        this.showCategorySelector = false;
         this.cdr.detectChanges();
     }
 
@@ -250,7 +327,7 @@ export class PieceFormComponent implements OnInit, OnChanges {
         if (!this.newCategory.nom || !this.newCategory.code) return;
         this.quickAddCategory.emit({ ...this.newCategory });
         this.showQuickAddCategory = false;
-        this.newCategory = { nom: '', code: '', description: '' };
+        this.newCategory = { nom: '', code: 'AUTO', description: '' };
     }
 
     toggleProductSelectorModal(event?: Event): void {
@@ -302,7 +379,8 @@ export class PieceFormComponent implements OnInit, OnChanges {
             event.stopPropagation();
             event.preventDefault();
         }
-        this.newProduct = { code: '', designation: '' };
+        this.isAutoProductCode = this.isModuleAuto('PRODUIT');
+        this.newProduct = { code: this.isAutoProductCode ? 'AUTO' : '', designation: '' };
         this.quickProductFile = null;
         this.newProductPreview = null;
         this.showQuickAddProduct = true;
@@ -326,7 +404,7 @@ export class PieceFormComponent implements OnInit, OnChanges {
         if (!this.newProduct.code || !this.newProduct.designation) return;
         this.quickAddProduct.emit({ product: { ...this.newProduct }, file: this.quickProductFile });
         this.showQuickAddProduct = false;
-        this.newProduct = { code: '', designation: '' };
+        this.newProduct = { code: 'AUTO', designation: '' };
     }
 
     closeQuickAddProduct(): void {
@@ -362,8 +440,10 @@ export class PieceFormComponent implements OnInit, OnChanges {
         }
 
         const seuilInvalid = this.newPiece.seuilMaximum < this.newPiece.seuilMinimum;
+        this.checkDuplicateBarcodes();
+        const hasDuplicateBarcodes = this.barcodeDuplicates.size > 0;
 
-        if (form.invalid || !this.newPiece.categorie?.id || hasVariantErrors || seuilInvalid) {
+        if (form.invalid || !this.newPiece.categorie?.id || hasVariantErrors || seuilInvalid || hasDuplicateBarcodes) {
             Object.keys(form.controls).forEach(key => {
                 form.controls[key].markAsTouched();
             });
@@ -385,86 +465,94 @@ export class PieceFormComponent implements OnInit, OnChanges {
     }
 
     onSubmit(): void {
+        console.log('[ANTIGRAVITY] Starting robust onSubmit...');
         const rawPiece = this.newPiece;
+
         const pieceToSave: any = {
-            id: rawPiece.id,
-            codeBarre: rawPiece.codeBarre,
-            designation: rawPiece.designation,
-            prixVente: Number(rawPiece.prixVente),
-            reference: rawPiece.reference,
-            seuilMinimum: Number(rawPiece.seuilMinimum),
-            seuilMaximum: Number(rawPiece.seuilMaximum),
-            tauxTVA: Number(rawPiece.tauxTVA),
+            id: rawPiece.id ? Number(rawPiece.id) : undefined,
+            designation: String(rawPiece.designation).trim(),
+            prixVente: Number(rawPiece.prixVente || 0),
+            reference: String(rawPiece.reference).trim(),
+            seuilMinimum: Number(rawPiece.seuilMinimum || 0),
+            seuilMaximum: Number(rawPiece.seuilMaximum || 0),
+            tauxTVA: Number(rawPiece.tauxTVA || 0),
             archivee: !!rawPiece.archivee,
-            imageUrl: rawPiece.imageUrl,
-            categorie: rawPiece.categorie?.id ? { id: rawPiece.categorie.id } : null,
-            produitsAssocies: (rawPiece.produitsAssocies || []).map(p => ({ id: p.id })),
-            details: []
+            imageUrl: rawPiece.imageUrl || null,
+            unite: rawPiece.unite?.id ? { id: Number(rawPiece.unite.id) } : null,
+            categorie: rawPiece.categorie?.id ? { id: Number(rawPiece.categorie.id), nom: rawPiece.categorie.nom } : null,
         };
 
-        if (this.parametres?.champsPersonnalises && rawPiece.details?.length) {
-            const templateDetail = rawPiece.details[0];
-            const variantChamps = this.parametres.champsPersonnalises.filter(c => c.variante && c.actif);
+        pieceToSave.produitsAssocies = (rawPiece.produitsAssocies || [])
+            .filter(p => !!p.id)
+            .map(p => ({
+                id: Number(p.id),
+                code: p.code
+            }));
 
-            const baseAttributs: { [key: string]: any } = {};
-            Object.entries(templateDetail.attributs).forEach(([key, value]) => {
-                if (!key.startsWith('_')) {
-                    const isVariant = variantChamps.some(c => c.nom === key);
-                    if (!isVariant) {
-                        baseAttributs[key] = value;
-                    }
-                }
-            });
+        const seenIds = new Set<number>();
+        pieceToSave.details = [];
 
-            if (variantChamps.length > 0) {
-                let combinations: { [key: string]: any }[] = [{ ...baseAttributs }];
-
-                variantChamps.forEach(champ => {
-                    const options = this.getLocalOptions(champ);
-                    if (options.length === 0) {
-                        const currentVal = templateDetail.attributs[champ.nom];
-                        if (currentVal !== undefined && currentVal !== null) {
-                            combinations.forEach(combo => combo[champ.nom] = currentVal);
+        if (rawPiece.details) {
+            rawPiece.details.forEach(d => {
+                const cleanAttributs: any = {};
+                if (d.attributs) {
+                    Object.entries(d.attributs).forEach(([key, val]) => {
+                        if (!key.startsWith('_') && val !== null && val !== undefined) {
+                            cleanAttributs[key] = val;
                         }
-                        return;
-                    }
-
-                    const nextCombinations: { [key: string]: any }[] = [];
-                    combinations.forEach(combo => {
-                        options.forEach(opt => {
-                            nextCombinations.push({ ...combo, [champ.nom]: opt });
-                        });
                     });
-                    combinations = nextCombinations;
-                });
+                }
 
-                const existingDetails = [...(rawPiece.details || [])];
-                pieceToSave.details = combinations.map(combo => {
-                    const matchingIndex = existingDetails.findIndex(d =>
-                        variantChamps.every(c => d.attributs[c.nom] === combo[c.nom])
-                    );
+                const detailObj: any = {
+                    codeBarre: d.codeBarre?.trim() || null,
+                    attributs: cleanAttributs,
+                    prixVente: d.prixVente != null ? Number(d.prixVente) : 0,
+                    tauxTVA: d.tauxTVA != null ? Number(d.tauxTVA) : 0
+                };
 
-                    if (matchingIndex > -1) {
-                        const existing = existingDetails.splice(matchingIndex, 1)[0];
-                        return {
-                            id: existing.id,
-                            attributs: { ...combo },
-                            stock: existing.stock ? { id: existing.stock.id } : null
-                        };
-                    }
-                    return { attributs: { ...combo } };
-                });
-            } else {
-                pieceToSave.details = [{
-                    id: templateDetail.id,
-                    attributs: baseAttributs,
-                    stock: templateDetail.stock ? { id: templateDetail.stock.id } : null
-                }];
-            }
+                if (d.id) {
+                    const idNum = Number(d.id);
+                    if (seenIds.has(idNum)) return;
+                    seenIds.add(idNum);
+                    detailObj.id = idNum;
+                }
+
+                pieceToSave.details.push(detailObj);
+            });
         }
 
-        console.log('Sending cleaned piece to backend:', pieceToSave);
+        console.log('[ANTIGRAVITY] FINAL VALIDATED PAYLOAD:', JSON.stringify(pieceToSave));
         this.save.emit({ piece: pieceToSave, file: this.selectedFile });
+    }
+
+    private handleBackendError(error: string): void {
+        const match = error.match(/Le code barre '(.+?)'/);
+        if (match && match[1]) {
+            this.backendBarcodeErrors.add(match[1]);
+        }
+    }
+
+    checkDuplicateBarcodes(): void {
+        this.backendBarcodeErrors.clear();
+        this.barcodeDuplicates.clear();
+        if (!this.newPiece.details) return;
+
+        const codes = this.newPiece.details.map(d => d.codeBarre?.trim()).filter(c => !!c);
+        const counts: { [key: string]: number[] } = {};
+
+        this.newPiece.details.forEach((detail, index) => {
+            const code = detail.codeBarre?.trim();
+            if (code) {
+                if (!counts[code]) counts[code] = [];
+                counts[code].push(index);
+            }
+        });
+
+        Object.values(counts).forEach(indices => {
+            if (indices.length > 1) {
+                indices.forEach(idx => this.barcodeDuplicates.add(idx));
+            }
+        });
     }
 
     onCancel(): void {
@@ -489,6 +577,7 @@ export class PieceFormComponent implements OnInit, OnChanges {
         localOptions.push(value);
         this.newPiece.details![0].attributs[champ.nom] = value;
         input.value = '';
+        this.generateVariations();
         this.cdr.detectChanges();
     }
 
@@ -520,6 +609,7 @@ export class PieceFormComponent implements OnInit, OnChanges {
             if (this.newPiece.details![0].attributs[this.champToRemoveFrom.nom] === this.optionToRemove) {
                 this.newPiece.details![0].attributs[this.champToRemoveFrom.nom] = '';
             }
+            this.generateVariations();
             this.cdr.detectChanges();
         }
         this.cancelRemove();
@@ -532,10 +622,171 @@ export class PieceFormComponent implements OnInit, OnChanges {
 
     getVariantLabel(detail: any): string {
         const attributes = detail.attributs || {};
-        const label = Object.entries(attributes)
-            .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && String(value).trim() !== '')
-            .map(([_, value]) => value)
-            .join(' - ');
+
+        const labelParts: string[] = [];
+        for (const [key, value] of Object.entries(attributes)) {
+            if (key.startsWith('_')) continue;
+            if (value === null || value === undefined || String(value).trim() === '') continue;
+
+            labelParts.push(`${key}: ${value}`);
+        }
+
+        const label = labelParts.join(' | ');
         return label || 'Standard';
+    }
+
+    generateVariations(): void {
+        if (!this.parametres?.champsPersonnalises || !this.newPiece.details || !this.newPiece.details.length) return;
+
+        const templateDetail = this.newPiece.details[0];
+        const variantChamps = this.parametres.champsPersonnalises.filter(c => c.variante && c.actif);
+
+        if (variantChamps.length === 0) return;
+
+        const baseAttributs: { [key: string]: any } = {};
+        Object.entries(templateDetail.attributs).forEach(([key, value]) => {
+            const isVariant = variantChamps.some(c => c.nom === key);
+            if (!isVariant || key.startsWith('_')) {
+                baseAttributs[key] = value;
+            }
+        });
+
+        const variantOptions: { champ: string, options: string[] }[] = [];
+        variantChamps.forEach(champ => {
+            const options = this.getLocalOptions(champ);
+            if (options.length > 0) {
+                variantOptions.push({ champ: champ.nom, options });
+            }
+        });
+
+        if (variantOptions.length === 0) {
+            this.newPiece.details = [this.newPiece.details[0]];
+            return;
+        }
+
+        let combinations: { [key: string]: any }[] = [{ ...baseAttributs }];
+
+        variantOptions.forEach(variant => {
+            const nextCombinations: { [key: string]: any }[] = [];
+            combinations.forEach(combo => {
+                variant.options.forEach(opt => {
+                    nextCombinations.push({ ...combo, [variant.champ]: opt });
+                });
+            });
+            combinations = nextCombinations;
+        });
+
+        const existingDetails = [...this.newPiece.details];
+
+        this.newPiece.details = combinations.map((combo, index) => {
+            const matchingIndex = existingDetails.findIndex(d => {
+                const targetAttrs = d.attributs || {};
+                return variantOptions.every(v => targetAttrs[v.champ] === combo[v.champ]);
+            });
+
+            if (matchingIndex > -1) {
+                const existing = existingDetails.splice(matchingIndex, 1)[0];
+                return {
+                    id: existing.id,
+                    codeBarre: existing.codeBarre,
+                    prixVente: existing.prixVente,
+                    tauxTVA: existing.tauxTVA,
+                    attributs: { ...combo, ...this.extractOptions(existing.attributs) }
+                };
+            }
+
+            return {
+                attributs: { ...combo, ...this.extractOptions(templateDetail.attributs) },
+                codeBarre: index === 0 && existingDetails.length === 0 ? templateDetail.codeBarre : '',
+                prixVente: templateDetail.prixVente || 0,
+                tauxTVA: templateDetail.tauxTVA || 0
+            };
+        });
+
+        Object.entries(baseAttributs).forEach(([key, value]) => {
+            if (key.startsWith('_')) {
+                this.newPiece.details![0].attributs[key] = value;
+            }
+        });
+    }
+
+    private extractOptions(attributes: any): any {
+        const ops: any = {};
+        Object.keys(attributes || {}).forEach(k => {
+            if (k.startsWith('_options_')) ops[k] = attributes[k];
+        });
+        return ops;
+    }
+
+    syncComplementaryAttributes(): void {
+        if (!this.newPiece.details || this.newPiece.details.length <= 1) return;
+        const template = this.newPiece.details[0].attributs;
+
+        const variantChamps = this.parametres?.champsPersonnalises?.filter(c => c.variante && c.actif).map(c => c.nom) || [];
+
+        const updates: any = {};
+        Object.keys(template).forEach(k => {
+            if (!k.startsWith('_') && !variantChamps.includes(k)) {
+                updates[k] = template[k];
+            }
+        });
+
+        for (let i = 1; i < this.newPiece.details.length; i++) {
+            this.newPiece.details[i].attributs = {
+                ...this.newPiece.details[i].attributs,
+                ...updates
+            };
+        }
+        this.cdr.detectChanges();
+    }
+
+    compareById(item1: any, item2: any): boolean {
+        return item1 && item2 ? item1.id === item2.id : item1 === item2;
+    }
+
+
+
+    copyVenteToAll(): void {
+        if (!this.newPiece.details || this.newPiece.details.length <= 1) return;
+        const value = this.newPiece.details[0].prixVente || 0;
+        this.newPiece.details.forEach((d, i) => { if (i > 0) d.prixVente = value; });
+        this.cdr.detectChanges();
+    }
+
+    copyTaxToAll(): void {
+        if (!this.newPiece.details || this.newPiece.details.length <= 1) return;
+        const value = this.newPiece.details[0].tauxTVA || 0;
+        this.newPiece.details.forEach((d, i) => { if (i > 0) d.tauxTVA = value; });
+        this.cdr.detectChanges();
+    }
+
+    copyBarcodesToAll(): void {
+        if (!this.newPiece.details || this.newPiece.details.length <= 1) return;
+        const base = this.newPiece.details[0].codeBarre || '';
+        if (!base) return;
+
+        this.newPiece.details.forEach((d, i) => {
+            if (i > 0) {
+                d.codeBarre = base + i;
+            }
+        });
+        this.cdr.detectChanges();
+    }
+
+    generateVariantSKU(index: number): void {
+        if (!this.newPiece.details || !this.newPiece.details[index]) return;
+
+        const prefix = "300";
+        const randomPart = Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
+        const barcode = prefix + randomPart + index;
+        this.newPiece.details[index].codeBarre = barcode.substring(0, 13);
+        this.cdr.detectChanges();
+    }
+
+    removeVariant(index: number): void {
+        if (this.newPiece.details && this.newPiece.details.length > 1) {
+            this.newPiece.details.splice(index, 1);
+            this.cdr.detectChanges();
+        }
     }
 }

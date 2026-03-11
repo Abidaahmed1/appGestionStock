@@ -80,7 +80,7 @@ export class CommandeFournisseurListComponent implements OnInit {
 
     initNewCommande(): BonCommandeFournisseur {
         return {
-            numeroCmd: 0,
+            numeroCmd: 'AUTO',
             dateCmd: new Date().toISOString(),
             fournisseur: {} as Fournisseur,
             statut: StatutCommande.EN_ATTENTE,

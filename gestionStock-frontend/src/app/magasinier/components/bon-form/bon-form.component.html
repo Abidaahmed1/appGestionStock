@@ -16,11 +16,10 @@
                 <button (click)="save()" class="btn btn-primary" [disabled]="loading" *ngIf="!isEditMode">
                     CRÉER
                 </button>
-                <span class="badge-readonly" *ngIf="isEditMode && !bon?.archived"> Bon validé — lecture seule</span>
-                <span class="badge-archived" *ngIf="bon?.archived"> ⚠ Bon Annulé — Historique</span>
+                <span class="badge-readonly" *ngIf="isEditMode && !bon.archived"> Bon validé — lecture seule</span>
+                <span class="badge-archived" *ngIf="bon.archived"> ⚠ Bon Annulé — Historique</span>
 
-                <button (click)="reactivate()" class="btn btn-success"
-                    *ngIf="bon?.archived && hasRole('ROLE_AUDITEUR')">
+                <button (click)="reactivate()" class="btn btn-success" *ngIf="bon.archived && hasRole('ROLE_AUDITEUR')">
                     RÉACTIVER
                 </button>
 
@@ -51,11 +50,11 @@
             <h1 class="main-title">
                 Bon N°:
                 <span class="order-num-text"
-                    *ngIf="bon.numeroBon && bon.numeroBon !== '' && bon.numeroBon !== '0'; else newBadge">
+                    *ngIf="bon.numeroBon && bon.numeroBon !== '' && bon.numeroBon !== '0' && bon.numeroBon !== 'AUTO'; else newBadge">
                     {{ bon.numeroBon }}
                 </span>
                 <ng-template #newBadge>
-                    <span class="badge-new">Nouveau (En attente de génération)</span>
+                    <span class="badge-new">Nouveau (Génération AUTO)</span>
                 </ng-template>
             </h1>
         </div>
@@ -71,6 +70,31 @@
                             <option [value]="TypeBon.RETOUR">Retour (Client/Fourn.)</option>
                         </select>
                     </div>
+                </div>
+
+                <div class="form-group" *ngIf="isEditMode || !isAutoNumeroBon">
+                    <label>Numéro de Bon <span class="required-star" *ngIf="!isAutoNumeroBon">*</span></label>
+                    <div class="input-wrapper">
+                        <ng-container *ngIf="isAutoNumeroBon">
+                            <div class="auto-info-badge">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                Généré automatiquement ({{ getPrefix(getModuleForType(bon.typeBon)) }}...)
+                            </div>
+                            <small class="format-hint info-text" style="display: block; margin-top: 4px; color: #666; font-size: 0.85em;">
+                                <i class="fas fa-info-circle" style="margin-right: 4px;"></i> {{ getFormatExplanation(getModuleForType(bon.typeBon)) }}
+                            </small>
+                        </ng-container>
+
+                        <ng-container *ngIf="!isAutoNumeroBon">
+                            <input type="text" [(ngModel)]="bon.numeroBon" name="numeroBon"
+                                [placeholder]="'Ex: ' + getPrefix(getModuleForType(bon.typeBon)) + '100'" 
+                                class="form-control" [readonly]="isEditMode" [class.readonly-field]="isEditMode" required>
+                            <small class="format-hint info-text" style="display: block; margin-top: 4px; color: #666; font-size: 0.85em;">
+                                <i class="fas fa-info-circle" style="margin-right: 4px;"></i> {{ getFormatExplanation(getModuleForType(bon.typeBon)) }}
+                            </small>
+                        </ng-container>
+                    </div>
+                    <div class="field-error" *ngIf="errors['numeroBon']">{{ errors['numeroBon'] }}</div>
                 </div>
 
                 <div class="form-group animate-fade-in" *ngIf="isReturnMode"
@@ -147,6 +171,9 @@
             </div>
 
             <div class="form-column">
+                <!-- Référence automatique masquée selon demande utilisateur -->
+
+
                 <div class="form-group" [class.has-error]="errors['date']">
                     <label>Date du Bon</label>
                     <div class="input-wrapper">
@@ -309,8 +336,9 @@
             <div class="po-party-box">
                 <div class="po-party-label">EMETTEUR</div>
                 <div class="po-party-content">
-                    <div class="po-party-name" *ngIf="bon?.createur">{{ bon?.createur?.firstName }} {{
-                        bon?.createur?.lastName }}</div>
+                    <div class="po-party-name" *ngIf="bon && bon.createur">
+                        {{ bon.createur.firstName }} {{ bon.createur.lastName }}
+                    </div>
                     <div class="po-party-detail">Responsable Magasin</div>
                 </div>
             </div>
@@ -341,8 +369,8 @@
                         <td class="text-center">{{ i + 1 }}</td>
                         <td>
                             <div class="po-item-name">{{ getStockDesignation(ligne.stock) }}</div>
-                            <div class="po-item-ref" *ngIf="ligne.stock.piece?.codeBarre">S/N: {{
-                                ligne.stock.piece.codeBarre }}</div>
+                            <div class="po-item-ref" *ngIf="ligne.stock.detailPiece?.codeBarre">S/N: {{
+                                ligne.stock.detailPiece.codeBarre }}</div>
                         </td>
                         <td class="text-right">{{ ligne.quantite }}</td>
                         <td class="text-right">{{ ligne.prixHTVA | number:'1.3-3' }}</td>

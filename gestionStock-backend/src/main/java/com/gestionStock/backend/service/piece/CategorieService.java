@@ -9,28 +9,35 @@ import com.gestionStock.backend.repository.piece.CategorieRepository;
 import com.gestionStock.backend.service.user.UserService;
 
 import jakarta.transaction.Transactional;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 @Transactional
 public class CategorieService {
 
+    private static final Object CATEGORIE_LOCK = new Object();
+
     private final CategorieRepository categorieRepo;
     private final UserService userService;
+    private final com.gestionStock.backend.entity.parametre.NumerotationService numerotationService;
 
     public List<Categorie> getAll() {
         com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
         if (entreprise == null) {
-            // Aucun utilisateur ou aucune entreprise associée : retourner une liste vide
             return java.util.List.of();
         }
         return categorieRepo.findByArchiveeFalseAndEntreprise(entreprise);
     }
 
     public Categorie create(Categorie categorie) {
-        if (categorie.getCode() == null || categorie.getCode().isEmpty()) {
-            categorie.setCode("CAT_" + categorie.getNom().toUpperCase().replace(" ", "_"));
+        if (categorie.getCode() == null || categorie.getCode().trim().isEmpty()
+                || "AUTO".equalsIgnoreCase(categorie.getCode())) {
+            synchronized (CATEGORIE_LOCK) {
+                categorie.setCode(numerotationService.generateNextNumber("CATEGORIE"));
+            }
+        } else {
+            numerotationService.validateReference("CATEGORIE", categorie.getCode());
         }
         categorie.setEntreprise(userService.getCurrentUserEntreprise());
         return categorieRepo.save(categorie);

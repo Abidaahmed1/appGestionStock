@@ -7,6 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.gestionStock.backend.entity.parametre.ChampPersonnalise;
+import com.gestionStock.backend.entity.parametre.NumerotationConfig;
 import com.gestionStock.backend.entity.parametre.Parametre;
 import com.gestionStock.backend.entity.parametre.ParametreService;
 import com.gestionStock.backend.entity.parametre.TypeChamp;
@@ -72,7 +73,6 @@ public class ParametreController {
         return ResponseEntity.ok().build();
     }
 
-    // Gestion des champs personnalisés
     @PostMapping("/{parametreId}/champs")
     @PreAuthorize("hasRole('ADMINISTRATEUR')")
     public ResponseEntity<Parametre> ajouterChampPersonnalise(
@@ -124,5 +124,23 @@ public class ParametreController {
             @RequestParam String valeur) {
         boolean isValid = parametreService.validerValeurChamp(champ, valeur);
         return ResponseEntity.ok(isValid);
+    }
+
+    @GetMapping("/numerotation")
+    public ResponseEntity<List<NumerotationConfig>> getNumerotationConfigs() {
+        return ResponseEntity.ok(parametreService.getNumerotationConfigs());
+    }
+
+    @PutMapping("/{parametreId}/numerotation")
+    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    public ResponseEntity<Parametre> updateNumerotationConfigs(
+            @PathVariable Long parametreId,
+            @RequestBody List<NumerotationConfig> configs) {
+        try {
+            Parametre updatedParametre = parametreService.updateNumerotationConfigs(parametreId, configs);
+            return ResponseEntity.ok(updatedParametre);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 }

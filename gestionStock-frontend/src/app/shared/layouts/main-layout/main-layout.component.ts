@@ -4,6 +4,8 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { KeycloakService } from 'keycloak-angular';
 
 import { NotificationsComponent } from '../../components/notifications/notifications.component';
+import { EntrepriseService } from '../../../admin/services/entreprise.service';
+import { Entreprise } from '../../../admin/models/entreprise.model';
 
 @Component({
     selector: 'app-main-layout',
@@ -16,9 +18,11 @@ export class MainLayoutComponent implements OnInit {
     private keycloak = inject(KeycloakService);
     private router = inject(Router);
     private platformId = inject(PLATFORM_ID);
+    private entrepriseService = inject(EntrepriseService);
 
     username = signal('');
     roles = signal<string[]>([]);
+    entreprise = signal<Entreprise | null>(null);
 
     ngOnInit() {
         if (isPlatformBrowser(this.platformId)) {
@@ -32,8 +36,16 @@ export class MainLayoutComponent implements OnInit {
                     this.username.set(fullName || token['preferred_username'] || token['name'] || '');
                 }
                 this.roles.set(this.keycloak.getUserRoles());
+                this.loadEntreprise();
             }
         }
+    }
+
+    private loadEntreprise() {
+        this.entrepriseService.getCurrentEntreprise().subscribe({
+            next: (data: Entreprise) => this.entreprise.set(data),
+            error: (err: any) => console.error('Erreur chargement entreprise:', err)
+        });
     }
 
     hasRole(role: string): boolean {

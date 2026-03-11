@@ -65,7 +65,8 @@
                                 <div class="results-list" *ngIf="showResults && filteredPieces.length > 0">
                                     <div class="result-item" *ngFor="let p of filteredPieces"
                                         (mousedown)="selectPiece(p)">
-                                        <span class="code">[{{ p.codeBarre }}]</span>
+                                        <span class="code" *ngIf="p.details?.length">[{{ p.details![0].codeBarre
+                                            }}]</span>
                                         <span class="name">{{ p.designation }}</span>
                                     </div>
                                 </div>
@@ -84,6 +85,11 @@
                         <div class="col col-qte text-center">
                             <label class="line-label">Qté Min</label>
                             <input type="number" [(ngModel)]="newEntry.qteMinACommander"
+                                class="odoo-input-line text-center">
+                        </div>
+                        <div class="col col-delivery text-center">
+                            <label class="line-label">Jours Livr.</label>
+                            <input type="number" [(ngModel)]="newEntry.nbJoursLivraison"
                                 class="odoo-input-line text-center">
                         </div>
                         <div class="col col-date text-center">
@@ -116,12 +122,13 @@
                         <table class="line-table">
                             <thead>
                                 <tr>
-                                    <th class="col-product">Produit</th>
-                                    <th class="col-price text-right">Prix Unitaire</th>
+                                    <th class="col-product">Articles</th>
+                                    <th class="col-price text-right">Prix Unit.</th>
                                     <th class="col-discount text-center">Remise %</th>
                                     <th class="col-qte text-center">Qté Min</th>
-                                    <th class="col-date text-center">Début valid.</th>
-                                    <th class="col-date text-center">Fin valid.</th>
+                                    <th class="col-delivery text-center">Jours Livr.</th>
+                                    <th class="col-date text-center">Début</th>
+                                    <th class="col-date text-center">Fin</th>
                                     <th class="col-status text-center">Statut</th>
                                     <th class="col-action text-center">Action</th>
                                 </tr>
@@ -135,7 +142,8 @@
                                         <td class="col-product">
                                             <div class="prod-info">
                                                 <span class="prod-name">{{ item.piece?.designation }}</span>
-                                                <span class="prod-code">{{ item.piece?.codeBarre }}</span>
+                                                <span class="prod-code" *ngIf="item.piece?.details?.length">{{
+                                                    item.piece?.details![0].codeBarre }}</span>
                                             </div>
                                         </td>
                                         <td class="col-price text-right font-bold" style="color: #3d7a7f;">
@@ -147,6 +155,9 @@
                                         </td>
                                         <td class="col-qte text-center">
                                             {{ item.qteMinACommander }}
+                                        </td>
+                                        <td class="col-delivery text-center">
+                                            {{ item.nbJoursLivraison }}
                                         </td>
                                         <td class="col-date text-center">
                                             <span class="date-chip" *ngIf="item.dateDebutValidite">
@@ -201,7 +212,8 @@
                                         <td class="col-product">
                                             <div class="prod-info">
                                                 <span class="prod-name">{{ item.piece?.designation }}</span>
-                                                <span class="prod-code">{{ item.piece?.codeBarre }}</span>
+                                                <span class="prod-code" *ngIf="item.piece?.details?.length">{{
+                                                    item.piece?.details![0].codeBarre }}</span>
                                             </div>
                                         </td>
                                         <td class="col-price">
@@ -215,6 +227,10 @@
                                         </td>
                                         <td class="col-qte">
                                             <input type="number" [(ngModel)]="item.qteMinACommander"
+                                                class="edit-input text-center" (ngModelChange)="markModified(i)">
+                                        </td>
+                                        <td class="col-delivery">
+                                            <input type="number" [(ngModel)]="item.nbJoursLivraison"
                                                 class="edit-input text-center" (ngModelChange)="markModified(i)">
                                         </td>
                                         <td class="col-date">
@@ -256,7 +272,7 @@
                                     </ng-container>
                                 </tr>
                                 <tr *ngIf="filteredCatalogItems.length === 0">
-                                    <td colspan="8" class="empty-line">Aucun article enregistré.</td>
+                                    <td colspan="9" class="empty-line">Aucun article enregistré.</td>
                                 </tr>
                             </tbody>
                         </table>

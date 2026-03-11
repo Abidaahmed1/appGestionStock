@@ -64,111 +64,133 @@
             <div class="form-section-group">
                 <h3 class="section-header">Informations de base</h3>
                 <div class="odoo-grid">
-                    <div class="odoo-group">
-                        <div class="odoo-field">
-                            <label class="odoo-label">Référence <span class="odoo-help-icon"
-                                    title="Référence interne">?</span></label>
-                            <div class="odoo-value">
-                                <input type="text" [(ngModel)]="newPiece.reference" name="reference" #ref="ngModel"
-                                    required (ngModelChange)="onReferenceChange($event)" pattern="^REF-.*"
-                                    class="odoo-input" placeholder="REF-000"
-                                    [class.is-invalid]="ref.invalid && (ref.dirty || ref.touched || pieceForm.submitted)">
-                                <div class="error-msg"
-                                    *ngIf="ref.invalid && (ref.dirty || ref.touched || pieceForm.submitted)">
-                                    <span *ngIf="ref.errors?.['required']">La référence est obligatoire.</span>
-                                    <span *ngIf="ref.errors?.['pattern']">La référence doit commencer par "REF-".</span>
+                    <div class="odoo-field">
+                        <label class="odoo-label">Référence <span class="odoo-help-icon"
+                                title="Référence interne">?</span></label>
+                        <div class="odoo-value">
+                            <ng-container *ngIf="isAutoReference">
+                                <div class="auto-info-badge">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                    </svg>
+                                    Généré automatiquement ({{ getPrefix('PIECE') }}...)
                                 </div>
-                            </div>
-                        </div>
-                        <div class="odoo-field">
-                            <label class="odoo-label">Code Barre</label>
-                            <div class="odoo-value">
-                                <input type="text" [(ngModel)]="newPiece.codeBarre" name="codeBarre" #cb="ngModel"
-                                    required class="odoo-input" placeholder="123456789"
-                                    [class.is-invalid]="cb.invalid && (cb.dirty || cb.touched || pieceForm.submitted)">
-                                <div class="error-msg"
-                                    *ngIf="cb.invalid && (cb.dirty || cb.touched || pieceForm.submitted)">
-                                    <span *ngIf="cb.errors?.['required']">Le code barre est obligatoire.</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="odoo-field">
-                            <label class="odoo-label">Catégorie <span class="attribute-required">*</span></label>
-                            <div class="odoo-value">
-                                <div class="custom-picker">
-                                    <div class="selected-display" (click)="toggleCategorySelector($event)"
-                                        *ngIf="newPiece.categorie?.nom"
-                                        [class.is-invalid]="pieceForm.submitted && !newPiece.categorie?.id">
-                                        <span class="value">{{ newPiece.categorie?.nom }}</span>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                            stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="m6 9 6 6 6-6" />
-                                        </svg>
-                                    </div>
-                                    <button type="button" class="odoo-input" *ngIf="!newPiece.categorie?.nom"
-                                        (click)="toggleCategorySelector($event)"
-                                        [class.is-invalid]="pieceForm.submitted && !newPiece.categorie?.id">Choisir une
-                                        catégorie...</button>
-                                    <div class="error-msg" *ngIf="pieceForm.submitted && !newPiece.categorie?.id">
-                                        <span>Veuillez sélectionner une catégorie.</span>
-                                    </div>
 
-                                    <div class="picker-dropdown" *ngIf="showCategorySelector">
-                                        <div class="picker-search-wrapper" (click)="$event.stopPropagation()">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                                                stroke-linecap="round" stroke-linejoin="round"
-                                                class="picker-search-icon">
-                                                <circle cx="11" cy="11" r="8"></circle>
-                                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                            </svg>
-                                            <input type="text" [(ngModel)]="categorySearchTerm" name="catSearch"
-                                                placeholder="Rechercher une catégorie..."
-                                                class="odoo-input picker-search-input">
+                            </ng-container>
+
+                            <ng-container *ngIf="!isAutoReference">
+                                <input type="text" [(ngModel)]="newPiece.reference" name="reference" required
+                                    class="odoo-input"
+                                    [placeholder]="'Référence réelle (ex: ' + getPrefix('PIECE') + '001)'"
+                                    [class.is-invalid]="pieceForm.controls['reference']?.invalid && (pieceForm.controls['reference']?.dirty || pieceForm.controls['reference']?.touched || pieceForm.submitted)"
+                                    style="margin-top: 10px; animation: slideDown 0.2s ease-out;">
+
+                                <div class="error-msg"
+                                    *ngIf="pieceForm.controls['reference']?.invalid && (pieceForm.controls['reference']?.dirty || pieceForm.controls['reference']?.touched || pieceForm.submitted)">
+                                    <span *ngIf="pieceForm.controls['reference']?.errors?.['required']">La référence
+                                        est obligatoire.</span>
+                                </div>
+                            </ng-container>
+                        </div>
+                    </div>
+
+                    <div class="odoo-field">
+                        <label class="odoo-label">Unité <span class="attribute-required">*</span></label>
+                        <div class="odoo-value">
+                            <select [(ngModel)]="newPiece.unite" name="unite" #unit="ngModel" required
+                                class="odoo-select" [compareWith]="compareById"
+                                [class.is-invalid]="unit.invalid && (unit.dirty || unit.touched || pieceForm.submitted)">
+                                <option [ngValue]="undefined" disabled>Sélectionner l'unité</option>
+                                <option *ngFor="let u of unites" [ngValue]="u">{{ u.nom }} ({{ u.abbreviation }})
+                                </option>
+                            </select>
+                            <div class="error-msg"
+                                *ngIf="unit.invalid && (unit.dirty || unit.touched || pieceForm.submitted)">
+                                <span *ngIf="unit.errors?.['required']">L'unité est obligatoire.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="odoo-field">
+                        <label class="odoo-label">Catégorie <span class="attribute-required">*</span></label>
+                        <div class="odoo-value">
+                            <div class="custom-picker">
+                                <div class="selected-display" (click)="toggleCategorySelector($event)"
+                                    *ngIf="newPiece.categorie?.nom"
+                                    [class.is-invalid]="pieceForm.submitted && !newPiece.categorie?.id">
+                                    <span class="value">{{ newPiece.categorie?.nom }}</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <path d="m6 9 6 6 6-6" />
+                                    </svg>
+                                </div>
+                                <button type="button" class="odoo-input" *ngIf="!newPiece.categorie?.nom"
+                                    (click)="toggleCategorySelector($event)"
+                                    [class.is-invalid]="pieceForm.submitted && !newPiece.categorie?.id">Choisir une
+                                    catégorie...</button>
+                                <div class="error-msg" *ngIf="pieceForm.submitted && !newPiece.categorie?.id">
+                                    <span>Veuillez sélectionner une catégorie.</span>
+                                </div>
+
+                                <div class="picker-dropdown" *ngIf="showCategorySelector">
+                                    <div class="picker-search-wrapper" (click)="$event.stopPropagation()">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                            stroke-linecap="round" stroke-linejoin="round" class="picker-search-icon">
+                                            <circle cx="11" cy="11" r="8"></circle>
+                                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                        </svg>
+                                        <input type="text" [(ngModel)]="categorySearchTerm" name="catSearch"
+                                            placeholder="Rechercher une catégorie..."
+                                            class="odoo-input picker-search-input">
+                                    </div>
+                                    <div class="picker-list">
+                                        <div class="picker-item" *ngFor="let cat of filteredCategories"
+                                            (click)="selectCategory(cat)">
+                                            {{ cat.nom }}
                                         </div>
-                                        <div class="picker-list">
-                                            <div class="picker-item" *ngFor="let cat of filteredCategories"
-                                                (click)="selectCategory(cat)">
-                                                {{ cat.nom }}
-                                            </div>
-                                            <div class="picker-item add-new" (click)="openQuickAddCategory($event)">
-                                                + Nouvelle catégorie</div>
-                                        </div>
+                                        <div class="picker-item add-new" (click)="openQuickAddCategory($event)">
+                                            + Nouvelle catégorie</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="odoo-group">
-                        <div class="odoo-field">
-                            <label class="odoo-label">Prix de vente <span class="attribute-required">*</span></label>
-                            <div class="odoo-value">
-                                <div style="display: flex; flex-direction: column;">
-                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                        <input type="number" [(ngModel)]="newPiece.prixVente" name="prixVente"
-                                            #pv="ngModel" required min="0.01" class="odoo-input" style="width: 120px;"
-                                            placeholder="0"
-                                            [class.is-invalid]="pv.invalid && (pv.dirty || pv.touched || pieceForm.submitted)">
-                                        <span style="color: #64748b; font-weight: 600;">{{ entreprise?.devise?.symbole
-                                            ||
-                                            'DT' }}</span>
-                                    </div>
+
+                    <div class="odoo-field">
+                        <div style="display: flex; gap: 20px; width: 100%;">
+                            <div style="flex: 1; display: flex; align-items: center;">
+                                <label
+                                    style="font-weight: 600; font-size: 13px; color: #475569; flex-shrink: 0; margin-right: 14px;">Seuil
+                                    Min <span class="attribute-required">*</span></label>
+                                <div class="odoo-value">
+                                    <input type="number" [(ngModel)]="newPiece.seuilMinimum" name="seuilMinimum"
+                                        #smin="ngModel" required min="1" class="odoo-input"
+                                        [class.is-invalid]="smin.invalid && (smin.dirty || smin.touched || pieceForm.submitted)">
                                     <div class="error-msg"
-                                        *ngIf="pv.invalid && (pv.dirty || pv.touched || pieceForm.submitted)">
-                                        <span *ngIf="pv.errors?.['required']">Le prix est obligatoire.</span>
-                                        <span *ngIf="pv.errors?.['min']">Le prix doit être supérieur à 0.</span>
+                                        *ngIf="smin.invalid && (smin.dirty || smin.touched || pieceForm.submitted)">
+                                        <span *ngIf="smin.errors?.['required']">Obligatoire</span>
+                                        <span *ngIf="smin.errors?.['min']">> 0</span>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="odoo-field">
-                            <label class="odoo-label">Taxes à la vente</label>
-                            <div class="odoo-value">
-                                <div class="odoo-input-group" style="width: 120px;">
-                                    <input type="number" [(ngModel)]="newPiece.tauxTVA" name="tauxTVA"
-                                        class="odoo-input" placeholder="0">
-                                    <span class="input-suffix">%</span>
+                            <div style="flex: 1; display: flex; align-items: center;">
+                                <label
+                                    style="font-weight: 600; font-size: 13px; color: #475569; flex-shrink: 0; margin-left: 10px; margin-right: 14px;">Max
+                                    <span class="attribute-required">*</span></label>
+                                <div class="odoo-value">
+                                    <input type="number" [(ngModel)]="newPiece.seuilMaximum" name="seuilMaximum"
+                                        #smax="ngModel" required min="1" class="odoo-input"
+                                        [class.is-invalid]="(smax.invalid || newPiece.seuilMaximum < newPiece.seuilMinimum) && (smax.dirty || smax.touched || pieceForm.submitted)">
+                                    <div class="error-msg"
+                                        *ngIf="(smax.invalid || newPiece.seuilMaximum < newPiece.seuilMinimum) && (smax.dirty || smax.touched || pieceForm.submitted)">
+                                        <span *ngIf="smax.errors?.['required']">Obligatoire</span>
+                                        <span *ngIf="!smax.errors && newPiece.seuilMaximum < newPiece.seuilMinimum">>=
+                                            Min</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -176,11 +198,12 @@
                 </div>
             </div>
 
-            <!-- Attributes & Variants Section -->
             <div class="form-section-group" style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 25px;">
                 <h3 class="section-header">Attributs & Variantes</h3>
-                <p class="section-help-text">Ajoutez des attributs (Taille, Couleur, etc.) et leurs valeurs pour générer
-                    automatiquement les variantes.</p>
+
+                <p class="section-help-text">Gérez les attributs additionnels et configurez les variantes
+                    dynamiquement.
+                </p>
 
                 <div class="variants-config-container">
                     <table class="variants-mgmt-table">
@@ -192,6 +215,105 @@
                         </thead>
                         <tbody>
                             <ng-container *ngFor="let champ of parametres?.champsPersonnalises; let i = index">
+                                <tr *ngIf="champ.actif && !champ.variante">
+                                    <td class="attr-name-td" style="vertical-align: middle;">
+                                        <div class="attr-label-box"
+                                            style="background: transparent; color: #475569; padding-left: 0;">
+                                            <span class="dot" style="background: #94a3b8;"></span>
+                                            {{ champ.nom }}
+                                            <span class="attribute-required" *ngIf="champ.obligatoire">*</span>
+                                        </div>
+                                    </td>
+                                    <td style="padding: 12px 16px;">
+                                        <div style="max-width: 400px; width: 100%;">
+                                            <ng-container [ngSwitch]="champ.type">
+                                                <input *ngSwitchCase="'TEXT'" type="text"
+                                                    [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]"
+                                                    [name]="'dynamic_' + i"
+                                                    (ngModelChange)="syncComplementaryAttributes()" #dyn="ngModel"
+                                                    [required]="champ.obligatoire" class="odoo-input"
+                                                    [placeholder]="champ.description || ''">
+
+                                                <input *ngSwitchCase="'EMAIL'" type="email"
+                                                    [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]"
+                                                    [name]="'dynamic_' + i"
+                                                    (ngModelChange)="syncComplementaryAttributes()" #dyn="ngModel"
+                                                    [required]="champ.obligatoire" email class="odoo-input"
+                                                    [placeholder]="champ.description || ''">
+
+                                                <input *ngSwitchCase="'URL'" type="url"
+                                                    [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]"
+                                                    [name]="'dynamic_' + i"
+                                                    (ngModelChange)="syncComplementaryAttributes()" #dyn="ngModel"
+                                                    [required]="champ.obligatoire" class="odoo-input"
+                                                    [placeholder]="champ.description || ''" pattern="https?://.+">
+
+                                                <textarea *ngSwitchCase="'TEXTAREA'"
+                                                    [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]"
+                                                    [name]="'dynamic_' + i"
+                                                    (ngModelChange)="syncComplementaryAttributes()" #dyn="ngModel"
+                                                    [required]="champ.obligatoire" class="odoo-textarea"
+                                                    [placeholder]="champ.description || ''" rows="1"></textarea>
+
+                                                <input *ngSwitchCase="'NUMBER'" type="number"
+                                                    [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]"
+                                                    [name]="'dynamic_' + i"
+                                                    (ngModelChange)="syncComplementaryAttributes()" #dyn="ngModel"
+                                                    [required]="champ.obligatoire" class="odoo-input">
+
+                                                <input *ngSwitchCase="'DATE'" type="date"
+                                                    [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]"
+                                                    [name]="'dynamic_' + i"
+                                                    (ngModelChange)="syncComplementaryAttributes()" #dyn="ngModel"
+                                                    [required]="champ.obligatoire" class="odoo-input">
+
+                                                <select *ngSwitchCase="'SELECT'"
+                                                    [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]"
+                                                    [name]="'dynamic_' + i"
+                                                    (ngModelChange)="syncComplementaryAttributes()" #dyn="ngModel"
+                                                    [required]="champ.obligatoire" class="odoo-select">
+                                                    <option value="" disabled selected>Choisir...</option>
+                                                    <option *ngFor="let opt of champ.options" [value]="opt">{{ opt
+                                                        }}
+                                                    </option>
+                                                </select>
+
+                                                <select *ngSwitchCase="'LISTE'"
+                                                    [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]"
+                                                    [name]="'dynamic_' + i"
+                                                    (ngModelChange)="syncComplementaryAttributes()" #dyn="ngModel"
+                                                    [required]="champ.obligatoire" class="odoo-select">
+                                                    <option value="" disabled selected>Choisir...</option>
+                                                    <option *ngFor="let opt of champ.options" [value]="opt">{{ opt
+                                                        }}
+                                                    </option>
+                                                </select>
+
+                                                <label *ngSwitchCase="'BOOLEAN'" class="odoo-checkbox-group">
+                                                    <input type="checkbox"
+                                                        [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]"
+                                                        (ngModelChange)="syncComplementaryAttributes()"
+                                                        [name]="'dynamic_' + i">
+                                                    Activé
+                                                </label>
+                                            </ng-container>
+                                            <div class="error-msg-mini"
+                                                *ngIf="pieceForm.controls['dynamic_' + i]?.invalid && (pieceForm.controls['dynamic_' + i]?.dirty || pieceForm.controls['dynamic_' + i]?.touched || pieceForm.submitted)">
+                                                <span
+                                                    *ngIf="pieceForm.controls['dynamic_' + i]?.errors?.['required']">Ce
+                                                    champ est
+                                                    obligatoire.</span>
+                                                <span
+                                                    *ngIf="pieceForm.controls['dynamic_' + i]?.errors?.['email']">Email
+                                                    invalide.</span>
+                                                <span
+                                                    *ngIf="pieceForm.controls['dynamic_' + i]?.errors?.['pattern']">URL
+                                                    invalide.</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+
                                 <tr *ngIf="champ.actif && champ.variante"
                                     [class.has-variant-error]="variantErrors[champ.nom]">
                                     <td class="attr-name-td">
@@ -231,135 +353,141 @@
                     </div>
                 </div>
 
-                <!-- Generated Variants Preview -->
-                <div class="variants-preview-section" *ngIf="newPiece.details && newPiece.details.length > 1"
-                    style="margin-top: 25px; background: #f8fafc; padding: 15px; border-radius: 8px;">
-                    <h4 class="sub-section-title"
-                        style="font-size: 13px; font-weight: 700; color: #64748b; margin-bottom: 12px; text-transform: uppercase;">
-                        Aperçu des variantes ({{ newPiece.details.length }})
-                    </h4>
-                    <div class="generated-variants-grid">
-                        <div class="gen-variant-tag" *ngFor="let detail of newPiece.details">
-                            {{ getVariantLabel(detail) }}
-                        </div>
+                <div class="variants-preview-section" *ngIf="newPiece.details && newPiece.details.length > 0"
+                    style="margin-top: 25px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <div
+                        style="background: white; border-radius: 8px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <table class="variants-detail-table"
+                            style="width: 100%; border-collapse: separate; border-spacing: 0; margin: 0;">
+                            <thead>
+                                <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                    <th style="width: 25%; color: var(--primary-color); padding-right: 12px;">
+                                        NOM DE L'ÉLÉMENT*
+                                    </th>
+                                    <th style="width: 3px; padding: 0; background: #f1f5f9;"></th>
+                                    <th style="width: 25%; padding-left: 14px;">
+                                        <div style="display: flex; align-items: center; gap: 4px;">
+                                            Code à Barre*
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                                                viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01" />
+                                            </svg>
+                                        </div>
+                                        <div style="display: flex; gap: 8px; margin-top: 6px;">
+                                            <button type="button" class="btn-text-link-mini"
+                                                (click)="generateVariantSKU(0)"
+                                                style="font-size: 10px; color: #3d7a7f; background:none; border:none; padding:0; cursor:pointer; font-weight: 700;">GÉNÉRER</button>
+                                            <span style="color: #cbd5e1; font-size: 10px;">|</span>
+                                            <button type="button" class="btn-text-link-mini"
+                                                (click)="copyBarcodesToAll()"
+                                                style="font-size: 10px; color: #3d7a7f; background:none; border:none; padding:0; cursor:pointer; font-weight: 700;">COPIER
+                                                TOUT</button>
+                                        </div>
+                                    </th>
+
+                                    <th style="width: 15%; color: var(--primary-color); padding-left: 14px;">
+                                        PRIX VENTE ({{ entreprise?.devise?.symbole || 'TND' }})*
+                                        <div style="display: block; margin-top: 6px;">
+                                            <button type="button" class="btn-text-link-mini" (click)="copyVenteToAll()"
+                                                style="font-size: 10px; color: #3d7a7f; background:none; border:none; padding:0; cursor:pointer; font-weight: 700;">COPIER
+                                                TOUT</button>
+                                        </div>
+                                    </th>
+                                    <th style="width: 3px; padding: 0; background: #f1f5f9;"></th>
+                                    <th style="width: 10%; color: var(--primary-color); padding-left: 14px;">
+                                        TAXES %
+                                        <div style="display: block; margin-top: 6px;">
+                                            <button type="button" class="btn-text-link-mini" (click)="copyTaxToAll()"
+                                                style="font-size: 10px; color: #3d7a7f; background:none; border:none; padding:0; cursor:pointer; font-weight: 700;">COPIER
+                                                TOUT</button>
+                                        </div>
+                                    </th>
+                                    <th style="width: 7%; text-align: center;"></th>
+                                </tr>
+                            </thead>
+                            <tbody style="background: white;">
+                                <tr *ngFor="let detail of newPiece.details; let i = index"
+                                    style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;">
+                                    <td style="padding: 12px; vertical-align: middle;">
+                                        <div class="odoo-input"
+                                            style="background: #f8fafc; border: 1px solid #e2e8f0; font-size: 12px; color: #64748b; font-weight: 600; cursor: default; width: 100%; height: auto; min-height: 38px; padding: 10px 12px; line-height: 1.5; white-space: normal; word-break: break-word; user-select: text;">
+                                            {{ getVariantLabel(detail) }}
+                                        </div>
+                                    </td>
+                                    <td style="padding: 0; background: #f1f5f9; width: 3px;"></td>
+                                    <td style="padding: 12px;">
+                                        <div
+                                            style="display: flex; align-items: center; position: relative; width: 100%;">
+                                            <input type="text" [(ngModel)]="newPiece.details[i].codeBarre"
+                                                [name]="'barcode_var_' + i" class="odoo-input" placeholder="000"
+                                                pattern="[0-9]*" inputmode="numeric"
+                                                onkeypress="return event.charCode >= 48 && event.charCode <= 57"
+                                                style="padding-right: 30px; font-family: 'Roboto Mono', monospace; font-size: 13px; letter-spacing: 0.5px; border-color: #cbd5e1; width: 100%;">
+                                            <button type="button" (click)="generateVariantSKU(i)"
+                                                style="position: absolute; right: 10px; background: none; border: none; color: var(--primary-color); cursor: pointer; padding: 0; display: flex; align-items: center;"
+                                                title="Générer code à barre">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2.5">
+                                                    <path
+                                                        d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                                                    <rect x="5" y="8" width="2" height="8" />
+                                                    <rect x="9" y="8" width="1" height="8" />
+                                                    <rect x="12" y="8" width="2" height="8" />
+                                                    <rect x="16" y="8" width="3" height="8" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </td>
+
+                                    <td style="padding: 12px;">
+                                        <input type="number" [(ngModel)]="newPiece.details[i].prixVente"
+                                            [name]="'prixVente_var_' + i" class="odoo-input"
+                                            style="text-align: right; background: #ffffff; border-color: #cbd5e1; font-weight: 600; color: #1e293b; width: 100%;">
+                                    </td>
+                                    <td style="padding: 0; background: #f1f5f9; width: 3px;"></td>
+                                    <td style="padding: 12px;">
+                                        <div style="display: flex; align-items: center; gap: 4px;">
+                                            <input type="number" [(ngModel)]="newPiece.details[i].tauxTVA"
+                                                [name]="'tauxTVA_var_' + i" class="odoo-input"
+                                                style="text-align: right; background: #ffffff; border-color: #cbd5e1; font-weight: 600; color: #1e293b; width: 100%;"
+                                                placeholder="0">
+                                            <!-- <span style="font-size: 11px; color: #64748b; font-weight: 700;">%</span> -->
+                                        </div>
+                                    </td>
+                                    <td style="text-align: center;">
+                                        <div
+                                            style="display: flex; gap: 8px; justify-content: center; align-items: center;">
+                                            <button type="button"
+                                                style="background:none; border:none; padding:0; cursor:pointer;"
+                                                title="Détails">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                    viewBox="0 0 24 24" fill="none" stroke="#3d7a7f" stroke-width="2"
+                                                    style="opacity: 0.8;">
+                                                    <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                                </svg>
+                                            </button>
+                                            <button type="button" (click)="removeVariant(i)"
+                                                style="background:none; border:none; padding:0; cursor:pointer;"
+                                                title="Supprimer">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                    viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"
+                                                    style="opacity: 0.8;">
+                                                    <path
+                                                        d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
 
-            <div class="form-section-group" *ngIf="parametres?.champsPersonnalises && hasVisibleFields(false)"
-                style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 25px;">
-                <h3 class="section-header">Attributs Complémentaires</h3>
-                <div class="odoo-grid">
-                    <ng-container *ngFor="let champ of parametres?.champsPersonnalises; let i = index">
-                        <div class="odoo-field" *ngIf="champ.actif && !champ.variante">
-                            <label class="odoo-label">
-                                {{ champ.nom }}
-                                <span class="attribute-required" *ngIf="champ.obligatoire">*</span>
-                            </label>
-                            <div class="odoo-value">
-                                <ng-container [ngSwitch]="champ.type">
-                                    <input *ngSwitchCase="'TEXT'" type="text"
-                                        [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dynamic_' + i"
-                                        #dyn="ngModel" [required]="champ.obligatoire" class="odoo-input"
-                                        [placeholder]="champ.description || ''">
 
-                                    <input *ngSwitchCase="'EMAIL'" type="email"
-                                        [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dynamic_' + i"
-                                        #dyn="ngModel" [required]="champ.obligatoire" email class="odoo-input"
-                                        [placeholder]="champ.description || ''">
-
-                                    <input *ngSwitchCase="'URL'" type="url"
-                                        [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dynamic_' + i"
-                                        #dyn="ngModel" [required]="champ.obligatoire" class="odoo-input"
-                                        [placeholder]="champ.description || ''" pattern="https?://.+">
-
-                                    <textarea *ngSwitchCase="'TEXTAREA'"
-                                        [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dynamic_' + i"
-                                        #dyn="ngModel" [required]="champ.obligatoire" class="odoo-textarea"
-                                        [placeholder]="champ.description || ''"></textarea>
-
-                                    <input *ngSwitchCase="'NUMBER'" type="number"
-                                        [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dynamic_' + i"
-                                        #dyn="ngModel" [required]="champ.obligatoire" class="odoo-input">
-
-                                    <input *ngSwitchCase="'DATE'" type="date"
-                                        [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dynamic_' + i"
-                                        #dyn="ngModel" [required]="champ.obligatoire" class="odoo-input">
-
-                                    <select *ngSwitchCase="'SELECT'"
-                                        [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dynamic_' + i"
-                                        #dyn="ngModel" [required]="champ.obligatoire" class="odoo-select">
-                                        <option value="" disabled selected>Choisir...</option>
-                                        <option *ngFor="let opt of champ.options" [value]="opt">{{ opt }}</option>
-                                    </select>
-
-                                    <select *ngSwitchCase="'LISTE'"
-                                        [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dynamic_' + i"
-                                        #dyn="ngModel" [required]="champ.obligatoire" class="odoo-select">
-                                        <option value="" disabled selected>Choisir...</option>
-                                        <option *ngFor="let opt of champ.options" [value]="opt">{{ opt }}</option>
-                                    </select>
-
-                                    <label *ngSwitchCase="'BOOLEAN'" class="odoo-checkbox-group">
-                                        <input type="checkbox" [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]"
-                                            [name]="'dynamic_' + i">
-                                        {{ champ.nom }}
-                                    </label>
-                                </ng-container>
-                                <div class="error-msg-mini"
-                                    *ngIf="pieceForm.controls['dynamic_' + i]?.invalid && (pieceForm.controls['dynamic_' + i]?.dirty || pieceForm.controls['dynamic_' + i]?.touched || pieceForm.submitted)">
-                                    <span *ngIf="pieceForm.controls['dynamic_' + i]?.errors?.['required']">Ce champ est
-                                        obligatoire.</span>
-                                    <span *ngIf="pieceForm.controls['dynamic_' + i]?.errors?.['email']">Email
-                                        invalide.</span>
-                                    <span *ngIf="pieceForm.controls['dynamic_' + i]?.errors?.['pattern']">URL
-                                        invalide.</span>
-                                </div>
-                            </div>
-                        </div>
-                    </ng-container>
-                </div>
-            </div>
-
-            <div class="form-section-group" style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 25px;">
-                <h3 class="section-header">Inventaire & Stock</h3>
-                <div class="odoo-grid">
-                    <div class="odoo-group">
-                        <div class="odoo-field">
-                            <label class="odoo-label">Seuil Minimum <span class="attribute-required">*</span></label>
-                            <div class="odoo-value">
-                                <input type="number" [(ngModel)]="newPiece.seuilMinimum" name="seuilMinimum"
-                                    #smin="ngModel" required min="1" class="odoo-input"
-                                    [class.is-invalid]="smin.invalid && (smin.dirty || smin.touched || pieceForm.submitted)">
-                                <div class="error-msg"
-                                    *ngIf="smin.invalid && (smin.dirty || smin.touched || pieceForm.submitted)">
-                                    <span *ngIf="smin.errors?.['required']">Le seuil minimum est obligatoire.</span>
-                                    <span *ngIf="smin.errors?.['min']">Le seuil doit être strictement positif (>
-                                        0).</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="odoo-group">
-                        <div class="odoo-field">
-                            <label class="odoo-label">Seuil Maximum <span class="attribute-required">*</span></label>
-                            <div class="odoo-value">
-                                <input type="number" [(ngModel)]="newPiece.seuilMaximum" name="seuilMaximum"
-                                    #smax="ngModel" required min="1" class="odoo-input"
-                                    [class.is-invalid]="(smax.invalid || newPiece.seuilMaximum < newPiece.seuilMinimum) && (smax.dirty || smax.touched || pieceForm.submitted)">
-                                <div class="error-msg"
-                                    *ngIf="(smax.invalid || newPiece.seuilMaximum < newPiece.seuilMinimum) && (smax.dirty || smax.touched || pieceForm.submitted)">
-                                    <span *ngIf="smax.errors?.['required']">Le seuil maximum est obligatoire.</span>
-                                    <span *ngIf="smax.errors?.['min']">Le seuil doit être strictement positif (>
-                                        0).</span>
-                                    <span *ngIf="!smax.errors && newPiece.seuilMaximum < newPiece.seuilMinimum">Doit
-                                        être >= au seuil min.</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <div class="form-section-group" style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 25px;">
                 <h3 class="section-header" style="display: flex; justify-content: space-between; align-items: center;">
@@ -398,30 +526,29 @@
                     <div class="empty-state-text" style="color: #94a3b8; font-style: italic; font-size: 14px;">Aucun
                         produit associé.</div>
                 </div>
+            </div>
 
+            <div class="odoo-footer-actions" style="flex-direction: column; align-items: flex-start; gap: 0;">
+                <div class="global-error-msg"
+                    *ngIf="pieceForm.submitted && (pieceForm.invalid || !newPiece.categorie?.id)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    <span>Veuillez remplir tous les champs obligatoires correctement avant de continuer.</span>
+                </div>
+
+                <div style="display: flex; gap: 12px; width: 100%;">
+                    <button type="submit" class="btn-odoo-primary">
+                        {{ selectedPiece ? 'ENREGISTRER' : 'CRÉER' }}
+                    </button>
+                    <button type="button" class="btn-odoo-secondary" (click)="onCancel()">ANNULER</button>
+                </div>
             </div>
         </div>
     </div>
-
-    <div class="odoo-footer-actions" style="flex-direction: column; align-items: flex-start; gap: 0;">
-        <div class="global-error-msg" *ngIf="pieceForm.submitted && (pieceForm.invalid || !newPiece.categorie?.id)">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <span>Veuillez remplir tous les champs obligatoires correctement avant de continuer.</span>
-        </div>
-
-        <div style="display: flex; gap: 12px; width: 100%;">
-            <button type="submit" class="btn-odoo-primary">
-                {{ selectedPiece ? 'ENREGISTRER' : 'CRÉER' }}
-            </button>
-            <button type="button" class="btn-odoo-secondary" (click)="onCancel()">ANNULER</button>
-        </div>
-    </div>
-
 </form>
 
 <div class="product-selector-overlay" *ngIf="showProductSelector" (click)="toggleProductSelectorModal()">
@@ -511,8 +638,33 @@
 
                 <div class="premium-field">
                     <label>Code <span class="required">*</span></label>
-                    <input type="text" [(ngModel)]="newCategory.code" name="qccode" placeholder="Ex: CAT-01"
-                        class="premium-input">
+
+                    <ng-container *ngIf="isAutoCategoryCode">
+                        <div class="auto-info-badge">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                            Généré automatiquement ({{ getPrefix('CATEGORIE') }}...)
+                        </div>
+                        <small class="format-hint info-text"
+                            style="display: block; margin-top: 4px; color: #666; font-size: 0.85em;">
+                            <i class="fas fa-info-circle" style="margin-right: 4px;"></i> {{
+                            getFormatExplanation('CATEGORIE') }}
+                        </small>
+                    </ng-container>
+
+                    <ng-container *ngIf="!isAutoCategoryCode">
+                        <input type="text" [(ngModel)]="newCategory.code" name="qccode"
+                            [placeholder]="'Ex: ' + getPrefix('CATEGORIE') + '01'" class="premium-input"
+                            style="margin-top: 8px; animation: slideDown 0.2s ease-out;">
+                        <small class="format-hint info-text"
+                            style="display: block; margin-top: 4px; color: #666; font-size: 0.85em;">
+                            <i class="fas fa-info-circle" style="margin-right: 4px;"></i> {{
+                            getFormatExplanation('CATEGORIE') }}
+                        </small>
+                    </ng-container>
                 </div>
             </div>
         </div>
@@ -586,8 +738,33 @@
 
                     <div class="premium-field">
                         <label>Code Produit <span class="required">*</span></label>
-                        <input type="text" [(ngModel)]="newProduct.code" name="qpcode" placeholder="Ex: PF-100"
-                            class="premium-input">
+
+                        <ng-container *ngIf="isAutoProductCode">
+                            <div class="auto-info-badge">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                </svg>
+                                Généré automatiquement ({{ getPrefix('PRODUIT') }}...)
+                            </div>
+                            <small class="format-hint info-text"
+                                style="display: block; margin-top: 4px; color: #666; font-size: 0.85em;">
+                                <i class="fas fa-info-circle" style="margin-right: 4px;"></i> {{
+                                getFormatExplanation('PRODUIT') }}
+                            </small>
+                        </ng-container>
+
+                        <ng-container *ngIf="!isAutoProductCode">
+                            <input type="text" [(ngModel)]="newProduct.code" name="qpcode"
+                                [placeholder]="'Ex: ' + getPrefix('PRODUIT') + '100'" class="premium-input"
+                                style="margin-top: 8px; animation: slideDown 0.2s ease-out;">
+                            <small class="format-hint info-text"
+                                style="display: block; margin-top: 4px; color: #666; font-size: 0.85em;">
+                                <i class="fas fa-info-circle" style="margin-right: 4px;"></i> {{
+                                getFormatExplanation('PRODUIT') }}
+                            </small>
+                        </ng-container>
                     </div>
 
                     <div class="premium-field">

@@ -77,7 +77,7 @@ export interface MouvementStock {
 
 export interface BonCommandeFournisseur {
     id?: number;
-    numeroCmd: number;
+    numeroCmd: string;
     dateCmd: string;
     fournisseur?: Fournisseur;
     statut: StatutCommande;
@@ -101,9 +101,48 @@ export interface PieceFournisseur {
     prixAchat: number;
     qteMinACommander: number;
     tauxRemise: number;
+    nbJoursLivraison: number;
     estPrincipale: boolean;
     dateDebutValidite?: string;
     dateFinValidite?: string;
     piece: any;
     fournisseur: Fournisseur;
+}
+
+export interface StockLevelDTO {
+    designation: string;
+    currentQty: number;
+    minQty: number;
+    technicalDetails?: { [key: string]: any };
+}
+
+export interface MovementFlowDTO {
+    date: string;
+    entryQty: number;
+    exitQty: number;
+}
+
+export interface StockPredictionDTO {
+    stockId: number;
+    pieceId: number;
+    designation: string;
+    reference: string;
+    categoryName: string;
+    currentQty: number;
+    minQty: number;
+    dailyConsumptionRate: number;
+    daysRemaining: number;
+    estimatedStockoutDate: string;
+    predictionMethod?: string;
+    technicalDetails?: { [key: string]: any };
+}
+
+export interface DashboardDTO {
+    totalArticles: number;
+    lowStockArticles: number;
+    outOfStockArticles: number;
+    totalUnits: number;
+    stockLevels: StockLevelDTO[];
+    movementFlows: MovementFlowDTO[];
+    predictions: StockPredictionDTO[];
 }

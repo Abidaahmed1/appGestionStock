@@ -8,6 +8,7 @@ import com.gestionStock.backend.entity.piece.ProduitFini;
 import com.gestionStock.backend.repository.piece.DetailPieceRepository;
 import com.gestionStock.backend.entity.piece.DetailPiece;
 import com.gestionStock.backend.repository.piece.PieceDetacheeRepository;
+import com.gestionStock.backend.repository.piece.UniteRepository;
 import com.gestionStock.backend.repository.piece.CategorieRepository;
 import com.gestionStock.backend.repository.piece.ProduitFiniRepository;
 import com.gestionStock.backend.entity.Stock.Stock;
@@ -31,6 +32,7 @@ import java.util.stream.Collectors;
 @Transactional
 public class PieceDetacheeService {
 
+    private static final Object PIECE_LOCK = new Object();
     private final PieceDetacheeRepository pieceRepo;
     private final CategorieRepository categorieRepo;
     private final ProduitFiniRepository produitRepo;
@@ -38,11 +40,12 @@ public class PieceDetacheeService {
     private final DetailPieceRepository detailPieceRepo;
     private final NotificationService notificationService;
     private final UserService userService;
+    private final UniteRepository uniteRepo;
+    private final com.gestionStock.backend.entity.parametre.NumerotationService numerotationService;
 
     public List<PieceDetachee> getAll() {
         com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
         if (entreprise == null) {
-            // Aucun utilisateur ou aucune entreprise associée : retourner une liste vide
             return java.util.List.of();
         }
         return pieceRepo.findByEntreprise(entreprise);
@@ -51,7 +54,6 @@ public class PieceDetacheeService {
     public List<PieceDetachee> findByActive() {
         com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
         if (entreprise == null) {
-            // Aucun utilisateur ou aucune entreprise associée : retourner une liste vide
             return java.util.List.of();
         }
         return this.pieceRepo.findByArchiveeAndEntreprise(false, entreprise);
@@ -59,19 +61,40 @@ public class PieceDetacheeService {
 
     public PieceDetachee addPiece(PieceDetachee piece) {
         com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
-        if (entreprise != null && this.pieceRepo.existsByCodeBarreAndEntreprise(piece.getCodeBarre(), entreprise)) {
-            throw new PieceException("Une pièce avec ce code barre '" + piece.getCodeBarre() + "' existe déjà.");
+
+        if (piece.getReference() == null || piece.getReference().trim().isEmpty()
+                || "AUTO".equalsIgnoreCase(piece.getReference())) {
+            synchronized (PIECE_LOCK) {
+                piece.setReference(numerotationService.generateNextNumber("PIECE"));
+            }
+        } else {
+            numerotationService.validateReference("PIECE", piece.getReference());
+        }
+
+        if (entreprise != null && this.pieceRepo.existsByReferenceAndEntreprise(piece.getReference(), entreprise)) {
+            throw new PieceException("Une pièce avec cette référence '" + piece.getReference() + "' existe déjà.");
         }
 
         piece.setEntreprise(entreprise);
 
         handleCategory(piece);
+        handleUnite(piece);
 
         Set<ProduitFini> produitsToAssociate = piece.getProduitsAssocies();
         piece.setProduitsAssocies(new HashSet<>());
 
         if (piece.getDetails() != null) {
-            piece.getDetails().forEach(detail -> detail.setPiece(piece));
+            for (DetailPiece detail : piece.getDetails()) {
+                if (detail.getCodeBarre() != null && !detail.getCodeBarre().trim().isEmpty()) {
+                    detailPieceRepo.findByCodeBarreAndPieceEntreprise(detail.getCodeBarre(), entreprise)
+                            .ifPresent(existing -> {
+                                throw new PieceException("Le code barre '" + detail.getCodeBarre() +
+                                        "' est déjà utilisé par la pièce '" + existing.getPiece().getDesignation()
+                                        + "'.");
+                            });
+                }
+                detail.setPiece(piece);
+            }
         }
 
         PieceDetachee savedPiece = this.pieceRepo.save(piece);
@@ -117,10 +140,8 @@ public class PieceDetacheeService {
                 .orElse(null);
     }
 
-    public void delete(String code) {
-        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
-        PieceDetachee p = (entreprise != null) ? this.pieceRepo.findByCodeBarreAndEntreprise(code, entreprise)
-                : this.pieceRepo.findByCodeBarre(code);
+    public void delete(Long id) {
+        PieceDetachee p = this.pieceRepo.findById(id).orElse(null);
         if (p == null)
             return;
 
@@ -153,23 +174,31 @@ public class PieceDetacheeService {
             existingPiece.setEntreprise(entreprise);
         }
 
-        PieceDetachee pieceWithSameCode = pieceRepo.findByCodeBarreAndEntreprise(piece.getCodeBarre(), entreprise);
-        if (pieceWithSameCode != null && !pieceWithSameCode.getId().equals(id)) {
-            throw new PieceException(
-                    "Le code barre '" + piece.getCodeBarre() + "' est déjà utilisé par une autre pièce.");
+        if (!existingPiece.getReference().equals(piece.getReference())) {
+            numerotationService.validateReference("PIECE", piece.getReference());
         }
 
-        existingPiece.setCodeBarre(piece.getCodeBarre());
+        PieceDetachee pieceWithSameCode = pieceRepo.findFirstByReferenceAndEntrepriseOrderByIdDesc(piece.getReference(),
+                entreprise);
+        if (pieceWithSameCode != null && !pieceWithSameCode.getId().equals(id)) {
+            throw new PieceException(
+                    "La référence '" + piece.getReference()
+                            + "' est déjà utilisée par une autre pièce dans votre entreprise.");
+        }
+
         existingPiece.setDesignation(piece.getDesignation());
-        existingPiece.setPrixVente(piece.getPrixVente());
         existingPiece.setReference(piece.getReference());
         existingPiece.setSeuilMinimum(piece.getSeuilMinimum());
         existingPiece.setSeuilMaximum(piece.getSeuilMaximum());
-        existingPiece.setTauxTVA(piece.getTauxTVA());
         existingPiece.setArchivee(piece.isArchivee());
         if (piece.getImageUrl() != null) {
             existingPiece.setImageUrl(piece.getImageUrl());
         }
+
+        handleCategory(piece);
+        handleUnite(piece);
+        existingPiece.setCategorie(piece.getCategorie());
+        existingPiece.setUnite(piece.getUnite());
 
         if (piece.getDetails() != null) {
             Set<Long> updatedDetailIds = piece.getDetails().stream()
@@ -180,50 +209,80 @@ public class PieceDetacheeService {
             existingPiece.getDetails().removeIf(d -> d.getId() != null && !updatedDetailIds.contains(d.getId()));
 
             for (DetailPiece updatedDetail : piece.getDetails()) {
+                if (updatedDetail.getCodeBarre() != null && !updatedDetail.getCodeBarre().trim().isEmpty()) {
+                    detailPieceRepo.findByCodeBarreAndPieceEntreprise(updatedDetail.getCodeBarre().trim(), entreprise)
+                            .ifPresent(existingWithCode -> {
+                                if (updatedDetail.getId() == null
+                                        || !existingWithCode.getId().equals(updatedDetail.getId())) {
+                                    throw new PieceException("Le code barre '" + updatedDetail.getCodeBarre()
+                                            + "' est déjà utilisé par la pièce '"
+                                            + existingWithCode.getPiece().getDesignation() + "'.");
+                                }
+                            });
+                }
+
                 if (updatedDetail.getId() != null) {
+                    // Update existing
                     existingPiece.getDetails().stream()
                             .filter(d -> d.getId().equals(updatedDetail.getId()))
                             .findFirst()
                             .ifPresent(existingDetail -> {
                                 existingDetail.setAttributs(updatedDetail.getAttributs());
+                                existingDetail.setCodeBarre(updatedDetail.getCodeBarre());
+                                existingDetail.setPrixVente(updatedDetail.getPrixVente());
+                                existingDetail.setTauxTVA(updatedDetail.getTauxTVA());
                             });
                 } else {
-                    boolean alreadyExists = existingPiece.getDetails().stream()
-                            .anyMatch(d -> d.getAttributs().equals(updatedDetail.getAttributs()));
+                    // Add new
+                    updatedDetail.setPiece(existingPiece);
 
-                    if (!alreadyExists) {
-                        updatedDetail.setPiece(existingPiece);
+                    Stock stock = new Stock();
+                    stock.setPiece(existingPiece);
+                    stock.setQuantite(0);
+                    stock.setType(TypeStock.RUPTURE_STOCK);
+                    stock = this.stockRepo.save(stock);
 
-                        Stock stock = new Stock();
-                        stock.setPiece(existingPiece);
-                        stock.setQuantite(0);
-                        stock.setType(TypeStock.RUPTURE_STOCK);
-                        stock = this.stockRepo.save(stock);
-
-                        updatedDetail.setStock(stock);
-                        existingPiece.getDetails().add(updatedDetail);
-                    }
+                    updatedDetail.setStock(stock);
+                    existingPiece.getDetails().add(updatedDetail);
                 }
             }
         }
 
-        handleCategory(piece);
-        existingPiece.setCategorie(piece.getCategorie());
+        // 4. Many-to-Many Synchronization (OWNER SIDE IS PRODUIT FINI)
+        Set<ProduitFini> incomingProduits = piece.getProduitsAssocies() != null ? piece.getProduitsAssocies()
+                : new HashSet<>();
+        Set<Long> incomingIds = incomingProduits.stream()
+                .filter(p -> p.getId() != null)
+                .map(ProduitFini::getId)
+                .collect(Collectors.toSet());
 
-        Set<ProduitFini> produitsToAssociate = piece.getProduitsAssocies();
-        Set<Long> newProductIds = produitsToAssociate == null ? Set.of()
-                : produitsToAssociate.stream()
-                        .filter(p -> p.getId() != null)
-                        .map(ProduitFini::getId)
-                        .collect(Collectors.toSet());
+        // Products to REMOVE (were associated but not in incoming)
+        Set<ProduitFini> currentlyAssociated = new HashSet<>(existingPiece.getProduitsAssocies());
+        for (ProduitFini prod : currentlyAssociated) {
+            if (!incomingIds.contains(prod.getId())) {
+                ProduitFini managedProd = produitRepo.findById(prod.getId()).orElse(null);
+                if (managedProd != null) {
+                    managedProd.getPieces().remove(existingPiece);
+                    produitRepo.save(managedProd);
+                }
+                existingPiece.getProduitsAssocies().remove(prod);
+            }
+        }
 
-        existingPiece.getProduitsAssocies().removeIf(prod -> !newProductIds.contains(prod.getId()));
+        // Products to ADD (in incoming but not currently associated)
+        Set<Long> currentIds = currentlyAssociated.stream().map(ProduitFini::getId).collect(Collectors.toSet());
+        for (ProduitFini prod : incomingProduits) {
+            if (prod.getId() != null && !currentIds.contains(prod.getId())) {
+                ProduitFini managedProd = produitRepo.findById(prod.getId()).orElse(null);
+                if (managedProd != null) {
+                    managedProd.getPieces().add(existingPiece);
+                    produitRepo.save(managedProd);
+                    existingPiece.getProduitsAssocies().add(managedProd);
+                }
+            }
+        }
 
-        PieceDetachee savedPiece = pieceRepo.save(existingPiece);
-
-        handleProductAssociations(savedPiece, produitsToAssociate);
-
-        return savedPiece;
+        return pieceRepo.save(existingPiece);
     }
 
     private void handleCategory(PieceDetachee piece) {
@@ -238,6 +297,12 @@ public class PieceDetacheeService {
             if (existing != null) {
                 piece.setCategorie(existing);
             }
+        }
+    }
+
+    private void handleUnite(PieceDetachee piece) {
+        if (piece.getUnite() != null && piece.getUnite().getId() != null) {
+            uniteRepo.findById(piece.getUnite().getId()).ifPresent(piece::setUnite);
         }
     }
 

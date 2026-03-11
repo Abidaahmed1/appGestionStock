@@ -1,6 +1,5 @@
 export interface PieceDetachee {
     id?: number;
-    codeBarre: string;
     designation: string;
     prixVente: number;
     reference: string;
@@ -16,11 +15,21 @@ export interface PieceDetachee {
     entreprise?: any;
     variantDetail?: DetailPiece;
     originalPiece?: PieceDetachee;
+    unite?: Unite;
+}
+
+export interface Unite {
+    id?: number;
+    nom: string;
+    abbreviation?: string;
 }
 
 export interface DetailPiece {
     id?: number;
     attributs: { [key: string]: any };
+    codeBarre?: string;
+    prixVente?: number;
+    tauxTVA?: number;
     stock?: Stock;
 }
 
@@ -37,9 +46,19 @@ export interface ChampPersonnalise {
     _showAddInput?: boolean;
 }
 
+export interface NumerotationConfig {
+    module: string;
+    prefix: string;
+    numeroDebut: string;
+    redemarrer: string;
+    automatique?: boolean;
+    actif: boolean;
+}
+
 export interface Parametre {
     id?: number;
     champsPersonnalises: ChampPersonnalise[];
+    numerotationConfigs: NumerotationConfig[];
 }
 
 export interface Categorie {

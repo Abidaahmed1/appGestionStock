@@ -171,12 +171,45 @@
                         <div class="form-group produit-form-group">
                             <label>Code Produit <span class="required">*</span></label>
                             <div class="control-wrapper">
-                                <input type="text" [(ngModel)]="newProduit.code" name="code" #c="ngModel" required
-                                    pattern="^PF-.*" placeholder="Ex: PF-100">
-                                <span class="error-msg" *ngIf="c.invalid && c.touched">
-                                    <span *ngIf="c.errors?.['required']">Le code produit est obligatoire</span>
-                                    <span *ngIf="c.errors?.['pattern']">Le code doit commencer par PF-</span>
-                                </span>
+                                <div class="auto-toggle-container" *ngIf="false">
+                                    <div class="toggle-option" [class.active]="isAutoCode" (click)="toggleAutoCode(true)">
+                                        <div class="toggle-check">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                        </div>
+                                        <span class="toggle-main-text">Auto</span>
+                                    </div>
+                                    <div class="toggle-option" [class.active]="!isAutoCode" (click)="toggleAutoCode(false)">
+                                        <div class="toggle-check">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                        </div>
+                                        <span class="toggle-main-text">Manuel</span>
+                                    </div>
+                                </div>
+                                
+                                <ng-container *ngIf="isAutoCode">
+                                    <div class="auto-info-badge">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                        Généré automatiquement ({{ getPrefix('PRODUIT') }}...)
+                                    </div>
+                                    <small class="format-hint info-text" style="display: block; margin-top: 4px; color: #666; font-size: 0.85em;">
+                                        <i class="fas fa-info-circle" style="margin-right: 4px;"></i> {{ getFormatExplanation('PRODUIT') }}
+                                    </small>
+                                </ng-container>
+
+                                <ng-container *ngIf="!isAutoCode">
+                                    <input type="text" [(ngModel)]="newProduit.code" name="code" required
+                                        [placeholder]="'Ex: ' + getPrefix('PRODUIT') + '123'" style="margin-top: 8px; animation: slideDown 0.2s ease-out;">
+                                    <small class="format-hint info-text" style="display: block; margin-top: 4px; color: #666; font-size: 0.85em;">
+                                        <i class="fas fa-info-circle" style="margin-right: 4px;"></i> {{ getFormatExplanation('PRODUIT') }}
+                                    </small>
+                                    <span class="error-msg" *ngIf="produitForm.controls['code']?.invalid && produitForm.controls['code']?.touched">
+                                        <span *ngIf="produitForm.controls['code']?.errors?.['required']">Le code produit est obligatoire</span>
+                                    </span>
+                                </ng-container>
                             </div>
                         </div>
 

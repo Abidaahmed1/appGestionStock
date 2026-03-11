@@ -224,20 +224,22 @@
                 <p>Voici l'état actuel de votre stock et de vos opérations.</p>
             </div>
 
-            <div class="stats-grid">
+            <div class="stats-grid" *ngIf="entreprise()">
                 <div class="stat-card">
                     <div class="stat-header">
-                        <span class="stat-label">Stock Total</span>
-                        <span class="stat-trend up">↑ 12%</span>
+                        <span class="stat-label">ENTREPRISE</span>
                     </div>
-                    <div class="stat-value">1,280</div>
+                    <div class="stat-value">{{ entreprise()?.nom }}</div>
+                    <div class="stat-trend">{{ entreprise()?.adresse }}</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-header">
-                        <span class="stat-label">Valeur Inventaire</span>
-                        <span class="stat-trend up">↑ 5%</span>
+                        <span class="stat-label">CONTACT GÉNÉRAL</span>
                     </div>
-                    <div class="stat-value">€12.5k</div>
+                    <div class="stat-value" style="font-size: 1.1rem; color: #64748b;">
+                        {{ entreprise()?.email }}
+                    </div>
+                    <div class="stat-trend">{{ entreprise()?.telephone }}</div>
                 </div>
             </div>
             }

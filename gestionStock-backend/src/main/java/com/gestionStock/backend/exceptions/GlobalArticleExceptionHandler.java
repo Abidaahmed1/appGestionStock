@@ -90,13 +90,27 @@ public class GlobalArticleExceptionHandler extends ResponseEntityExceptionHandle
 		return new ResponseEntity<>(e, HttpStatus.CONFLICT);
 	}
 
-	// 500 – Erreur inattendue (filet de sécurité)
+	// 400 – Erreur de lecture JSON (Jackson failure) - Overriding
+	// ResponseEntityExceptionHandler method
+	@Override
+	protected ResponseEntity<Object> handleHttpMessageNotReadable(
+			org.springframework.http.converter.HttpMessageNotReadableException ex,
+			HttpHeaders headers,
+			HttpStatusCode status,
+			WebRequest request) {
+		String msg = "Erreur de lecture de la requête (JSON mal formé ou types incompatibles) : "
+				+ ex.getMostSpecificCause().getMessage();
+		Erreur e = new Erreur(LocalDateTime.now(), msg, HttpStatus.BAD_REQUEST.value());
+		return new ResponseEntity<>(e, HttpStatus.BAD_REQUEST);
+	}
+
 	// 500 – Erreur inattendue (filet de sécurité)
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<Erreur> handleUnexpected(Exception ex) {
+		String msg = "Erreur interne : " + ex.getMessage();
 		Erreur e = new Erreur(
 				LocalDateTime.now(),
-				"Une erreur interne est survenue. Veuillez contacter l'administrateur.",
+				msg,
 				HttpStatus.INTERNAL_SERVER_ERROR.value());
 		return new ResponseEntity<>(e, HttpStatus.INTERNAL_SERVER_ERROR);
 	}

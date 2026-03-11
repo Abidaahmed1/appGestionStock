@@ -149,6 +149,12 @@ export const routes: Routes = [
                 canActivate: [authGuard],
                 data: { roles: ['ADMINISTRATEUR'] }
             },
+            {
+                path: 'admin/numerotation',
+                loadComponent: () => import('./admin/components/numerotation-gestion/numerotation-gestion.component').then(m => m.NumerotationGestionComponent),
+                canActivate: [authGuard],
+                data: { roles: ['ADMINISTRATEUR'] }
+            },
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
             {
                 path: 'dashboard',

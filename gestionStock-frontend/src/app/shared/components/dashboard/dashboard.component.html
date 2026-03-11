@@ -1,0 +1,200 @@
+<div class="dashboard-container">
+    <header class="dashboard-header">
+        <div class="header-content">
+            <h1>Tableau de Bord</h1>
+            <p>Analyse prédictive et suivi des stocks par entreprise</p>
+        </div>
+        <div class="header-actions">
+            <!-- Searchable Dropdown Piece Filter -->
+            <div class="filter-group search-dropdown" style="position: relative; margin-right: 1.5rem;">
+                <div class="dropdown-trigger" (click)="toggleDropdown()"
+                    style="display: flex; align-items: center; background: rgba(61, 122, 127, 0.1); padding: 0.5rem 1rem; border-radius: 12px; border: 1px solid rgba(61, 122, 127, 0.3); cursor: pointer; min-width: 250px;">
+                    <i class="fas fa-search" style="color: #3d7a7f; margin-right: 0.75rem;"></i>
+                    <span style="font-weight: 600; color: #1e293b; font-size: 0.9rem; flex-grow: 1;">{{
+                        selectedPieceName }}</span>
+                    <i class="fas fa-chevron-down" style="color: #3d7a7f; font-size: 0.7rem;"></i>
+                </div>
+
+                <div *ngIf="showDropdown" class="dropdown-content"
+                    style="position: absolute; top: 110%; left: 0; width: 300px; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; z-index: 1000; padding: 0.5rem;">
+
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                        <input type="text" [(ngModel)]="searchTerm" placeholder="Filtrer..." autofocus
+                            style="flex-grow: 1; padding: 0.6rem; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-size: 0.85rem;">
+                        <button (click)="showDropdown = false"
+                            style="background: #f1f5f9; border: none; padding: 0 0.75rem; border-radius: 8px; cursor: pointer; color: #64748b;"><i
+                                class="fas fa-times"></i></button>
+                    </div>
+
+                    <ul style="list-style: none; padding: 0; margin: 0; max-height: 250px; overflow-y: auto;">
+                        <li (click)="selectPiece(null)"
+                            [style.background]="selectedPieceIds.length === 0 ? '#f0f7f7' : ''"
+                            style="padding: 0.6rem 0.75rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
+                            <strong>Tout (Global)</strong>
+                            <i *ngIf="selectedPieceIds.length === 0" class="fas fa-check" style="color: #3d7a7f;"></i>
+                        </li>
+                        <li *ngFor="let p of filteredPieces" (click)="selectPiece(p)"
+                            style="padding: 0.6rem 0.75rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; flex-direction: column;">
+                                <span style="font-weight: 600; color: #1e293b;">{{ p.designation }}</span>
+                                <span style="font-size: 0.75rem; color: #64748b;">Réf: {{ p.reference }}</span>
+                            </div>
+                            <i *ngIf="isPieceSelected(p.id)" class="fas fa-check-square"
+                                style="color: #3d7a7f; font-size: 1.1rem;"></i>
+                            <i *ngIf="!isPieceSelected(p.id)" class="far fa-square"
+                                style="color: #cbd5e1; font-size: 1.1rem;"></i>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <button class="btn-refresh" (click)="loadMetrics()">
+                <i class="fas fa-sync-alt" [class.fa-spin]="loading"></i>
+                <span>Actualiser</span>
+            </button>
+        </div>
+    </header>
+
+    <div *ngIf="loading" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Chargement des statistiques...</p>
+    </div>
+
+    <ng-container *ngIf="metrics && !loading">
+        <div class="kpi-grid">
+            <div class="kpi-card stats-articles" title="Nombre total de références de pièces différentes enregistrées">
+                <div class="kpi-icon"><i class="fas fa-box-open"></i></div>
+                <div class="kpi-info">
+                    <span class="label">Articles Actifs</span>
+                    <span class="value">{{ metrics.totalArticles }}</span>
+                </div>
+            </div>
+            <div class="kpi-card stats-units"
+                title="Nombre total d'unités physiques en stock (tous articles confondus)">
+                <div class="kpi-icon"><i class="fas fa-layer-group"></i></div>
+                <div class="kpi-info">
+                    <span class="label">Volume Total</span>
+                    <span class="value">{{ metrics.totalUnits }}</span>
+                </div>
+            </div>
+            <div class="kpi-card stats-alert" title="Articles ayant atteint ou dépassé leur seuil de sécurité minimum">
+                <div class="kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="kpi-info">
+                    <span class="label">Sous Seuil</span>
+                    <span class="value">{{ metrics.lowStockArticles }}</span>
+                </div>
+            </div>
+            <div class="kpi-card stats-rupture" title="Articles dont le stock est actuellement à zéro">
+                <div class="kpi-icon"><i class="fas fa-times-circle"></i></div>
+                <div class="kpi-info">
+                    <span class="label">Rupture</span>
+                    <span class="value">{{ metrics.outOfStockArticles }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="chart-section card">
+                <div class="card-header">
+                    <h3>Niveaux de Stock (Top 20)</h3>
+                    <span class="badge">Actuel vs Min</span>
+                </div>
+                <div class="chart-wrapper">
+                    <apx-chart [series]="stockChartOptions.series" [chart]="stockChartOptions.chart"
+                        [dataLabels]="stockChartOptions.dataLabels" [plotOptions]="stockChartOptions.plotOptions"
+                        [yaxis]="stockChartOptions.yaxis" [legend]="stockChartOptions.legend"
+                        [fill]="stockChartOptions.fill" [stroke]="stockChartOptions.stroke"
+                        [tooltip]="stockChartOptions.tooltip" [xaxis]="stockChartOptions.xaxis"
+                        [colors]="stockChartOptions.colors"></apx-chart>
+                </div>
+            </div>
+
+            <!-- Movement Flow Chart -->
+            <div class="chart-section card">
+                <div class="card-header">
+                    <h3>Flux des Mouvements</h3>
+                    <span class="badge">30 Jours</span>
+                </div>
+                <div class="chart-wrapper">
+                    <apx-chart [series]="flowChartOptions.series" [chart]="flowChartOptions.chart"
+                        [xaxis]="flowChartOptions.xaxis" [stroke]="flowChartOptions.stroke"
+                        [tooltip]="flowChartOptions.tooltip" [dataLabels]="flowChartOptions.dataLabels"
+                        [colors]="flowChartOptions.colors" [fill]="flowChartOptions.fill"></apx-chart>
+                </div>
+            </div>
+        </div>
+
+        <!-- Predictions Table - Integrated Style with More Details -->
+        <div class="prediction-section card">
+            <div class="card-header">
+                <h3>Anticipation des Ruptures (EDS)</h3>
+                <span class="badge">Intelligence Prédictive</span>
+            </div>
+
+            <div class="table-container" *ngIf="metrics.predictions.length > 0; else noPredictions">
+                <table class="prediction-table">
+                    <thead>
+                        <tr>
+                            <th>Pièce & Détails</th>
+                            <th>Catégorie</th>
+                            <th>Stock / Seuil</th>
+                            <th>Conso. (/j)</th>
+                            <th>Autonomie</th>
+                            <th>Rupture</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let pred of metrics.predictions">
+                            <td>
+                                <div class="piece-cell">
+                                    <span class="piece-name">{{ pred.designation }}</span>
+                                    <span class="piece-id">Réf: {{ pred.reference }} &bull; {{ pred.predictionMethod ||
+                                        'IA' }}</span>
+                                    <div *ngIf="pred.technicalDetails && (pred.technicalDetails | keyvalue).length > 0"
+                                        class="technical-details">
+                                        {{ getTechnicalDetailsString(pred.technicalDetails) }}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge" style="background: #f1f5f9; color: #475569; font-size: 0.7rem;">
+                                    {{ pred.categoryName }}
+                                </span>
+                            </td>
+                            <td>
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-weight: 800; color: #1e293b;">{{ pred.currentQty }}</span>
+                                    <span style="font-size: 0.75rem; color: #64748b;">Min: {{ pred.minQty }}</span>
+                                </div>
+                            </td>
+                            <td>{{ pred.dailyConsumptionRate | number:'1.1-2' }}</td>
+                            <td>
+                                <div class="days-badge" [ngClass]="getPredictionClass(pred.daysRemaining)">
+                                    {{ pred.daysRemaining }} jours
+                                </div>
+                            </td>
+                            <td style="font-size: 0.85rem; font-weight: 600; color: #475569;">
+                                {{ pred.estimatedStockoutDate | date:'dd/MM/yyyy' }}
+                            </td>
+                            <td>
+                                <button class="btn-restock" *ngIf="pred.daysRemaining < 15">
+                                    Réappro.
+                                </button>
+                                <span style="color: #10b981; font-size: 0.8rem; font-weight: 600;"
+                                    *ngIf="pred.daysRemaining >= 15">OK</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <ng-template #noPredictions>
+                <div style="padding: 3rem; text-align: center; color: #64748b;">
+                    <i class="fas fa-check-circle" style="font-size: 2rem; color: #3d7a7f; margin-bottom: 1rem;"></i>
+                    <p>Aucun risque de rupture immédiat détecté.</p>
+                </div>
+            </ng-template>
+        </div>
+    </ng-container>
+</div>

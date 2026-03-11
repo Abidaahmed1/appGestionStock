@@ -25,7 +25,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
   private entrepriseService = inject(EntrepriseService);
 
   commande: BonCommandeFournisseur = {
-    numeroCmd: 0,
+    numeroCmd: '',
     dateCmd: '',
     fournisseur: null as any,
     statut: StatutCommande.EN_ATTENTE,
@@ -57,6 +57,8 @@ export class CommandeFournisseurFormComponent implements OnInit {
   filteredFournisseurs: Fournisseur[] = [];
   entreprise: Entreprise | null = null;
   notification: { message: string, type: 'success' | 'error' } | null = null;
+  isAutoNumeroCmd = true;
+  parametres: any = null;
 
   isPrintView = false;
   private afterPrintListener: (() => void) | null = null;
@@ -66,6 +68,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
       this.loadFournisseurs();
       this.loadPieces();
       this.loadEntreprise();
+      this.loadParametres();
 
       if (this.logistiqueService.commandeDraft) {
         this.commande = this.logistiqueService.commandeDraft;
@@ -82,7 +85,6 @@ export class CommandeFournisseurFormComponent implements OnInit {
           const numericId = parseInt(id, 10);
           if (!isNaN(numericId)) {
             if (this.isEditMode && this.commande.id === numericId) {
-              // Already loaded from draft
             } else {
               this.isEditMode = true;
               this.loadCommande(numericId);
@@ -102,23 +104,75 @@ export class CommandeFournisseurFormComponent implements OnInit {
     }
   }
 
-  initNewCommande(): BonCommandeFournisseur {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
-    const day = now.getDate().toString().padStart(2, '0');
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    const formattedDate = `${year}-${month}-${day}T${hours}:${minutes}`;
+  loadParametres() {
+    this.magasinierService.getAllParametres().subscribe({
+      next: (data) => {
+        if (data && data.length > 0) {
+          this.parametres = data[0];
+          if (!this.isEditMode) {
+            this.isAutoNumeroCmd = this.isModuleAuto('BON_COMMANDE');
+            this.commande.numeroCmd = this.isAutoNumeroCmd ? 'AUTO' : '';
+          }
+          this.cdr.detectChanges();
+        }
+      },
+      error: (err) => console.error('Erreur chargement paramètres:', err)
+    });
+  }
 
+  isModuleAuto(moduleName: string): boolean {
+    const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+    return config ? config.automatique !== false : true;
+  }
+
+  getPrefix(moduleName: string): string {
+    const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+    let prefix = config?.prefix || '';
+    if (prefix) {
+      const date = new Date();
+      prefix = prefix
+        .replace('%YYYY%', date.getFullYear().toString())
+        .replace('%YY%', date.getFullYear().toString().substring(2))
+        .replace('%MM%', (date.getMonth() + 1).toString().padStart(2, '0'))
+        .replace('%DD%', date.getDate().toString().padStart(2, '0'));
+    }
+    return prefix;
+  }
+
+  getFormatExplanation(moduleName: string): string {
+    const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+    const prefix = config?.prefix || '';
+    
+    let parts = [];
+    if (prefix.includes('%YYYY%')) parts.push("l'année sur 4 chiffres");
+    else if (prefix.includes('%YY%')) parts.push("l'année sur 2 chiffres");
+    
+    if (prefix.includes('%MM%')) parts.push("le mois sur 2 chiffres");
+    if (prefix.includes('%DD%')) parts.push("le jour sur 2 chiffres");
+    
+    if (parts.length > 0) {
+        return `Astuce : Le numéro inclut ${parts.join(', ')} suivis d'une séquence.`;
+    }
+    return 'Séquence simple (sans date)';
+  }
+
+  initNewCommande(): BonCommandeFournisseur {
     return {
-      numeroCmd: 0,
-      dateCmd: formattedDate,
-      dateArrivee: '',
-      fournisseur: null as any,
+      numeroCmd: 'AUTO',
+      dateCmd: new Date().toISOString().substring(0, 16),
       statut: StatutCommande.EN_ATTENTE,
       lignes: []
-    };
+    } as BonCommandeFournisseur;
+  }
+
+  toggleAutoNumeroCmd(val: boolean): void {
+    this.isAutoNumeroCmd = val;
+    if (val) {
+      this.commande.numeroCmd = 'AUTO';
+    } else if (this.commande.numeroCmd === 'AUTO') {
+      this.commande.numeroCmd = '';
+    }
+    this.cdr.detectChanges();
   }
 
   loadFournisseurs() {
@@ -184,6 +238,8 @@ export class CommandeFournisseurFormComponent implements OnInit {
     this.logistiqueService.getCommandeFournisseurById(id).subscribe({
       next: (data) => {
         this.commande = data;
+        this.isAutoNumeroCmd = this.commande.numeroCmd === 'AUTO';
+        this.isEditMode = true;
         // Format dates for datetime-local and date inputs
         if (this.commande.dateCmd) {
           this.commande.dateCmd = this.commande.dateCmd.substring(0, 16);
@@ -225,7 +281,54 @@ export class CommandeFournisseurFormComponent implements OnInit {
     this.logistiqueService.getPieceFournisseursByFournisseur(fournisseurId).subscribe(data => {
       this.pieceFournisseurs = data;
       this.updateLinesFromCatalog();
+      this.calculateExpectedArrival();
     });
+  }
+
+  calculateExpectedArrival() {
+    if (!this.commande || !this.commande.dateCmd || !this.isEditable) return;
+
+    let maxDays = 0;
+    const now = new Date();
+    const currentLines = this.commande.lignes || [];
+
+    if (currentLines.length > 0) {
+      currentLines.forEach(ligne => {
+        if (ligne && ligne.piece) {
+          const pieceId = ligne.piece.id || (typeof ligne.piece === 'number' ? ligne.piece : (ligne.piece as any).id);
+          if (pieceId && this.pieceFournisseurs) {
+            const catalogEntry = this.pieceFournisseurs.find(pf =>
+              pf && pf.piece && (pf.piece.id || pf.piece) === pieceId &&
+              (!pf.dateDebutValidite || new Date(pf.dateDebutValidite) <= now) &&
+              (!pf.dateFinValidite || new Date(pf.dateFinValidite) >= now) &&
+              (ligne.qteCmd >= (pf.qteMinACommander || 1))
+            );
+            if (catalogEntry && catalogEntry.nbJoursLivraison > maxDays) {
+              maxDays = catalogEntry.nbJoursLivraison;
+            }
+          }
+        }
+      });
+    }
+
+    if (maxDays > 0) {
+      try {
+        const baseDate = new Date(this.commande.dateCmd);
+        if (!isNaN(baseDate.getTime())) {
+          const arrival = new Date(baseDate.getTime() + (maxDays * 24 * 60 * 60 * 1000));
+          const year = arrival.getFullYear();
+          const month = (arrival.getMonth() + 1).toString().padStart(2, '0');
+          const day = arrival.getDate().toString().padStart(2, '0');
+          this.commande.dateArrivee = `${year}-${month}-${day}`;
+        }
+      } catch (e) {
+        console.error('Error calculating date', e);
+      }
+    } else {
+      // If no valid catalog entries with delivery days found, clear arrival date or use order date as fallback
+      // this.commande.dateArrivee = ''; 
+    }
+    this.cdr.detectChanges();
   }
 
   updateLinesFromCatalog() {
@@ -234,23 +337,34 @@ export class CommandeFournisseurFormComponent implements OnInit {
     const now = new Date();
     this.commande.lignes.forEach(ligne => {
       if (ligne.piece) {
+        const pieceId = ligne.piece.id || (typeof ligne.piece === 'number' ? ligne.piece : (ligne.piece as any).id);
         const catalogEntry = this.pieceFournisseurs.find(pf =>
-          pf.piece.id === ligne.piece.id &&
+          (pf.piece.id || pf.piece) === pieceId &&
           (!pf.dateDebutValidite || new Date(pf.dateDebutValidite) <= now) &&
-          (!pf.dateFinValidite || new Date(pf.dateFinValidite) >= now)
+          (!pf.dateFinValidite || new Date(pf.dateFinValidite) >= now) &&
+          (ligne.qteCmd >= (pf.qteMinACommander || 1))
         );
 
         if (catalogEntry) {
-          // On met à jour le prix et la remise seulement si c'est une commande en attente
           if (this.isEditable) {
             ligne.prixAchat = catalogEntry.prixAchat;
             ligne.remise = catalogEntry.tauxRemise || 0;
             ligne.taxe = 19;
           }
+        } else if (this.isEditable) {
+          // Reset to default/suggested if no catalog match (e.g. qty below min)
+          // We only clear if it hasn't been manually set to something else? 
+          // For now, let's keep it simple: if it doesn't match catalog, user must handle it.
         }
       }
     });
     this.cdr.detectChanges();
+  }
+
+  onQuantityChange(index: number) {
+    this.updateLinesFromCatalog();
+    this.calculateExpectedArrival();
+    this.validate();
   }
 
   addLigne() {
@@ -261,6 +375,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
 
   removeLigne(index: number) {
     this.commande.lignes?.splice(index, 1);
+    this.calculateExpectedArrival();
     this.cdr.detectChanges();
   }
 
@@ -312,6 +427,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
     }
 
     this.validate();
+    this.calculateExpectedArrival();
     this.closeDropdown();
   }
 
@@ -560,8 +676,28 @@ export class CommandeFournisseurFormComponent implements OnInit {
     }
   }
 
-  getComparisonForPiece(pieceId: number): PieceFournisseur[] {
-    return this.allPieceFournisseurs.filter(pf => pf.piece.id === pieceId);
+  getComparisonForPiece(pieceId: number, qteCmd: number): PieceFournisseur[] {
+    const orderDate = this.commande.dateCmd ? new Date(this.commande.dateCmd) : new Date();
+
+    return this.allPieceFournisseurs.filter(pf => {
+      // Safety checks
+      if (!pf || !pf.piece || !pf.fournisseur) return false;
+
+      // 1. Match Piece
+      const pfPieceId = pf.piece.id || pf.piece;
+      if (pfPieceId !== pieceId) return false;
+
+      // 2. Quantity Condition: qteCmd must be >= qteMinACommander
+      const minQty = pf.qteMinACommander || 1;
+      if (qteCmd < minQty) return false;
+
+      // 3. Date Validity
+      const start = pf.dateDebutValidite ? new Date(pf.dateDebutValidite) : null;
+      const end = pf.dateFinValidite ? new Date(pf.dateFinValidite) : null;
+      const isValidDate = (!start || start <= orderDate) && (!end || end >= orderDate);
+
+      return isValidDate;
+    });
   }
 
   switchTab(tab: 'produits' | 'autres') {
@@ -642,7 +778,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
     // Extremely clean payload - only IDs and primitive values
     const payload: any = {
       id: this.commande.id,
-      numeroCmd: (this.commande.numeroCmd && this.commande.numeroCmd > 0) ? this.commande.numeroCmd : null,
+      numeroCmd: (this.commande.numeroCmd && String(this.commande.numeroCmd).trim() !== '' && String(this.commande.numeroCmd) !== '0') ? this.commande.numeroCmd : null,
       dateCmd: this.commande.dateCmd,
       dateArrivee: (this.commande.dateArrivee && this.commande.dateArrivee !== '') ? this.commande.dateArrivee : null,
       statut: this.commande.statut,

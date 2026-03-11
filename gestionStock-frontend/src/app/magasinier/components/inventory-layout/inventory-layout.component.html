@@ -69,7 +69,7 @@
                                 </div>
                             </td>
                             <td>{{ piece.reference }}</td>
-                            <td><code>{{ piece.codeBarre }}</code></td>
+                            <td><code>{{ piece.details?.length ? piece.details![0].codeBarre : '-' }}</code></td>
                             <td>
                                 <span class="badge warning" *ngIf="piece.archivee">Archivé</span>
                                 <span class="badge" *ngIf="!piece.archivee">Actif</span>

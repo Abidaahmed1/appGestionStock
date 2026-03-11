@@ -88,6 +88,23 @@ export class ItemDetailViewComponent implements OnInit {
     }));
   }
 
+  getVariantLabel(detail: any): string {
+      if (!detail || !detail.attributs) return 'Standard';
+      
+      const parts: string[] = [];
+      const keys = Object.keys(detail.attributs);
+      
+      for (const key of keys) {
+          if (!key.startsWith('_')) {
+              const val = detail.attributs[key];
+              if (val) {
+                  parts.push(val);
+              }
+          }
+      }
+      return parts.length > 0 ? parts.join(' - ') : 'Standard';
+  }
+
   getImageUrl(url: string | null | undefined): string {
     const isPiece = this.isPiece(this.item);
     const defaultImage = isPiece ? 'assets/images/default-piece.svg' : 'assets/images/default-produit.svg';

@@ -31,6 +31,8 @@ export class BonFormComponent implements OnInit {
 
     entreprise: Entreprise | null = null;
     notification: { message: string, type: 'success' | 'error' } | null = null;
+    isAutoNumeroBon = true;
+    parametres: any = null;
 
     bon: Bon = {
         numeroBon: '',
@@ -82,6 +84,7 @@ export class BonFormComponent implements OnInit {
             this.loadStocks();
             this.loadSourceBons();
             this.loadEntreprise();
+            this.loadParametres();
 
             const id = this.route.snapshot.paramMap.get('id');
             if (id && id !== 'nouveau') {
@@ -102,6 +105,68 @@ export class BonFormComponent implements OnInit {
             });
 
             this.cdr.detectChanges();
+        }
+    }
+
+    loadParametres() {
+        this.magasinierService.getAllParametres().subscribe({
+            next: (data) => {
+                if (data && data.length > 0) {
+                    this.parametres = data[0];
+                    if (!this.isEditMode) {
+                        const module = this.getModuleForType(this.bon.typeBon);
+                        this.isAutoNumeroBon = this.isModuleAuto(module);
+                        this.bon.numeroBon = this.isAutoNumeroBon ? 'AUTO' : '';
+                    }
+                    this.cdr.detectChanges();
+                }
+            },
+            error: (err) => console.error('Erreur chargement paramètres:', err)
+        });
+    }
+
+    isModuleAuto(moduleName: string): boolean {
+        const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+        return config ? config.automatique !== false : true;
+    }
+
+    getPrefix(moduleName: string): string {
+        const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+        let prefix = config?.prefix || '';
+        if (prefix) {
+            const date = new Date();
+            prefix = prefix
+                .replace('%YYYY%', date.getFullYear().toString())
+                .replace('%YY%', date.getFullYear().toString().substring(2))
+                .replace('%MM%', (date.getMonth() + 1).toString().padStart(2, '0'))
+                .replace('%DD%', date.getDate().toString().padStart(2, '0'));
+        }
+        return prefix;
+    }
+
+    getFormatExplanation(moduleName: string): string {
+        const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+        const prefix = config?.prefix || '';
+        
+        let parts = [];
+        if (prefix.includes('%YYYY%')) parts.push("l'année sur 4 chiffres");
+        else if (prefix.includes('%YY%')) parts.push("l'année sur 2 chiffres");
+        
+        if (prefix.includes('%MM%')) parts.push("le mois sur 2 chiffres");
+        if (prefix.includes('%DD%')) parts.push("le jour sur 2 chiffres");
+        
+        if (parts.length > 0) {
+            return `Astuce : Le numéro inclut ${parts.join(', ')} suivis d'une séquence.`;
+        }
+        return 'Séquence simple (sans date)';
+    }
+
+    getModuleForType(type: TypeBon): string {
+        switch (type) {
+            case TypeBon.ENTREE: return 'BON_ENTREE';
+            case TypeBon.SORTIE: return 'BON_SORTIE';
+            case TypeBon.RETOUR: return 'BON_RETOUR';
+            default: return 'BON_ENTREE';
         }
     }
 
@@ -129,7 +194,7 @@ export class BonFormComponent implements OnInit {
     initNewBon(): Bon {
         const now = new Date();
         return {
-            numeroBon: '',
+            numeroBon: 'AUTO',
             date: now.toISOString().substring(0, 10),
             typeBon: TypeBon.ENTREE
         };
@@ -159,6 +224,12 @@ export class BonFormComponent implements OnInit {
             this.resetLinesPrices();
         } else if (this.bon.typeBon === TypeBon.RETOUR) {
             this.mouvement.typeMouvement = TypeMouvement.ENTREE_RETOUR;
+        }
+
+        if (!this.isEditMode) {
+            const module = this.getModuleForType(this.bon.typeBon);
+            this.isAutoNumeroBon = this.isModuleAuto(module);
+            this.bon.numeroBon = this.isAutoNumeroBon ? 'AUTO' : '';
         }
 
         this.cdr.detectChanges();
@@ -329,6 +400,7 @@ export class BonFormComponent implements OnInit {
         this.logistiqueService.getBonById(id).subscribe({
             next: (data) => {
                 this.bon = data;
+                this.isAutoNumeroBon = this.bon.numeroBon === 'AUTO';
                 if (this.bon.date) this.bon.date = this.bon.date.substring(0, 10);
 
 
@@ -347,6 +419,16 @@ export class BonFormComponent implements OnInit {
                 this.router.navigate(['/magasinier/bons']);
             }
         });
+    }
+
+    toggleAutoNumeroBon(val: boolean): void {
+        this.isAutoNumeroBon = val;
+        if (val) {
+            this.bon.numeroBon = 'AUTO';
+        } else if (this.bon.numeroBon === 'AUTO') {
+            this.bon.numeroBon = '';
+        }
+        this.cdr.detectChanges();
     }
 
     addLigne() {
@@ -428,7 +510,6 @@ export class BonFormComponent implements OnInit {
             piece: {
                 id: rootPiece.id,
                 designation: rootPiece.designation,
-                codeBarre: rootPiece.codeBarre,
                 reference: rootPiece.reference
             },
             detailPiece: stock.detailPiece || piece.variantDetail || null

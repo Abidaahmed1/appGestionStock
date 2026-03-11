@@ -1,26 +1,38 @@
 <div class="admin-container">
     <div class="notification-toast" *ngIf="notification" [class.success]="notification.type === 'success'"
         [class.error]="notification.type === 'error'">
+        <div class="toast-icon">
+            <svg *ngIf="notification.type === 'success'" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <svg *ngIf="notification.type === 'error'" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+        </div>
         <span class="msg">{{ notification.message }}</span>
         <button class="close-btn" (click)="notification = null">✕</button>
     </div>
 
-    <ng-container *ngIf="!showCreateModal">
-        <div class="header-section">
-            <div class="header-left">
-                <h1>
-                    <div class="title-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path
-                                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
-                            </path>
-                        </svg>
-                    </div>
-                    Gestion des Pièces Détachées
-                </h1>
-                <div class="search-box">
-                    <div class="search-input-wrapper">
+    <div class="premium-stock-container">
+        <div class="piece-form-interface-container" *ngIf="showCreateModal">
+            <app-piece-form [selectedPiece]="selectedPiece" [categories]="categories" [produitsFinis]="produitsFinis"
+                [parametres]="parametres" [unites]="unites" [errorMessage]="formError" (save)="handleSavePiece($event)"
+                (cancel)="closeCreateModal()" (quickAddCategory)="handleQuickAddCategory($event)"
+                (quickAddProduct)="handleQuickAddProduct($event)">
+            </app-piece-form>
+        </div>
+
+        <header class="view-header" *ngIf="!activePiece && !showCreateModal">
+            <div class="header-main">
+                <h1>Pièces détachées</h1>
+                <div class="header-actions">
+                    <div class="search-modern">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="11" cy="11" r="8"></circle>
@@ -29,220 +41,428 @@
                         <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()"
                             placeholder="Rechercher une pièce...">
                     </div>
-                    <select class="category-select" [(ngModel)]="searchCategory" (ngModelChange)="applyFilters()">
-                        <option value="all">Tout</option>
-                        <option value="reference">Référence</option>
-                        <option value="designation">Désignation</option>
-                        <option value="codeBarre">Code Barre</option>
-                        <option value="produit">Produit Associé</option>
-                    </select>
-                    <button class="btn-filter-toggle" [class.active]="showAdvancedFilters"
-                        (click)="toggleAdvancedFilters()" title="Filtres avancés">
+                    <button class="btn-filter-trigger" (click)="showAdvancedFilters = !showAdvancedFilters"
+                        [class.active]="showAdvancedFilters">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                         </svg>
-                        Filtres
                     </button>
-                </div>
-            </div>
-            <button class="btn-add" (click)="openCreateModal()" *ngIf="canManage()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                Nouvelle Pièce
-            </button>
-        </div>
-
-        <div class="advanced-filter-panel" *ngIf="showAdvancedFilters">
-            <div class="filter-grid">
-                <div class="filter-col">
-                    <label>Catégorie</label>
-                    <select [(ngModel)]="filterCategory" (ngModelChange)="applyFilters()">
-                        <option value="all">Toutes les catégories</option>
-                        <option *ngFor="let cat of categories" [value]="cat.nom">{{ cat.nom }}</option>
-                    </select>
-                </div>
-                <div class="filter-col">
-                    <label>État du Stock</label>
-                    <select [(ngModel)]="filterStockStatus" (ngModelChange)="applyFilters()">
-                        <option value="all">Tous les états</option>
-                        <option value="ok">En Stock (Normal)</option>
-                        <option value="low">Seuil Critique</option>
-                        <option value="out">Rupture de Stock</option>
-                    </select>
-                </div>
-                <div class="filter-col">
-                    <label>Prix Minimum ({{ entreprise?.devise?.symbole || 'DT' }})</label>
-                    <input type="number" [(ngModel)]="filterMinPrice" (ngModelChange)="applyFilters()"
-                        placeholder="0.00">
-                </div>
-                <div class="filter-col">
-                    <label>Prix Maximum ({{ entreprise?.devise?.symbole || 'DT' }})</label>
-                    <input type="number" [(ngModel)]="filterMaxPrice" (ngModelChange)="applyFilters()"
-                        placeholder="999.99">
-                </div>
-                <div class="filter-col actions-col">
-                    <label>&nbsp;</label>
-                    <button class="btn-reset-filter-piece" (click)="resetFilters()">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                            <path d="M3 3v5h5"></path>
+                    <button class="btn-add-primary" (click)="openCreateModal()" *ngIf="canManage()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
                         </svg>
-                        Réinitialiser
+                        NOUVELLE
                     </button>
                 </div>
             </div>
-        </div>
 
-        <div class="loading-spinner-container" *ngIf="loading">
-            <div class="spinner"></div>
-            <span>Actualisation...</span>
-        </div>
-
-        <div class="card-grid" *ngIf="!loading">
-            <div class="item-card" *ngFor="let piece of filteredPiecesList; trackBy: pieceTrackBy">
-                <div class="card-image">
-                    <img [src]="getImageUrl(piece.imageUrl)"
-                        onerror="this.onerror=null;this.src='assets/images/default-piece.svg'">
-                    <div class="card-actions-overlay" *ngIf="canManage()">
-                        <button class="action-btn edit" title="Modifier" (click)="openEditModal(piece)">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                        </button>
-                        <button class="action-btn delete" title="Supprimer" (click)="confirmDelete(piece)">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path
-                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
-                                </path>
-                            </svg>
-                        </button>
+            <div class="filter-panel-premium" *ngIf="showAdvancedFilters">
+                <div class="filter-grid-premium">
+                    <div class="filter-field">
+                        <label>Catégorie</label>
+                        <select [(ngModel)]="filterCategory" (change)="applyFilters()">
+                            <option value="all">Toutes les catégories</option>
+                            <option *ngFor="let cat of categories" [value]="cat.nom">{{ cat.nom }}</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label>État du stock</label>
+                        <select [(ngModel)]="filterStockStatus" (change)="applyFilters()">
+                            <option value="all">Tous les états</option>
+                            <option value="ok">En stock</option>
+                            <option value="low">Stock faible</option>
+                            <option value="out">Rupture</option>
+                        </select>
+                    </div>
+                    <div class="filter-field">
+                        <label>Prix Min</label>
+                        <input type="number" [(ngModel)]="filterMinPrice" (ngModelChange)="applyFilters()"
+                            placeholder="0">
+                    </div>
+                    <div class="filter-field">
+                        <label>Prix Max</label>
+                        <input type="number" [(ngModel)]="filterMaxPrice" (ngModelChange)="applyFilters()"
+                            placeholder="1000">
                     </div>
                 </div>
-                <div class="card-content">
-                    <div class="card-header-info">
-                        <h3 class="item-title">{{ piece.designation }}</h3>
-                        <code class="item-code">{{ piece.codeBarre }}</code>
-                    </div>
-                    <div class="item-details">
-                        <div class="detail-row">
-                            <span class="label">Référence:</span>
-                            <span class="value">{{ piece.reference }}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="label">Seuil Min:</span>
-                            <span class="value">{{ piece.seuilMinimum }}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="label">Seuil Max:</span>
-                            <span class="value">{{ piece.seuilMaximum }}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="label">TVA:</span>
-                            <span class="value">{{ piece.tauxTVA }}%</span>
-                        </div>
-                    </div>
+            </div>
+        </header>
 
-                    <div class="stock-info-section">
-                        <div *ngIf="piece.variantDetail" class="stock-header single-variant">
-                            <span class="label">Stock Disponible :</span>
-                            <span class="total-badge" [class.out]="getTotalStock(piece) <= 0">
-                                {{ getTotalStock(piece) }}
-                            </span>
-                        </div>
+        <div class="view-content" *ngIf="!activePiece && !showCreateModal">
+            <div class="table-card">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th class="col-check">
+                                <div class="check-box-wrapper"><input type="checkbox"></div>
+                            </th>
+                            <th class="col-nom">
+                                <div class="sortable-header">
+                                    NOM
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <path d="m7 15 5 5 5-5"></path>
+                                        <path d="m7 9 5-5 5 5"></path>
+                                    </svg>
+                                </div>
+                            </th>
+                            <th class="col-ref">RÉFÉRENCE</th>
+                            <th class="col-stock">STOCK DISPONIBLE</th>
+                            <th class="col-level">NIVEAU DE RÉAPPROVISIONNEMENT</th>
+                            <th class="col-actions">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let piece of filteredPiecesList" (click)="selectPiece(piece)" class="row-clickable">
+                            <td class="col-check" (click)="$event.stopPropagation()">
+                                <div class="check-box-wrapper"><input type="checkbox"></div>
+                            </td>
+                            <td class="col-nom">
+                                <div class="item-identity">
+                                    <div class="item-icon-box"
+                                        [style.background-color]="piece.imageUrl ? 'white' : '#f1f5f9'">
+                                        <img *ngIf="piece.imageUrl" [src]="getImageUrl(piece.imageUrl)" alt="">
+                                        <svg *ngIf="!piece.imageUrl" xmlns="http://www.w3.org/2000/svg" width="18"
+                                            height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8"
+                                            stroke-width="2">
+                                            <path
+                                                d="m21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                                            </path>
+                                        </svg>
+                                    </div>
+                                    <span class="item-title-text">{{ piece.designation }}</span>
+                                </div>
+                            </td>
+                            <td class="col-ref">{{ piece.reference }}</td>
+                            <td class="col-stock" [class.low-stock]="getTotalStock(piece) < (piece.seuilMinimum || 0)">
+                                {{ getTotalStock(piece) | number:'1.2-2' }}
+                            </td>
+                            <td class="col-level">{{ piece.seuilMinimum || 0 | number:'1.2-2' }}</td>
+                            <td class="col-actions">
+                                <button class="btn-more-minimal"
+                                    (click)="$event.stopPropagation(); openEditModal(piece)" *ngIf="canManage()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                        <tr *ngIf="filteredPiecesList.length === 0" class="empty-row">
+                            <td colspan="6">
+                                <div class="table-empty-state">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"
+                                        fill="none" stroke="#cbd5e1" stroke-width="1.5">
+                                        <path
+                                            d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z">
+                                        </path>
+                                    </svg>
+                                    <h3>Aucune pièce ne correspond à votre recherche</h3>
+                                    <p>Essayez de modifier vos filtres ou d'ajouter une nouvelle pièce.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-                        <div *ngIf="!piece.variantDetail && piece.details && piece.details.length > 0"
-                            class="stock-header">
-                            <span class="label">Stock par variante :</span>
-                            <span class="total-badge" [class.out]="getTotalStock(piece) <= 0">
-                                {{ getTotalStock(piece) }} au total
-                            </span>
-                        </div>
-
-                        <div *ngIf="!piece.variantDetail && (!piece.details || piece.details.length === 0)"
-                            class="stock-header">
-                            <span class="label">Stock Disponible :</span>
-                            <span class="total-badge" [class.out]="getTotalStock(piece) <= 0">
-                                {{ getTotalStock(piece) }}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card-footer">
-                    <div class="footer-buttons">
-                        <button class="btn-view-associated"
-                            *ngIf="piece.produitsAssocies && piece.produitsAssocies.length > 0"
-                            (click)="showAssociatedProducts(piece)" title="Voir les produits associés">
+        <div class="detail-full-wrapper" *ngIf="activePiece && !showCreateModal">
+            <header class="detail-top-toolbar">
+                <div class="toolbar-left">
+                    <div class="title-with-subtitle">
+                        <h2>{{ activePiece.designation }}</h2>
+                        <div class="subtitle">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
+                                fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                            </svg>
+                            Article pouvant faire l'objet d'un retour
+                        </div>
+                    </div>
+                </div>
+                <div class="toolbar-right">
+                    <div class="action-buttons">
+                        <button class="btn-tool-minimal" (click)="openEditModal(activePiece)" title="Modifier">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+                            </svg>
+                        </button>
+                        <button class="btn-tool-primary" (click)="openCreateModal()" *ngIf="canManage()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+                                style="margin-right:6px;">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Nouvelle Pièce
+                        </button>
+
+                        <div class="divider-v"></div>
+                        <button class="btn-tool-close" (click)="closeDetail()" title="Fermer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <nav class="detail-secondary-nav">
+                <button class="nav-tab" [class.active]="activeTab === 'overview'" (click)="switchTab('overview')">Vue
+                    d'ensemble</button>
+                <button class="nav-tab" [class.active]="activeTab === 'associated'"
+                    (click)="switchTab('associated')">Produits Associés</button>
+                <button class="nav-tab" [class.active]="activeTab === 'variants'"
+                    (click)="switchTab('variants')">Variantes</button>
+            </nav>
+
+            <div class="detail-scroll-pane">
+                <div class="detail-grid-container" *ngIf="activeTab === 'overview'">
+                    <div class="detail-main-info">
+                        <div class="info-block">
+                            <div class="info-row">
+                                <span class="label">Type d'élément</span>
+                                <span class="value">Articles en stock</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">Catégorie</span>
+                                <span class="value">{{ activePiece.categorie?.nom || '--' }}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">Référence</span>
+                                <span class="value">{{ activePiece.reference }}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">Unité</span>
+                                <span class="value">{{ activePiece.unite?.nom || '--' }}</span>
+                            </div>
+
+                        </div>
+
+                        <div class="info-block with-title"
+                            *ngIf="activePiece.details && activePiece.details.length > 0">
+                            <h3 class="block-title">Prix de vente par variante</h3>
+                            <table style="width:100%; border-collapse:collapse; margin-top: 6px;">
+                                <thead>
+                                    <tr style="background:#f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                        <th
+                                            style="text-align:left; padding: 8px 12px; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">
+                                            Variante</th>
+                                        <th
+                                            style="text-align:right; padding: 8px 12px; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">
+                                            Prix de vente</th>
+                                        <th
+                                            style="text-align:right; padding: 8px 12px; font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">
+                                            TVA</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let detail of activePiece.details"
+                                        style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 12px; font-size:13px; color:#334155;">
+                                            {{ getVariantLabel(detail) }}
+                                        </td>
+                                        <td
+                                            style="padding: 10px 12px; text-align:right; font-size:13px; font-weight:600; color:#0f766e;">
+                                            {{ entreprise?.devise?.symbole || 'DT' }}{{ detail.prixVente || 0 |
+                                            number:'1.3-3' }}
+                                        </td>
+                                        <td
+                                            style="padding: 10px 12px; text-align:right; font-size:13px; color:#64748b;">
+                                            {{ detail.tauxTVA || 0 }}%
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="info-block with-title"
+                            *ngIf="!activePiece.details || activePiece.details.length === 0">
+                            <h3 class="block-title">Prix de vente</h3>
+                            <div class="info-row">
+                                <span class="label" style="color:#94a3b8; font-style:italic;">Aucune variante
+                                    configurée.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-side-visual">
+                        <div class="visual-card image-gallery-premium">
+                            <div class="gallery-header">
+                                <div class="header-asset">
+                                    <img *ngIf="activePiece.imageUrl" [src]="getImageUrl(activePiece.imageUrl)"
+                                        alt="Original">
+                                    <svg *ngIf="!activePiece.imageUrl" xmlns="http://www.w3.org/2000/svg" width="40"
+                                        height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1">
+                                        <path
+                                            d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z">
+                                        </path>
+                                        <circle cx="12" cy="13" r="4"></circle>
+                                    </svg>
+                                </div>
+                                <div class="asset-actions">
+                                    <button class="btn-asset-delete" *ngIf="activePiece?.imageUrl"
+                                        (click)="deletePieceImage(activePiece?.id!)">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path
+                                                d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2">
+                                            </path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="visual-card stock-summary-detailed">
+                            <div class="stock-header">
+                                <span class="label">Stock d'ouverture : <strong>0.00</strong></span>
+                                <button class="btn-text-link">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path>
+                                    </svg>
+                                    Modifier
+                                </button>
+                            </div>
+
+                            <div class="stock-section">
+                                <h4 class="section-title-with-icon">
+                                    Stock comptable
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <path d="M12 16v-4M12 8h.01"></path>
+                                    </svg>
+                                </h4>
+                                <div class="stock-row">
+                                    <span class="label">Stock disponible :</span>
+                                    <span class="value">{{ getTotalStock(activePiece) | number:'1.2-2' }}</span>
+                                </div>
+                                <div class="stock-row">
+                                    <span class="label">Stock engagé :</span>
+                                    <span class="value">0.00</span>
+                                </div>
+                                <div class="stock-row highlight">
+                                    <span class="label">Disponible à la vente :</span>
+                                    <span class="value">{{ getTotalStock(activePiece) | number:'1.2-2' }}</span>
+                                </div>
+                            </div>
+
+                            <div class="stock-section no-border">
+                                <h4 class="section-title-with-icon">
+                                    Stock physique
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <path d="M12 16v-4M12 8h.01"></path>
+                                    </svg>
+                                </h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="detail-associated-content" *ngIf="activeTab === 'associated'">
+                    <div class="tab-section-header">
+                        <h3>Produits Finis Utilisant cette Pièce</h3>
+                        <p>Liste des produits finis dans lesquels cette pièce est intégrée.</p>
+                    </div>
+
+                    <div class="associated-grid-compact">
+                        <div class="associated-item-row"
+                            *ngFor="let produit of activePiece.produitsAssocies; trackBy: produitTrackBy">
+                            <div class="item-thumb">
+                                <img [src]="getImageUrl(produit.imageUrl)" [alt]="produit.designation"
+                                    onerror="this.onerror=null;this.src='assets/images/default-produit.svg'">
+                            </div>
+                            <div class="item-info">
+                                <div class="item-name">{{ produit.designation }}</div>
+                                <div class="item-code">{{ produit.code }}</div>
+                            </div>
+                            <div class="item-status">
+                                <span class="status-badge">Actif</span>
+                            </div>
+                        </div>
+
+                        <div class="empty-tab-state"
+                            *ngIf="!activePiece.produitsAssocies || activePiece.produitsAssocies.length === 0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"
+                                fill="none" stroke="#cbd5e1" stroke-width="1.5">
                                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
                             </svg>
-                            {{ piece.produitsAssocies.length }} produit{{ piece.produitsAssocies.length > 1 ? 's' : ''
-                            }}
-                        </button>
+                            <p>Aucun produit associé trouvé pour cette pièce.</p>
+                        </div>
+                    </div>
+                </div>
 
-                        <button class="btn-view-variants-sober"
-                            *ngIf="!piece.variantDetail && piece.details && piece.details.length > 0"
-                            (click)="showVariantDetails(piece)" title="Inventaire par variante">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                                stroke-linejoin="round">
+                <div class="detail-variants-content" *ngIf="activeTab === 'variants'">
+                    <div class="tab-section-header">
+                        <div class="header-with-action">
+                            <div>
+                                <h3>Variantes de l'Article</h3>
+                                <p>Gestion du stock par déclinaison (couleur, taille, etc.).</p>
+                            </div>
+                            <div class="total-stock-tab-badge">
+                                Stock Total: {{ getTotalStock(activePiece) }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="variants-list-premium">
+                        <div class="variant-row-premium"
+                            *ngFor="let variant of activePiece.details; trackBy: variantTrackBy"
+                            [class.low-stock]="(variant.stock?.quantite || 0) <= 0">
+                            <div class="variant-main-col">
+                                <div class="variant-labels">
+                                    <span class="v-badge" *ngFor="let attr of getVariantAttributes(variant)">{{ attr
+                                        }}</span>
+                                </div>
+                                <div class="variant-sku">REF-VAR{{ variant.id }}</div>
+                            </div>
+                            <div class="variant-stock-col">
+                                <div class="stock-pill-premium" [class.out]="(variant.stock?.quantite || 0) <= 0">
+                                    {{ variant.stock?.quantite || 0 }} unités disponibles
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="empty-tab-state" *ngIf="!activePiece.details || activePiece.details.length === 0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24"
+                                fill="none" stroke="#cbd5e1" stroke-width="1.5">
                                 <path
                                     d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
                                 </path>
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                <line x1="12" y1="22.08" x2="12" y2="12"></line>
                             </svg>
-                            Voir {{ piece.details.length }} variantes
-                        </button>
+                            <p>Cette pièce n'a pas de variantes configurées.</p>
+                        </div>
                     </div>
-
-                    <span class="price-tag">{{ piece.prixVente | number:'1.2-2' }} {{ entreprise?.devise?.symbole ||
-                        'DT' }}</span>
                 </div>
             </div>
-
-            <div class="empty-state" *ngIf="filteredPiecesList.length === 0">
-                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path
-                        d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
-                    </path>
-                    <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                    <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                </svg>
-                <p>Aucune pièce détachée trouvée</p>
-                <div class="sub-text">Commencez par ajouter votre première pièce détachée au catalogue pour gérer
-                    votre
-                    stock
-                    efficacement.</div>
-                <button class="btn-create-first" (click)="openCreateModal()" *ngIf="canManage()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    Ajouter une pièce
-                </button>
-            </div>
         </div>
-    </ng-container>
+    </div>
 
-    <app-piece-form *ngIf="showCreateModal" [selectedPiece]="selectedPiece" [categories]="categories"
-        [produitsFinis]="produitsFinis" [parametres]="parametres" (save)="handleSavePiece($event)"
-        (cancel)="closeCreateModal()" (quickAddCategory)="handleQuickAddCategory($event)"
-        (quickAddProduct)="handleQuickAddProduct($event)">
-    </app-piece-form>
 </div>
 
 <div class="modal-overlay delete-modal" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
@@ -259,7 +479,7 @@
         <p class="warning-subtext">Cette action est irréversible.</p>
         <div class="confirm-actions">
             <button class="btn-cancel" (click)="cancelDelete()">Annuler</button>
-            <button class="btn-confirm-delete" (click)="itemToDelete && deletePiece(itemToDelete.codeBarre)">
+            <button class="btn-confirm-delete" (click)="itemToDelete?.id && deletePiece(itemToDelete!.id!)">
                 Oui, Supprimer
             </button>
         </div>
@@ -317,84 +537,6 @@
             <div class="associated-empty" *ngIf="loadingAssociated"
                 style="color: #64748b; font-size: 14px; padding: 20px;">
                 <p>Chargement...</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Variant Detail Modal (New) -->
-<div class="modal-overlay" *ngIf="showVariantDetailsModal" (click)="closeVariantDetailsModal()">
-    <div class="modal-content associated-modal variant-inventory-modal" (click)="$event.stopPropagation()">
-        <div class="associated-modal-header variant-inventory-header">
-            <div class="associated-modal-title-block">
-                <div class="variant-header-icon-container">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path
-                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
-                        </path>
-                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                    </svg>
-                </div>
-                <div>
-                    <h2 class="variant-modal-title">Inventaire par Variantes</h2>
-                    <p class="variant-modal-subtitle" *ngIf="selectedPieceForVariants">
-                        Stock global pour <strong>{{ selectedPieceForVariants.designation }}</strong>
-                    </p>
-                </div>
-            </div>
-            <button class="btn-close-variant-modal" (click)="closeVariantDetailsModal()" type="button" title="Fermer">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
-        </div>
-
-        <div class="associated-modal-body variant-inventory-body">
-            <div class="variant-inventory-toolbar">
-                <div class="variant-search-container">
-                    <div class="search-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                    </div>
-                    <input type="text" class="variant-search-input" [(ngModel)]="variantSearchTerm"
-                        (ngModelChange)="applyVariantFilter()"
-                        placeholder="Rechercher une variante (couleur, taille...)...">
-                </div>
-                <div class="total-stock-premium-badge">
-                    <span class="label">STOCK TOTAL :</span>
-                    <span class="banner-qty">{{ getTotalStock(selectedPieceForVariants) }}</span>
-                </div>
-            </div>
-
-            <div class="variant-inventory-grid">
-                <div class="variant-inv-card-premium" *ngFor="let variant of filteredVariantsList"
-                    [class.critical]="(variant.stock?.quantite || 0) <= 0">
-                    <div class="variant-inv-info">
-                        <div class="variant-inv-label-group">
-                            <span class="v-pill-attr-sober" *ngFor="let attr of getVariantAttributes(variant)">{{ attr
-                                }}</span>
-                        </div>
-                        <code class="variant-inv-ref-sober">REF -VAR{{ variant.id }}</code>
-                    </div>
-                    <div class="variant-inv-stock-right">
-                        <div class="variant-stock-pill"
-                            [attr.data-status]="(variant.stock?.quantite || 0) > 0 ? 'DISPONIBLE' : 'RUPTURE_STOCK'">
-                            {{ variant.stock?.quantite || 0 }} unités —
-                            {{ (variant.stock?.quantite || 0) > 0 ? 'Disponible' : 'Rupture' }}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="associated-empty" *ngIf="filteredVariantsList.length === 0">
-                <p>Aucune variante trouvée</p>
             </div>
         </div>
     </div>
