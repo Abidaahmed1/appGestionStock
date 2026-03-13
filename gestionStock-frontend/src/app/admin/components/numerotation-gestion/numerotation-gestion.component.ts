@@ -74,7 +74,7 @@ export class NumerotationGestionComponent implements OnInit {
   getPreview(config: NumerotationConfig): string {
     const now = new Date();
     let preview = config.prefix || '';
-    
+
     preview = preview
       .replace(/%YYYY%/g, now.getFullYear().toString())
       .replace(/%YY%/g, now.getFullYear().toString().substring(2))
@@ -83,13 +83,13 @@ export class NumerotationGestionComponent implements OnInit {
 
     const num = config.numeroDebut || '1';
     const formattedNum = num.padStart(num.length, '0');
-    
+
     return config.automatique !== false ? (preview + formattedNum) : (preview + '...');
   }
 
   save(): void {
     if (!this.parametre?.id) return;
-    
+
     this.saving = true;
     this.parametreService.updateNumerotationConfigs(this.parametre.id, this.configs).subscribe({
       next: (data) => {

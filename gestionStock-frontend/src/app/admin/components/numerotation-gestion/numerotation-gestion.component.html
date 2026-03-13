@@ -13,17 +13,7 @@
 
     </header>
 
-    <section class="settings-info">
-        <div class="info-card">
-            <h3><i class="fas fa-info-circle"></i> Guide des Placeholders</h3>
-            <ul>
-                <li><strong>%YYYY%</strong> : Année fiscale (ex: 2026)</li>
-                <li><strong>%YY%</strong> : Année abrégée (ex: 26)</li>
-                <li><strong>%MM%</strong> : Mois en chiffres (01-12)</li>
-                <li><strong>%DD%</strong> : Jour du mois (01-31)</li>
-            </ul>
-        </div>
-    </section>
+
     <div *ngIf="notification" class="alert-box" [class]="notification.type">
         {{ notification.message }}
         <button class="close-btn" (click)="notification = null">&times;</button>
@@ -102,5 +92,15 @@
             </div>
         </ng-template>
     </section>
-
+    <section class="settings-info">
+        <div class="info-card">
+            <h3><i class="fas fa-info-circle"></i> Guide des Placeholders</h3>
+            <ul>
+                <li><strong>%YYYY%</strong> : Année fiscale (ex: 2026)</li>
+                <li><strong>%YY%</strong> : Année abrégée (ex: 26)</li>
+                <li><strong>%MM%</strong> : Mois en chiffres (01-12)</li>
+                <li><strong>%DD%</strong> : Jour du mois (01-31)</li>
+            </ul>
+        </div>
+    </section>
 </div>
