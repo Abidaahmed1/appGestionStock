@@ -41,6 +41,79 @@ export class MainLayoutComponent implements OnInit {
         }
     }
 
+    getNavigationMenu() {
+        const menu: any[] = [];
+        
+        // Dashboard is for everyone
+        menu.push({
+            title: null,
+            items: [
+                { label: 'Tableau de bord', link: '/', icon: 'dashboard', exact: true }
+            ]
+        });
+
+        const roles = this.roles();
+
+        // 1. Logistique Role - Their primary section
+        if (this.hasRole('ROLE_RESPONSABLE_LOGISTIQUE')) {
+            menu.push({
+                title: 'GESTION LOGISTIQUE',
+                items: [
+                    { label: 'Fournisseurs', link: '/logistique/fournisseurs', icon: 'users' },
+                    { label: 'Commandes', link: '/logistique/commandes', icon: 'shopping-bag' },
+                    { label: 'Suivi des prix', link: '/logistique/tracking', icon: 'trending-up' }
+                ]
+            });
+            // Responsable Logistique sees limited Catalogue
+            menu.push({
+                title: 'CATALOGUE',
+                items: [
+                    { label: 'Catalogue Général', link: '/magasinier/catalogue', icon: 'grid' }
+                ]
+            });
+        }
+
+        // 2. Magasinier Role - Their primary section
+        else if (this.hasRole('ROLE_MAGASINIER')) {
+            menu.push({
+                title: 'CATALOGUE & STOCKS',
+                items: [
+                    { label: 'Catalogue Général', link: '/magasinier/catalogue', icon: 'grid' },
+                    { label: 'Produits finis', link: '/magasinier/produits', icon: 'package' },
+                    { label: 'Pièces détachées', link: '/magasinier/pieces', icon: 'puzzle' },
+                    { label: 'Gestion Stocks', link: '/magasinier/stocks', icon: 'rotate-ccw' },
+                    { label: 'Gestion Bons', link: '/magasinier/bons', icon: 'file-text' }
+                ]
+            });
+        }
+
+        // 3. Auditeur Role
+        else if (this.hasRole('ROLE_AUDITEUR')) {
+            menu.push({
+                title: 'AUDIT & CONTRÔLE',
+                items: [
+                    { label: 'Commandes', link: '/logistique/commandes', icon: 'shopping-bag' },
+                    { label: 'Archives Bons', link: '/logistique/bons-history', icon: 'history' },
+                    { label: 'Catalogue', link: '/magasinier/catalogue', icon: 'grid' },
+                    { label: 'Consultation Bons', link: '/magasinier/bons', icon: 'file-text' }
+                ]
+            });
+        }
+
+        // 4. Admin Role
+        if (this.hasRole('ROLE_ADMINISTRATEUR')) {
+            menu.push({
+                title: 'ADMINISTRATION',
+                items: [
+                    { label: 'Configuration Système', link: '/admin/settings', icon: 'settings' },
+                    { label: 'Gestion Utilisateurs', link: '/admin/users', icon: 'users-gear' }
+                ]
+            });
+        }
+
+        return menu;
+    }
+
     private loadEntreprise() {
         this.entrepriseService.getCurrentEntreprise().subscribe({
             next: (data: Entreprise) => this.entreprise.set(data),

@@ -36,9 +36,13 @@ export class PieceListComponent implements OnInit {
     filterStockStatus: string = 'all';
     filterMinPrice: number | null = null;
     filterMaxPrice: number | null = null;
-
     showDeleteConfirm = false;
     itemToDelete: PieceDetachee | null = null;
+
+    // Searchable Category
+    catSearchTerm: string = '';
+    showCatSuggestions: boolean = false;
+    filteredCategories: Categorie[] = [];
 
     showAssociatedProductsModal = false;
     selectedPieceForProducts: PieceDetachee | null = null;
@@ -48,6 +52,7 @@ export class PieceListComponent implements OnInit {
     // New properties for Master-Detail view
     activePiece: PieceDetachee | null = null;
     activeTab: string = 'overview'; // For detail view tabs
+    viewMode: 'table' | 'grid' = 'table';
 
 
     parametres: Parametre | null = null;
@@ -57,7 +62,18 @@ export class PieceListComponent implements OnInit {
     private platformId = inject(PLATFORM_ID);
     private cdr = inject(ChangeDetectorRef);
     private ngZone = inject(NgZone);
-    private entrepriseService = inject(EntrepriseService);
+    public entrepriseService = inject(EntrepriseService); // Changed to public for template access
+
+    @HostListener('document:click', ['$event'])
+    onClickOutside(event: MouseEvent) {
+        if (this.showCatSuggestions) {
+            const target = event.target as HTMLElement;
+            if (!target.closest('.category-search-group')) {
+                this.showCatSuggestions = false;
+                this.cdr.detectChanges();
+            }
+        }
+    }
 
     constructor(private magasinierService: MagasinierService) { }
 
@@ -154,6 +170,7 @@ export class PieceListComponent implements OnInit {
         this.magasinierService.getCategories().subscribe({
             next: (data) => {
                 this.categories = data || [];
+                this.filteredCategories = [...this.categories];
                 this.cdr.detectChanges();
             },
             error: (err: any) => {
@@ -161,6 +178,21 @@ export class PieceListComponent implements OnInit {
                 this.cdr.detectChanges();
             }
         });
+    }
+
+    filterCategoriesList(): void {
+        const term = this.catSearchTerm.toLowerCase();
+        this.filteredCategories = this.categories.filter(c => 
+            (c.nom || '').toLowerCase().includes(term)
+        );
+        this.showCatSuggestions = true;
+    }
+
+    selectCategory(catName: string): void {
+        this.filterCategory = catName;
+        this.catSearchTerm = catName === 'all' ? 'Toutes les catégories' : catName;
+        this.showCatSuggestions = false;
+        this.applyFilters();
     }
 
     loadProduits(): void {
@@ -362,7 +394,7 @@ export class PieceListComponent implements OnInit {
     }
 
     getImageUrl(url: string | null | undefined): string {
-        if (!url) return 'assets/images/default-produit.svg';
+        if (!url) return 'assets/images/default-piece.svg';
         if (this.imageCache.has(url)) return this.imageCache.get(url)!;
 
         let result = url;
@@ -436,6 +468,8 @@ export class PieceListComponent implements OnInit {
         this.filterStockStatus = 'all';
         this.filterMinPrice = null;
         this.filterMaxPrice = null;
+        this.catSearchTerm = '';
+        this.filteredCategories = [...this.categories];
         this.applyFilters();
         this.cdr.detectChanges();
     }

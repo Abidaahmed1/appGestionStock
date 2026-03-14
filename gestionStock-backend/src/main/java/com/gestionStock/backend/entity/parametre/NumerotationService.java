@@ -47,14 +47,15 @@ public class NumerotationService {
     private String generate(NumerotationConfig config, Long entrepriseId) {
         LocalDate now = LocalDate.now();
         String period = "GLOBAL";
-        
+
         if ("ANNUEL".equalsIgnoreCase(config.getRedemarrer())) {
             period = String.valueOf(now.getYear());
         } else if ("MENSUEL".equalsIgnoreCase(config.getRedemarrer())) {
             period = now.getYear() + "-" + String.format("%02d", now.getMonthValue());
         }
 
-        NumerotationSequence sequence = sequenceRepository.findByModuleAndEntrepriseIdAndPeriod(config.getModule(), entrepriseId, period)
+        NumerotationSequence sequence = sequenceRepository
+                .findByModuleAndEntrepriseIdAndPeriod(config.getModule(), entrepriseId, period)
                 .orElse(NumerotationSequence.builder()
                         .module(config.getModule())
                         .entrepriseId(entrepriseId)
@@ -73,10 +74,12 @@ public class NumerotationService {
     }
 
     public void validateReference(String module, String reference) {
-        if (reference == null || reference.trim().isEmpty()) return;
+        if (reference == null || reference.trim().isEmpty())
+            return;
 
         Optional<Parametre> optParam = parametreService.getCurrentParametre();
-        if (optParam.isEmpty()) return;
+        if (optParam.isEmpty())
+            return;
 
         Parametre parametre = optParam.get();
         NumerotationConfig config = parametre.getNumerotationConfigs().stream()
@@ -84,17 +87,20 @@ public class NumerotationService {
                 .findFirst()
                 .orElse(getDefaultConfig(module));
 
-        if (!config.isActif()) return;
+        if (!config.isActif())
+            return;
 
         String formattedPrefix = replacePlaceholders(config.getPrefix(), LocalDate.now());
         if (!reference.startsWith(formattedPrefix)) {
-            throw new RuntimeException("Le format de la référence '" + reference + "' est invalide pour le module " + module + 
-                ". Elle doit commencer par le préfixe configuré : '" + formattedPrefix + "'.");
+            throw new RuntimeException(
+                    "Le format de la référence '" + reference + "' est invalide pour le module " + module +
+                            ". Elle doit commencer par le préfixe configuré : '" + formattedPrefix + "'.");
         }
     }
 
     private String replacePlaceholders(String prefix, LocalDate date) {
-        if (prefix == null) return "";
+        if (prefix == null)
+            return "";
         return prefix
                 .replace("%YYYY%", String.valueOf(date.getYear()))
                 .replace("%YY%", String.valueOf(date.getYear()).substring(2))

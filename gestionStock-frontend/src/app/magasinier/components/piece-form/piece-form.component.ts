@@ -479,15 +479,16 @@ export class PieceFormComponent implements OnInit, OnChanges {
             archivee: !!rawPiece.archivee,
             imageUrl: rawPiece.imageUrl || null,
             unite: rawPiece.unite?.id ? { id: Number(rawPiece.unite.id) } : null,
-            categorie: rawPiece.categorie?.id ? { id: Number(rawPiece.categorie.id), nom: rawPiece.categorie.nom } : null,
+            categorie: rawPiece.categorie?.id ? { id: Number(rawPiece.categorie.id) } : null,
         };
 
         pieceToSave.produitsAssocies = (rawPiece.produitsAssocies || [])
-            .filter(p => !!p.id)
-            .map(p => ({
-                id: Number(p.id),
-                code: p.code
-            }));
+            .map(p => ({ id: Number(p.id) }));
+
+        // Safety: If imageUrl is an absolute local URL, extract only the path
+        if (pieceToSave.imageUrl && pieceToSave.imageUrl.includes('http://localhost:8081')) {
+            pieceToSave.imageUrl = pieceToSave.imageUrl.replace('http://localhost:8081', '');
+        }
 
         const seenIds = new Set<number>();
         pieceToSave.details = [];
@@ -681,7 +682,12 @@ export class PieceFormComponent implements OnInit, OnChanges {
         this.newPiece.details = combinations.map((combo, index) => {
             const matchingIndex = existingDetails.findIndex(d => {
                 const targetAttrs = d.attributs || {};
-                return variantOptions.every(v => targetAttrs[v.champ] === combo[v.champ]);
+                return variantOptions.every(v => {
+                    const existingVal = targetAttrs[v.champ];
+                    // If the attribute is missing or empty in the existing detail, 
+                    // we allow it to match the new combination (Best Match)
+                    return existingVal === undefined || existingVal === null || String(existingVal).trim() === '' || String(existingVal) === String(combo[v.champ]);
+                });
             });
 
             if (matchingIndex > -1) {

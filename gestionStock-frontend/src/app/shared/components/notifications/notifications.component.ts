@@ -16,6 +16,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
     unreadCount: number = 0;
     showDropdown: boolean = false;
     userRole: string = '';
+    activeTab: 'all' | 'unread' = 'all';
     private refreshInterval: any;
 
     constructor(
@@ -67,8 +68,17 @@ export class NotificationsComponent implements OnInit, OnDestroy {
 
     toggleDropdown() {
         this.showDropdown = !this.showDropdown;
-        if (this.showDropdown) {
+    }
+
+    switchTab(tab: 'all' | 'unread') {
+        this.activeTab = tab;
+    }
+
+    get filteredNotifications() {
+        if (this.activeTab === 'unread') {
+            return this.notifications.filter(n => !n.lu);
         }
+        return this.notifications;
     }
 
     markAsRead(n: Notification) {
@@ -92,14 +102,5 @@ export class NotificationsComponent implements OnInit, OnDestroy {
             error: (err) => console.error('Error marking all as read:', err)
         });
     }
-
-    getTypeIcon(type: string): string {
-        switch (type) {
-            case 'RUPTURE_STOCK': return '🚨';
-            case 'WARNING': return '⚠️';
-            case 'ERROR': return '❌';
-            case 'SUCCESS': return '✅';
-            default: return 'ℹ️';
-        }
-    }
 }
+
