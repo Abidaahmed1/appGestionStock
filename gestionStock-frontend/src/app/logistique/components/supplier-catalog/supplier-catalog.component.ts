@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, PLATFORM_ID, ChangeDetectorRef, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, OnInit, inject, PLATFORM_ID, ChangeDetectorRef, Input, OnChanges, SimpleChanges, OnDestroy } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -6,7 +6,8 @@ import { LogistiqueService } from '../../services/logistique.service';
 import { PieceFournisseur, Fournisseur } from '../../models/logistique.models';
 import { PieceDetachee } from '../../../magasinier/models/magasinier.models';
 import { MagasinierService } from '../../../magasinier/services/magasinier.service';
-import { forkJoin } from 'rxjs';
+import { forkJoin, Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 import { EntrepriseService } from '../../../admin/services/entreprise.service';
 import { Entreprise } from '../../../admin/models/entreprise.model';
 
@@ -17,7 +18,7 @@ import { Entreprise } from '../../../admin/models/entreprise.model';
     templateUrl: './supplier-catalog.component.html',
     styleUrl: './supplier-catalog.component.css'
 })
-export class SupplierCatalogComponent implements OnInit, OnChanges {
+export class SupplierCatalogComponent implements OnInit, OnChanges, OnDestroy {
     @Input() supplier: Fournisseur | undefined;
     @Input() isEmbedded: boolean = false;
 
@@ -25,6 +26,9 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
     allPieces: any[] = [];
     searchTerm: string = '';
     showResults: boolean = false;
+    filteredPiecesList: any[] = [];
+    private searchSubject = new Subject<string>();
+    private destroy$ = new Subject<void>();
     catalogFilterTerm: string = '';
 
     validationErrors: { piece?: string; prix?: string; dates?: string, tauxRemise?: string, nbJoursLivraison?: string } = {};
@@ -56,6 +60,16 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
     private cdr = inject(ChangeDetectorRef);
     private route = inject(ActivatedRoute);
     private router = inject(Router);
+
+    constructor() {
+        this.searchSubject.pipe(
+            debounceTime(200),
+            distinctUntilChanged(),
+            takeUntil(this.destroy$)
+        ).subscribe(term => {
+            this.applyPieceFilter(term);
+        });
+    }
 
     ngOnInit() {
         if (isPlatformBrowser(this.platformId)) {
@@ -122,11 +136,43 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
         this.magasinierService.getPieces().subscribe({
             next: (data: any[]) => {
                 this.allPieces = data;
+                this.filteredPiecesList = [...this.allPieces].slice(0, 50); // Initial view
                 if (isPlatformBrowser(this.platformId)) {
                     this.cdr.detectChanges();
                 }
             }
         });
+    }
+
+    onSearchTermChange(term: string) {
+        this.searchSubject.next(term);
+    }
+
+    applyPieceFilter(term: string) {
+        if (!term || term.length < 1) {
+            this.filteredPiecesList = [...this.allPieces].slice(0, 50);
+            this.cdr.detectChanges();
+            return;
+        }
+
+        const lowerTerm = term.toLowerCase();
+        const results = this.allPieces.filter(p => {
+            const designation = (p.designation || '').toLowerCase();
+            const reference = (p.reference || '').toLowerCase();
+            const barcode = (p.details?.[0]?.codeBarre || '').toLowerCase();
+
+            if (designation.includes(lowerTerm) || reference.includes(lowerTerm) || barcode.includes(lowerTerm)) {
+                return true;
+            }
+
+            return p.details?.some((d: any) => {
+                const attrLabel = this.getVariantLabel(d).toLowerCase();
+                return attrLabel.includes(lowerTerm) || (d.codeBarre || '').toLowerCase().includes(lowerTerm);
+            }) ?? false;
+        });
+
+        this.filteredPiecesList = results.slice(0, 50); // Limit to top 50 for extra performance
+        this.cdr.detectChanges();
     }
 
     loadEntreprise() {
@@ -149,13 +195,28 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
         });
     }
 
-    get filteredPieces() {
-        if (!this.searchTerm) return this.allPieces;
-        const term = this.searchTerm.toLowerCase();
-        return this.allPieces.filter(p =>
-            p.designation.toLowerCase().includes(term) ||
-            (p.details?.some((d: any) => (d.codeBarre || '').toLowerCase().includes(term)) ?? false)
-        );
+    // Optimized away: getter replaced by filteredPiecesList and applyPieceFilter
+    // get filteredPieces() { ... }
+
+    getVariantLabel(detail: any): string {
+        if (!detail || !detail.attributs) return '';
+        const attributes = detail.attributs || {};
+        return Object.entries(attributes)
+            .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && String(value).trim() !== '')
+            .map(([_, value]) => value)
+            .join(' - ');
+    }
+
+    getVariantAttributes(detail: any): string[] {
+        if (!detail || !detail.attributs) return [];
+        const attributes = detail.attributs || {};
+        return Object.entries(attributes)
+            .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && String(value).trim() !== '')
+            .map(([key, value]) => `${key}: ${value}`);
+    }
+
+    getPieceDisplayCode(p: any): string {
+        return p.details?.[0]?.codeBarre || p.reference || '-';
     }
 
     get filteredCatalogItems() {
@@ -173,7 +234,10 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
 
     selectPiece(piece: any) {
         this.newEntry.piece = piece;
-        this.searchTerm = `[${piece.details?.[0]?.codeBarre || '-'}] ${piece.designation}`;
+        const code = this.getPieceDisplayCode(piece);
+        const variant = this.getVariantLabel(piece.details?.[0]);
+        const suffix = variant ? ` (${variant})` : '';
+        this.searchTerm = `[${code}] ${piece.designation}${suffix}`;
         this.showResults = false;
         if (isPlatformBrowser(this.platformId)) {
             this.cdr.detectChanges();
@@ -301,8 +365,9 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
         this.hasChanges = true;
     }
 
-    saveAll() {
-        if (!this.supplier) return;
+    saveAll(providedSupplier?: Fournisseur) {
+        const targetSupplier = providedSupplier || this.supplier;
+        if (!targetSupplier || !targetSupplier.id) return;
 
         for (let i = 0; i < this.pendingItems.length; i++) {
             const item = this.pendingItems[i];
@@ -325,16 +390,31 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
         for (const item of this.pendingItems) {
             if (item._isNew || item._isModified) {
                 const payload = {
-                    id: item.id,
-                    prixAchat: item.prixAchat,
-                    qteMinACommander: item.qteMinACommander,
-                    tauxRemise: item.tauxRemise,
-                    nbJoursLivraison: item.nbJoursLivraison,
-                    estPrincipale: item.estPrincipale,
-                    piece: { id: item.piece.id },
-                    fournisseur: { id: this.supplier.id },
-                    dateDebutValidite: item.dateDebutValidite ? item.dateDebutValidite + 'T00:00:00' : null,
-                    dateFinValidite: item.dateFinValidite ? item.dateFinValidite + 'T23:59:59' : null
+                    id: item.id || null,
+                    prixAchat: Number(item.prixAchat || 0),
+                    qteMinACommander: Math.round(Number(item.qteMinACommander || 0)),
+                    tauxRemise: Number(item.tauxRemise || 0),
+                    nbJoursLivraison: Math.round(Number(item.nbJoursLivraison || 0)),
+                    estPrincipale: !!item.estPrincipale,
+                    piece: {
+                        id: item.piece.id,
+                        reference: item.piece.reference || '',
+                        designation: item.piece.designation || '',
+                        archivee: !!item.piece.archivee,
+                        seuilMinimum: item.piece.seuilMinimum || 0,
+                        seuilMaximum: item.piece.seuilMaximum || 0
+                    },
+                    fournisseur: {
+                        id: targetSupplier.id,
+                        code: targetSupplier.code || '',
+                        nom: targetSupplier.nom || '',
+                        email: targetSupplier.email || '',
+                        tel: targetSupplier.tel || '',
+                        adresse: targetSupplier.adresse || '',
+                        archivee: !!targetSupplier.archivee
+                    },
+                    dateDebutValidite: item.dateDebutValidite && item.dateDebutValidite.trim() ? item.dateDebutValidite + 'T00:00:00' : null,
+                    dateFinValidite: item.dateFinValidite && item.dateFinValidite.trim() ? item.dateFinValidite + 'T23:59:59' : null
                 };
                 operations.push(this.logistiqueService.savePieceFournisseur(payload));
             }
@@ -393,5 +473,10 @@ export class SupplierCatalogComponent implements OnInit, OnChanges {
 
     goBack() {
         this.router.navigate(['/logistique/fournisseurs']);
+    }
+
+    ngOnDestroy() {
+        this.destroy$.next();
+        this.destroy$.complete();
     }
 }

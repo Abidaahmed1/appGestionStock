@@ -667,6 +667,35 @@
     font-weight: 700;
 }
 
+.result-item {
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.res-main {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.variant-mini-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    padding-left: 0;
+    margin-top: 2px;
+}
+
+.mini-chip {
+    background: #f0f9fa;
+    color: #3d7a7f;
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    border: 1px solid #c8e2e4;
+}
+
 .text-right {
     text-align: right !important;
 }

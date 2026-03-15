@@ -24,7 +24,7 @@ public class CategorieController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
     public ResponseEntity<Categorie> create(@RequestBody Categorie categorie) {
         return ResponseEntity.ok(categorieService.create(categorie));
     }

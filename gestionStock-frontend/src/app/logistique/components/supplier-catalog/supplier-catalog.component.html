@@ -59,15 +59,22 @@
                         <div class="col col-product">
                             <label class="line-label">Articles</label>
                             <div class="search-dropdown">
-                                <input type="text" [(ngModel)]="searchTerm" (focus)="showResults = true"
-                                    (blur)="toggleResults(false)" placeholder="Choisir un article..."
+                                <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchTermChange($event)"
+                                    (focus)="showResults = true" (blur)="toggleResults(false)"
+                                    placeholder="Choisir un article..."
                                     class="odoo-input-line" [class.input-error]="validationErrors.piece">
-                                <div class="results-list" *ngIf="showResults && filteredPieces.length > 0">
-                                    <div class="result-item" *ngFor="let p of filteredPieces"
+                                <div class="results-list" *ngIf="showResults && filteredPiecesList.length > 0">
+                                    <div class="result-item" *ngFor="let p of filteredPiecesList"
                                         (mousedown)="selectPiece(p)">
-                                        <span class="code" *ngIf="p.details?.length">[{{ p.details![0].codeBarre
-                                            }}]</span>
-                                        <span class="name">{{ p.designation }}</span>
+                                        <div class="res-main">
+                                            <span class="code">[{{ getPieceDisplayCode(p) }}]</span>
+                                            <span class="name">{{ p.designation }}</span>
+                                        </div>
+                                        <div class="variant-mini-chips" *ngIf="p.details?.length">
+                                            <span class="mini-chip" *ngFor="let attr of getVariantAttributes(p.details[0])">
+                                                {{ attr }}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -142,8 +149,14 @@
                                         <td class="col-product">
                                             <div class="prod-info">
                                                 <span class="prod-name">{{ item.piece?.designation }}</span>
-                                                <span class="prod-code" *ngIf="item.piece?.details?.length">{{
-                                                    item.piece?.details![0].codeBarre }}</span>
+                                                <span class="prod-code" *ngIf="item.piece?.details?.length">
+                                                    {{ item.piece?.details![0].codeBarre || item.piece?.reference }}
+                                                </span>
+                                                <div class="variant-mini-chips" *ngIf="item.piece?.details?.length">
+                                                    <span class="mini-chip" *ngFor="let attr of getVariantAttributes(item.piece.details[0])">
+                                                        {{ attr }}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </td>
                                         <td class="col-price text-right font-bold" style="color: #3d7a7f;">
@@ -212,8 +225,14 @@
                                         <td class="col-product">
                                             <div class="prod-info">
                                                 <span class="prod-name">{{ item.piece?.designation }}</span>
-                                                <span class="prod-code" *ngIf="item.piece?.details?.length">{{
-                                                    item.piece?.details![0].codeBarre }}</span>
+                                                <span class="prod-code" *ngIf="item.piece?.details?.length">
+                                                    {{ item.piece?.details![0].codeBarre || item.piece?.reference }}
+                                                </span>
+                                                <div class="variant-mini-chips" *ngIf="item.piece?.details?.length">
+                                                    <span class="mini-chip" *ngFor="let attr of getVariantAttributes(item.piece.details[0])">
+                                                        {{ attr }}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </td>
                                         <td class="col-price">

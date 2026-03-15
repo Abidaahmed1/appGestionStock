@@ -22,19 +22,19 @@ public class PieceDetacheeController {
     private final ImageService imageService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR', 'ADMINISTRATEUR')")
     public List<PieceDetachee> getAll() {
         return pieceService.findByActive();
     }
 
     @PostMapping("/upload-image-front/{id}")
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
     public ResponseEntity<?> uploadImageFront(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
         return uploadImage(id, file); // Alias for consistency via internal call
     }
 
     @PostMapping("/upload-image/{id}")
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
     public ResponseEntity<?> uploadImage(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
         try {
             if (file == null || file.isEmpty()) {
@@ -52,20 +52,20 @@ public class PieceDetacheeController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
     public ResponseEntity<PieceDetachee> create(@Valid @RequestBody PieceDetachee piece) {
         PieceDetachee saved = pieceService.addPiece(piece);
         return ResponseEntity.ok(saved);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
     public ResponseEntity<PieceDetachee> update(@PathVariable Long id, @Valid @RequestBody PieceDetachee piece) {
         return ResponseEntity.ok(pieceService.update(id, piece));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
     public ResponseEntity<?> delete(@PathVariable Long id) {
         try {
             pieceService.delete(id);
@@ -81,7 +81,7 @@ public class PieceDetacheeController {
     }
 
     @GetMapping("/reference/{ref}")
-    @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR', 'ADMINISTRATEUR')")
     public ResponseEntity<PieceDetachee> getByReference(@PathVariable String ref) {
         PieceDetachee p = pieceService.findByReference(ref);
         if (p == null)

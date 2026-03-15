@@ -20,32 +20,32 @@ public class BonCommandeFournisseurController {
     private final BonCommandeFournisseurService service;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR')")
+    @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE', 'AUDITEUR', 'ADMINISTRATEUR')")
     public List<BonCommandeFournisseur> getAll() {
         return service.getAll();
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR')")
+    @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE', 'AUDITEUR', 'ADMINISTRATEUR')")
     public ResponseEntity<BonCommandeFournisseur> getById(@PathVariable Long id) {
         return ResponseEntity.ok(service.getById(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE')")
+    @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE', 'ADMINISTRATEUR')")
     public ResponseEntity<BonCommandeFournisseur> create(@Valid @RequestBody BonCommandeFournisseur bon) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.save(bon));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE')")
+    @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE', 'ADMINISTRATEUR')")
     public ResponseEntity<BonCommandeFournisseur> update(@PathVariable Long id,
             @Valid @RequestBody BonCommandeFournisseur bon) {
         return ResponseEntity.ok(service.update(id, bon));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE')")
+    @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE', 'ADMINISTRATEUR')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

@@ -103,7 +103,7 @@ export class PieceListComponent implements OnInit {
     }
 
     canManage(): boolean {
-        return this.hasRole('MAGASINIER');
+        return this.hasRole('MAGASINIER') || this.hasRole('ADMINISTRATEUR');
     }
 
 

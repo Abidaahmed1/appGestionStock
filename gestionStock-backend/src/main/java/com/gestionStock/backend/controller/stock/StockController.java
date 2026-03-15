@@ -49,25 +49,25 @@ public class StockController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
     public ResponseEntity<Stock> create(@RequestBody Stock stock) {
         return ResponseEntity.ok(stockService.save(stock));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
     public ResponseEntity<Stock> update(@PathVariable Long id, @RequestBody Stock stock) {
         return ResponseEntity.ok(stockService.update(id, stock));
     }
 
     @PatchMapping("/{id}/quantity")
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
     public ResponseEntity<Stock> updateQuantity(@PathVariable Long id, @RequestParam int quantity) {
         return ResponseEntity.ok(stockService.updateQuantity(id, quantity));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         stockService.delete(id);
         return ResponseEntity.noContent().build();

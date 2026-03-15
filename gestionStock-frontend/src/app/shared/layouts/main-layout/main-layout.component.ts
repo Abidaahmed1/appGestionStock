@@ -23,6 +23,23 @@ export class MainLayoutComponent implements OnInit {
     username = signal('');
     roles = signal<string[]>([]);
     entreprise = signal<Entreprise | null>(null);
+    expandedSections = signal<Set<string>>(new Set());
+
+    toggleSection(title: string | null) {
+        if (!title) return;
+        const current = new Set(this.expandedSections());
+        if (current.has(title)) {
+            current.delete(title);
+        } else {
+            current.add(title);
+        }
+        this.expandedSections.set(current);
+    }
+
+    isSectionExpanded(title: string | null): boolean {
+        if (!title) return true;
+        return this.expandedSections().has(title);
+    }
 
     ngOnInit() {
         if (isPlatformBrowser(this.platformId)) {
@@ -43,40 +60,36 @@ export class MainLayoutComponent implements OnInit {
 
     getNavigationMenu() {
         const menu: any[] = [];
+        const roles = this.roles();
+        const isAdmin = this.hasRole('ROLE_ADMINISTRATEUR');
         
-        // Dashboard is for everyone
+        // 0. Dashboard - For everyone
         menu.push({
             title: null,
+            icon: 'dashboard',
             items: [
                 { label: 'Tableau de bord', link: '/', icon: 'dashboard', exact: true }
             ]
         });
 
-        const roles = this.roles();
-
-        // 1. Logistique Role - Their primary section
-        if (this.hasRole('ROLE_RESPONSABLE_LOGISTIQUE')) {
+        // 1. Logistique - Logistique + Admin
+        if (this.hasRole('ROLE_RESPONSABLE_LOGISTIQUE') || isAdmin) {
             menu.push({
                 title: 'GESTION LOGISTIQUE',
+                icon: 'logistique',
                 items: [
                     { label: 'Fournisseurs', link: '/logistique/fournisseurs', icon: 'users' },
                     { label: 'Commandes', link: '/logistique/commandes', icon: 'shopping-bag' },
                     { label: 'Suivi des prix', link: '/logistique/tracking', icon: 'trending-up' }
                 ]
             });
-            // Responsable Logistique sees limited Catalogue
-            menu.push({
-                title: 'CATALOGUE',
-                items: [
-                    { label: 'Catalogue Général', link: '/magasinier/catalogue', icon: 'grid' }
-                ]
-            });
         }
 
-        // 2. Magasinier Role - Their primary section
-        else if (this.hasRole('ROLE_MAGASINIER')) {
+        // 2. Catalogue & Stocks - Magasinier + Admin
+        if (this.hasRole('ROLE_MAGASINIER') || isAdmin) {
             menu.push({
                 title: 'CATALOGUE & STOCKS',
+                icon: 'catalogue',
                 items: [
                     { label: 'Catalogue Général', link: '/magasinier/catalogue', icon: 'grid' },
                     { label: 'Produits finis', link: '/magasinier/produits', icon: 'package' },
@@ -87,23 +100,29 @@ export class MainLayoutComponent implements OnInit {
             });
         }
 
-        // 3. Auditeur Role
-        else if (this.hasRole('ROLE_AUDITEUR')) {
+        // 3. Audit - Auditeur + Admin
+        if (this.hasRole('ROLE_AUDITEUR') || isAdmin) {
             menu.push({
                 title: 'AUDIT & CONTRÔLE',
+                icon: 'audit',
                 items: [
-                    { label: 'Commandes', link: '/logistique/commandes', icon: 'shopping-bag' },
-                    { label: 'Archives Bons', link: '/logistique/bons-history', icon: 'history' },
-                    { label: 'Catalogue', link: '/magasinier/catalogue', icon: 'grid' },
-                    { label: 'Consultation Bons', link: '/magasinier/bons', icon: 'file-text' }
+                    { label: 'Archives Bons', link: '/logistique/bons-history', icon: 'history' }
                 ]
             });
+            
+            // If it's JUST an auditor, they might need these links here
+            if (this.hasRole('ROLE_AUDITEUR') && !isAdmin && !this.hasRole('ROLE_RESPONSABLE_LOGISTIQUE')) {
+                 const auditItems = menu[menu.length-1].items;
+                 auditItems.push({ label: 'Commandes', link: '/logistique/commandes', icon: 'shopping-bag' });
+                 auditItems.push({ label: 'Catalogue Général', link: '/magasinier/catalogue', icon: 'grid' });
+            }
         }
 
-        // 4. Admin Role
-        if (this.hasRole('ROLE_ADMINISTRATEUR')) {
+        // 4. Administration - Admin Only
+        if (isAdmin) {
             menu.push({
                 title: 'ADMINISTRATION',
+                icon: 'admin',
                 items: [
                     { label: 'Configuration Système', link: '/admin/settings', icon: 'settings' },
                     { label: 'Gestion Utilisateurs', link: '/admin/users', icon: 'users-gear' }
@@ -158,6 +177,10 @@ export class MainLayoutComponent implements OnInit {
         }
 
         return 'Utilisateur';
+    }
+
+    isAdminUser(): boolean {
+        return this.hasRole('ROLE_ADMINISTRATEUR');
     }
 
     isHomePage(): boolean {

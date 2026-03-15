@@ -37,19 +37,19 @@ export const routes: Routes = [
                 path: 'magasinier/catalogue',
                 component: CatalogueLayoutComponent,
                 canActivate: [authGuard],
-                data: { roles: ['MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR'] }
+                data: { roles: ['MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR', 'ADMINISTRATEUR'] }
             },
             {
                 path: 'magasinier/pieces',
                 component: PieceListComponent,
                 canActivate: [authGuard],
-                data: { roles: ['MAGASINIER'] }
+                data: { roles: ['MAGASINIER', 'ADMINISTRATEUR'] }
             },
             {
                 path: 'magasinier/produits',
                 component: ProduitListComponent,
                 canActivate: [authGuard],
-                data: { roles: ['MAGASINIER'] }
+                data: { roles: ['MAGASINIER', 'ADMINISTRATEUR'] }
             },
             {
                 path: 'magasinier/stocks',
@@ -79,7 +79,7 @@ export const routes: Routes = [
                 path: 'logistique/fournisseurs',
                 component: FournisseurListComponent,
                 canActivate: [authGuard],
-                data: { roles: ['RESPONSABLE_LOGISTIQUE'] }
+                data: { roles: ['RESPONSABLE_LOGISTIQUE', 'ADMINISTRATEUR'] }
             },
             {
                 path: 'logistique/fournisseurs/nouveau',
@@ -97,39 +97,39 @@ export const routes: Routes = [
                 path: 'logistique/fournisseurs/:id/catalog',
                 component: SupplierCatalogComponent,
                 canActivate: [authGuard],
-                data: { roles: ['RESPONSABLE_LOGISTIQUE'] }
+                data: { roles: ['RESPONSABLE_LOGISTIQUE', 'ADMINISTRATEUR'] }
             },
 
             {
                 path: 'logistique/commandes',
                 component: CommandeFournisseurListComponent,
                 canActivate: [authGuard],
-                data: { roles: ['RESPONSABLE_LOGISTIQUE', 'AUDITEUR'] }
+                data: { roles: ['RESPONSABLE_LOGISTIQUE', 'AUDITEUR', 'ADMINISTRATEUR'] }
             },
             {
                 path: 'logistique/commandes/nouvelle',
                 loadComponent: () => import('./logistique/components/commande-fournisseur-form/commande-fournisseur-form.component').then(m => m.CommandeFournisseurFormComponent),
                 canActivate: [authGuard],
-                data: { roles: ['RESPONSABLE_LOGISTIQUE'] }
+                data: { roles: ['RESPONSABLE_LOGISTIQUE', 'ADMINISTRATEUR'] }
             },
             {
                 path: 'logistique/commandes/:id',
                 loadComponent: () => import('./logistique/components/commande-fournisseur-form/commande-fournisseur-form.component').then(m => m.CommandeFournisseurFormComponent),
                 canActivate: [authGuard],
-                data: { roles: ['RESPONSABLE_LOGISTIQUE', 'AUDITEUR'] }
+                data: { roles: ['RESPONSABLE_LOGISTIQUE', 'AUDITEUR', 'ADMINISTRATEUR'] }
             },
 
             {
                 path: 'logistique/bons-history',
                 loadComponent: () => import('./auditeur/bon-history/bon-history.component').then(m => m.BonHistoryComponent),
                 canActivate: [authGuard],
-                data: { roles: ['AUDITEUR'] }
+                data: { roles: ['AUDITEUR', 'ADMINISTRATEUR'] }
             },
             {
                 path: 'logistique/tracking',
                 component: PriceTrackingComponent,
                 canActivate: [authGuard],
-                data: { roles: ['RESPONSABLE_LOGISTIQUE'] }
+                data: { roles: ['RESPONSABLE_LOGISTIQUE', 'ADMINISTRATEUR'] }
             },
             {
                 path: 'admin/parametres',

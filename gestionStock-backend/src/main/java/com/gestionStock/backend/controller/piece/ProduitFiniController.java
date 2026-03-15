@@ -28,7 +28,7 @@ public class ProduitFiniController {
     }
 
     @PostMapping("/upload-image/{id}")
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
     public ResponseEntity<?> uploadImage(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
         try {
             if (file == null || file.isEmpty()) {
@@ -46,19 +46,19 @@ public class ProduitFiniController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
     public ResponseEntity<ProduitFini> create(@Valid @RequestBody ProduitFini produit) {
         return ResponseEntity.ok(produitService.save(produit));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
     public ResponseEntity<ProduitFini> update(@PathVariable Long id, @Valid @RequestBody ProduitFini produit) {
         return ResponseEntity.ok(produitService.update(id, produit));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         produitService.delete(id);
         return ResponseEntity.noContent().build();

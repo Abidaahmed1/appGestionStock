@@ -73,7 +73,8 @@ export class FournisseurDetailsComponent implements OnInit {
     }
 
     isModuleAuto(moduleName: string): boolean {
-        const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+        if (!this.parametres?.numerotationConfigs) return true;
+        const config = this.parametres.numerotationConfigs.find((c: any) => c.module === moduleName);
         return config ? config.automatique !== false : true;
     }
 
@@ -193,7 +194,7 @@ export class FournisseurDetailsComponent implements OnInit {
                 this.notify(successMsg, 'success');
 
                 if (this.catalog) {
-                    this.catalog.saveAll();
+                    this.catalog.saveAll(savedFournisseur);
                 }
 
                 if (wasNew) {

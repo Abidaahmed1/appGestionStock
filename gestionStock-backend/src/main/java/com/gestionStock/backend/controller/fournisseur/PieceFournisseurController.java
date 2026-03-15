@@ -18,31 +18,31 @@ public class PieceFournisseurController {
     private final PieceFournisseurService service;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR', 'ADMINISTRATEUR')")
     public List<PieceFournisseur> getAll() {
         return service.getAll();
     }
 
     @GetMapping("/fournisseur/{fournisseurId}")
-    @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR', 'ADMINISTRATEUR')")
     public List<PieceFournisseur> getByFournisseur(@PathVariable Long fournisseurId) {
         return service.getByFournisseur(fournisseurId);
     }
 
     @GetMapping("/pieces")
-    @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR', 'ADMINISTRATEUR')")
     public List<PieceFournisseur> getByPieces(@RequestParam List<Long> ids) {
         return service.getByPieceIds(ids);
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE')")
+    @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE', 'ADMINISTRATEUR')")
     public ResponseEntity<PieceFournisseur> save(@RequestBody PieceFournisseur pieceFournisseur) {
         return ResponseEntity.ok(service.save(pieceFournisseur));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole( 'RESPONSABLE_LOGISTIQUE')")
+    @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE', 'ADMINISTRATEUR')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

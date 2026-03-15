@@ -90,6 +90,16 @@ public class GlobalArticleExceptionHandler extends ResponseEntityExceptionHandle
 		return new ResponseEntity<>(e, HttpStatus.CONFLICT);
 	}
 
+	// 403 – Accès refusé (Spring Security)
+	@ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+	public ResponseEntity<Erreur> handleAccessDenied(org.springframework.security.access.AccessDeniedException ex) {
+		Erreur e = new Erreur(
+				LocalDateTime.now(),
+				"Accès refusé : vous n'avez pas les permissions nécessaires pour cette action.",
+				HttpStatus.FORBIDDEN.value());
+		return new ResponseEntity<>(e, HttpStatus.FORBIDDEN);
+	}
+
 	// 400 – Erreur de lecture JSON (Jackson failure) - Overriding
 	// ResponseEntityExceptionHandler method
 	@Override

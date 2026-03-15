@@ -138,10 +138,10 @@ export class FournisseurListComponent implements OnInit {
         if (!this.searchTerm) return this.fournisseurs;
         const term = this.searchTerm.toLowerCase();
         return this.fournisseurs.filter(f =>
-            f.code?.toLowerCase().includes(term) ||
-            f.nom?.toLowerCase().includes(term) ||
-            f.email?.toLowerCase().includes(term) ||
-            f.tel?.includes(term)
+            (f.code?.toLowerCase() || '').includes(term) ||
+            (f.nom?.toLowerCase() || '').includes(term) ||
+            (f.email?.toLowerCase() || '').includes(term) ||
+            (f.tel?.toLowerCase() || '').includes(term)
         );
     }
 

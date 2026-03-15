@@ -21,25 +21,25 @@ public class MouvementStockController {
     private final MouvementStockService mouvementService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('MAGASINIER', 'AUDITEUR')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'AUDITEUR', 'ADMINISTRATEUR')")
     public ResponseEntity<List<MouvementStock>> getAll() {
         return ResponseEntity.ok(mouvementService.getAll());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('MAGASINIER', 'AUDITEUR')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'AUDITEUR', 'ADMINISTRATEUR')")
     public ResponseEntity<MouvementStock> getById(@PathVariable Long id) {
         return ResponseEntity.ok(mouvementService.getById(id));
     }
 
     @GetMapping("/type/{typeMouvement}")
-    @PreAuthorize("hasAnyRole('MAGASINIER', 'AUDITEUR')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'AUDITEUR', 'ADMINISTRATEUR')")
     public ResponseEntity<List<MouvementStock>> getByType(@PathVariable TypeMouvement typeMouvement) {
         return ResponseEntity.ok(mouvementService.getByType(typeMouvement));
     }
 
     @GetMapping("/date-range")
-    @PreAuthorize("hasAnyRole('MAGASINIER', 'AUDITEUR')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'AUDITEUR', 'ADMINISTRATEUR')")
     public ResponseEntity<List<MouvementStock>> getByDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
@@ -47,19 +47,19 @@ public class MouvementStockController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
     public ResponseEntity<MouvementStock> create(@RequestBody MouvementStock mouvement) {
         return ResponseEntity.ok(mouvementService.save(mouvement));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
     public ResponseEntity<MouvementStock> update(@PathVariable Long id, @RequestBody MouvementStock mouvement) {
         return ResponseEntity.ok(mouvementService.update(id, mouvement));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('MAGASINIER')")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         mouvementService.delete(id);
         return ResponseEntity.noContent().build();

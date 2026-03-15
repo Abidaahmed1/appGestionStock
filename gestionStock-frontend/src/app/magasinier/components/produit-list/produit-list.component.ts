@@ -117,7 +117,7 @@ export class ProduitListComponent implements OnInit {
     }
 
     canManage(): boolean {
-        return this.hasRole('MAGASINIER');
+        return this.hasRole('MAGASINIER') || this.hasRole('ADMINISTRATEUR');
     }
 
     initNewProduit(): ProduitFini {
