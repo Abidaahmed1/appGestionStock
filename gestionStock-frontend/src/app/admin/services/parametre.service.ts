@@ -33,6 +33,7 @@ export interface NumerotationConfig {
     redemarrer: string;
     automatique?: boolean;
     actif: boolean;
+    showMenu?: boolean;
 }
 
 export interface Parametre {

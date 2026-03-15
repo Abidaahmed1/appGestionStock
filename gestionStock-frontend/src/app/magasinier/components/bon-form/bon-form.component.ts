@@ -144,7 +144,7 @@ export class BonFormComponent implements OnInit {
         return prefix;
     }
 
-    getFormatExplanation(moduleName: string): string {
+    getFormatExplanation(moduleName: string): string | null {
         const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
         const prefix = config?.prefix || '';
         
@@ -158,7 +158,7 @@ export class BonFormComponent implements OnInit {
         if (parts.length > 0) {
             return `Astuce : Le numéro inclut ${parts.join(', ')} suivis d'une séquence.`;
         }
-        return 'Séquence simple (sans date)';
+        return null;
     }
 
     getModuleForType(type: TypeBon): string {

@@ -51,10 +51,6 @@ public class PieceDetacheeController {
         }
     }
 
-   
-
-
-
     @PostMapping
     @PreAuthorize("hasRole('MAGASINIER')")
     public ResponseEntity<PieceDetachee> create(@Valid @RequestBody PieceDetachee piece) {
@@ -74,8 +70,13 @@ public class PieceDetacheeController {
         try {
             pieceService.delete(id);
             return ResponseEntity.noContent().build();
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (Exception e) {
+            String message = e.getMessage();
+            if (e instanceof org.springframework.dao.DataIntegrityViolationException) {
+                message = "Impossible de supprimer cet élément car il est utilisé dans d'autres parties du système (historique, bons, etc.).";
+            }
+            return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT)
+                    .body(java.util.Map.of("message", message != null ? message : "Erreur lors de la suppression"));
         }
     }
 

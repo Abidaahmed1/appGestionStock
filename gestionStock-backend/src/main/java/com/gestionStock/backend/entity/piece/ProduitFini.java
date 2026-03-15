@@ -15,7 +15,7 @@ import com.gestionStock.backend.entity.entreprise.Entreprise;
 @Entity
 @Getter
 @Setter
-@EqualsAndHashCode(of = {"code", "entreprise"})
+@EqualsAndHashCode(of = {"id", "code", "entreprise"})
 public class ProduitFini {
 	public ProduitFini() {
 	}

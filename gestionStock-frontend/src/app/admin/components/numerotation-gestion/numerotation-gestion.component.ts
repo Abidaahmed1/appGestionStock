@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -30,6 +30,11 @@ export class NumerotationGestionComponent implements OnInit {
   };
 
   constructor(private parametreService: ParametreService) { }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    this.configs.forEach((c) => c.showMenu = false);
+  }
 
   ngOnInit(): void {
     this.loadData();
@@ -111,7 +116,15 @@ export class NumerotationGestionComponent implements OnInit {
     setTimeout(() => this.notification = null, 3000);
   }
 
+  toggleMenu(config: NumerotationConfig, event: Event): void {
+    event.stopPropagation();
+    const currentState = config.showMenu;
+    this.configs.forEach((c) => c.showMenu = false);
+    config.showMenu = !currentState;
+  }
+
   insertPlaceholder(config: NumerotationConfig, placeholder: string): void {
     config.prefix = (config.prefix || '') + placeholder;
+    config.showMenu = false;
   }
 }

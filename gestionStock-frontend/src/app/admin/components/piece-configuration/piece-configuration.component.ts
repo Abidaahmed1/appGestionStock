@@ -91,6 +91,18 @@ export class PieceConfigurationComponent implements OnInit {
                     ...c,
                     options: c.options || []
                 }));
+
+                // Dynamisation de l'affichage de la référence selon la configuration de numérotation
+                if (data.numerotationConfigs) {
+                    const pieceConfig = data.numerotationConfigs.find(c => c.module === 'PIECE');
+                    if (pieceConfig) {
+                        const referenceAttr = this.defaultAttributes.find(a => a.nom === 'Référence');
+                        if (referenceAttr) {
+                            referenceAttr.type = `Texte (${pieceConfig.prefix}*)`;
+                        }
+                    }
+                }
+
                 this.loading = false;
             },
             error: (err) => {

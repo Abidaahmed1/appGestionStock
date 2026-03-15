@@ -20,8 +20,28 @@ import java.util.List;
 public class StockService {
 
     private final StockRepository stockRepo;
+    private final com.gestionStock.backend.repository.piece.PieceHistoriqueRepository historiqueRepo;
     private final NotificationService notificationService;
     private final UserService userService;
+
+    private void recordHistory(com.gestionStock.backend.entity.piece.PieceDetachee piece, String details) {
+        if (piece == null)
+            return;
+        try {
+            com.gestionStock.backend.entity.user.User currentUser = userService.getCurrentUser().orElse(null);
+            com.gestionStock.backend.entity.piece.PieceHistorique history = com.gestionStock.backend.entity.piece.PieceHistorique
+                    .builder()
+                    .piece(piece)
+                    .date(java.time.LocalDateTime.now())
+                    .action("Mise à jour stock")
+                    .details(details)
+                    .utilisateur(currentUser)
+                    .build();
+            historiqueRepo.save(history);
+        } catch (Exception e) {
+            System.err.println("Failed to record stock history: " + e.getMessage());
+        }
+    }
 
     public List<Stock> getAll() {
         return stockRepo.findByPieceEntreprise(userService.getCurrentUserEntreprise());
@@ -65,11 +85,14 @@ public class StockService {
     }
 
     public Stock update(Long id, Stock stock) {
-        if (!stockRepo.existsById(id)) {
-            throw new EntityNotFoundException("Stock non trouvé");
-        }
+        Stock existing = getById(id);
+        int oldQte = existing.getQuantite();
         stock.setId(id);
         Stock saved = stockRepo.save(stock);
+        if (oldQte != saved.getQuantite()) {
+            recordHistory(saved.getPiece(),
+                    "mis à jour. Le stock d'origine " + oldQte + " a été remplacé par " + saved.getQuantite());
+        }
         checkStockAndNotify(saved);
         return saved;
     }
@@ -83,8 +106,13 @@ public class StockService {
 
     public Stock updateQuantity(Long id, int newQuantity) {
         Stock stock = getById(id);
+        int oldQte = stock.getQuantite();
         stock.setQuantite(newQuantity);
         Stock saved = stockRepo.save(stock);
+        if (oldQte != newQuantity) {
+            recordHistory(saved.getPiece(),
+                    "mis à jour. Le stock d'origine " + oldQte + " a été remplacé par " + newQuantity);
+        }
         checkStockAndNotify(saved);
         return saved;
     }

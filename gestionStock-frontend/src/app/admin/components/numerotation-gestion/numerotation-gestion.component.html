@@ -1,106 +1,178 @@
 <div class="settings-container">
     <header class="settings-header">
-        <div class="header-content">
-            <h1>Personnalisation des numéros</h1>
-            <p>Définissez les préfixes et les formats de numérotation pour chaque module.</p>
+        <div class="header-left">
+            <button class="back-btn" [routerLink]="['/admin/settings']">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <div class="header-content">
+                <nav class="breadcrumb">
+                    <span>Paramètres</span>
+                    <i class="fas fa-chevron-right"></i>
+                    <span class="curr">Numérotation</span>
+                </nav>
+                <h1>Personnalisation des numéros</h1>
+                <p>Définissez les préfixes et les formats de numérotation pour chaque module système.</p>
+            </div>
         </div>
         <div class="header-actions">
-            <button class="btn-primary" (click)="save()" [disabled]="saving">
-                <i class="fas" [className]="saving ? 'fa-spinner fa-spin' : 'fa-save'"></i>
-                Enregistrer
+            <button class="btn-save" (click)="save()" [disabled]="saving">
+                <i class="fas" [className]="saving ? 'fa-spinner fa-spin' : 'fa-check-circle'"></i>
+                <span>Enregistrer les modifications</span>
             </button>
         </div>
-
     </header>
 
-
-    <div *ngIf="notification" class="alert-box" [class]="notification.type">
-        {{ notification.message }}
-        <button class="close-btn" (click)="notification = null">&times;</button>
+    <div *ngIf="notification" class="notification-toast" [class]="notification.type">
+        <i class="fas" [class.fa-check-circle]="notification.type === 'success'"
+            [class.fa-exclamation-circle]="notification.type === 'alert'"></i>
+        <span>{{ notification.message }}</span>
     </div>
 
-    <section class="settings-card">
-        <div class="card-header">
-            <h2>Modifier la série</h2>
-        </div>
+    <div class="main-grid">
+        <div class="configs-section">
+            <div class="section-header">
+                <h2>Modules de numérotation</h2>
+                <span class="badge">{{ configs.length }} Modules</span>
+            </div>
 
-        <div class="table-container" *ngIf="!loading; else skeleton">
-            <table class="series-table">
-                <thead>
-                    <tr>
-                        <th width="15%">MODULE</th>
-                        <th width="12%">GÉNÉRATION</th>
-                        <th width="23%">PRÉFIXE</th>
-                        <th width="10%">NUMÉRO DÉBUT</th>
-                        <th width="20%">REDÉMARRER</th>
-                        <th width="20%">APERÇU</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr *ngFor="let config of configs">
-                        <td class="module-name">{{ getModuleName(config.module) }}</td>
-                        <td>
-                            <div class="generation-toggle">
-                                <button type="button" class="toggle-btn" [class.active]="config.automatique !== false"
-                                    (click)="config.automatique = true" title="Automatique">
-                                    <i class="fas fa-robot"></i>
-                                </button>
-                                <button type="button" class="toggle-btn" [class.active]="config.automatique === false"
-                                    (click)="config.automatique = false" title="Manuel">
-                                    <i class="fas fa-keyboard"></i>
-                                </button>
-                            </div>
-                        </td>
-                        <td class="prefix-input-col">
-                            <div class="prefix-input-wrapper">
-                                <input type="text" [(ngModel)]="config.prefix" placeholder="Ex: CN-%DD%%YY%-">
-                                <div class="placeholder-dropdown">
-                                    <button class="insert-btn" type="button" title="Insérer un placeholder">
-                                        <i class="fas fa-plus-circle"></i>
+            <div class="table-container" *ngIf="!loading; else skeleton">
+                <table class="premium-table">
+                    <thead>
+                        <tr>
+                            <th>Module</th>
+                            <th>Génération</th>
+                            <th>Format du préfixe</th>
+                            <th>Début</th>
+                            <th style="width: 180px;">Réinitialisation</th>
+                            <th>Aperçu</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let config of configs">
+                            <td data-label="Module">
+                                <div class="module-cell">
+                                    <div class="module-petrol-icon">
+                                        <i class="fas" [ngClass]="{
+                                            'fa-puzzle-piece': config.module === 'PIECE',
+                                            'fa-box-open': config.module === 'PRODUIT',
+                                            'fa-th-large': config.module === 'CATEGORIE',
+                                            'fa-receipt': config.module === 'BON_COMMANDE',
+                                            'fa-arrow-right-from-bracket': config.module === 'BON_SORTIE',
+                                            'fa-arrow-right-to-bracket': config.module === 'BON_ENTREE',
+                                            'fa-undo-alt': config.module === 'BON_RETOUR',
+                                            'fa-truck': config.module === 'FOURNISSEUR'
+                                        }"></i>
+                                    </div>
+                                    <span class="module-name">{{ getModuleName(config.module) }}</span>
+                                </div>
+                            </td>
+                            <td data-label="Génération">
+                                <div class="segmented-control">
+                                    <button type="button" class="segment-btn" [class.active]="config.automatique" (click)="config.automatique = true" title="Génération Automatique">
+                                        <i class="fas fa-robot"></i>
                                     </button>
-                                    <div class="dropdown-content">
-                                        <button (click)="insertPlaceholder(config, '%YYYY%')">Année (4
-                                            chiffres)</button>
-                                        <button (click)="insertPlaceholder(config, '%YY%')">Année (2 chiffres)</button>
-                                        <button (click)="insertPlaceholder(config, '%MM%')">Mois (01-12)</button>
-                                        <button (click)="insertPlaceholder(config, '%DD%')">Jour (01-31)</button>
+                                    <button type="button" class="segment-btn" [class.active]="!config.automatique" (click)="config.automatique = false" title="Saisie Manuelle">
+                                        <i class="fas fa-keyboard"></i>
+                                    </button>
+                                </div>
+                                <div class="mode-text-label" [class.is-auto]="config.automatique">
+                                    {{ config.automatique ? 'Auto' : 'Manuel' }}
+                                </div>
+                            </td>
+                            <td data-label="Format du préfixe">
+                                <div class="prefix-input-group">
+                                    <input type="text" [(ngModel)]="config.prefix" placeholder="Ex: INV-%YY%-">
+                                    <div class="placeholder-trigger" (click)="$event.stopPropagation()">
+                                        <button class="add-placeholder-btn" type="button" (click)="toggleMenu(config, $event)" title="Insérer une variable">
+                                            <i class="fas fa-plus"></i>
+                                        </button>
+                                        <div class="placeholder-menu" [class.show]="config.showMenu">
+                                            <button type="button" (click)="insertPlaceholder(config, '%YYYY%')">Année (4 chiffres)</button>
+                                            <button type="button" (click)="insertPlaceholder(config, '%YY%')">Année (2 chiffres)</button>
+                                            <button type="button" (click)="insertPlaceholder(config, '%MM%')">Mois (01-12)</button>
+                                            <button type="button" (click)="insertPlaceholder(config, '%DD%')">Jour (01-31)</button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </td>
-                        <td>
-                            <input type="text" [(ngModel)]="config.numeroDebut" class="mini-input">
-                        </td>
-                        <td>
-                            <select [(ngModel)]="config.redemarrer" class="form-select">
-                                <option value="AUCUN">Aucun</option>
-                                <option value="ANNUEL">Annuel</option>
-                                <option value="MENSUEL">Mensuel</option>
-                            </select>
-                        </td>
-                        <td class="preview-col">
-                            <span class="preview-badge">{{ getPreview(config) }}</span>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+                            </td>
+                            <td data-label="Début">
+                                <input type="text" [(ngModel)]="config.numeroDebut" class="number-input">
+                            </td>
+                            <td data-label="Réinitialisation">
+                                <select [(ngModel)]="config.redemarrer" class="select-input">
+                                    <option value="AUCUN">Pas de remise à zéro</option>
+                                    <option value="ANNUEL">Chaque Année</option>
+                                    <option value="MENSUEL">Chaque Mois</option>
+                                </select>
+                            </td>
+                            <td data-label="Aperçu">
+                                <div class="preview-badge">
+                                    {{ getPreview(config) }}
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="table-footer">
+                    <div class="table-summary">
+                        Affichage de <strong>{{ configs.length }}</strong> modules configurables
+                    </div>
+                </div>
+            </div>
+
+            <ng-template #skeleton>
+                <div class="table-container">
+                    <div class="skeleton-row" *ngFor="let i of [1,2,3,4,5,6]"></div>
+                </div>
+            </ng-template>
         </div>
 
-        <ng-template #skeleton>
-            <div class="skeleton-container">
-                <div class="skeleton-row" *ngFor="let i of [1,2,3,4]"></div>
+        <aside class="guide-sidebar">
+            <div class="sidebar-card">
+                <div class="sidebar-header">
+                    <i class="fas fa-lightbulb"></i>
+                    <h3>Guide de formatage</h3>
+                </div>
+                <div class="sidebar-body">
+                    <p>Utilisez ces balises dynamiques dans le champ <strong>Préfixe</strong> pour générer des numéros datés automatiquement.</p>
+                    <div class="guide-list">
+                        <div class="guide-item">
+                            <span class="code-tag">%YYYY%</span>
+                            <div class="guide-desc">
+                                <strong>Année actuelle</strong>
+                                <span>Format long (ex: <b>2026</b>)</span>
+                            </div>
+                        </div>
+                        <div class="guide-item">
+                            <span class="code-tag">%YY%</span>
+                            <div class="guide-desc">
+                                <strong>Année courte</strong>
+                                <span>Format court (ex: <b>26</b>)</span>
+                            </div>
+                        </div>
+                        <div class="guide-item">
+                            <span class="code-tag">%MM%</span>
+                            <div class="guide-desc">
+                                <strong>Mois en cours</strong>
+                                <span>01 à 12 (ex: <b>03</b>)</span>
+                            </div>
+                        </div>
+                        <div class="guide-item">
+                            <span class="code-tag">%DD%</span>
+                            <div class="guide-desc">
+                                <strong>Jour actuel</strong>
+                                <span>01 à 31 (ex: <b>15</b>)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-note">
+                        <i class="fas fa-lightbulb"></i>
+                        <div class="note-content">
+                            <p><strong>Astuce :</strong> Les zéros dans le champ "Début" (ex: 0001) fixent la longueur du numéro final.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </ng-template>
-    </section>
-    <section class="settings-info">
-        <div class="info-card">
-            <h3><i class="fas fa-info-circle"></i> Guide des Placeholders</h3>
-            <ul>
-                <li><strong>%YYYY%</strong> : Année fiscale (ex: 2026)</li>
-                <li><strong>%YY%</strong> : Année abrégée (ex: 26)</li>
-                <li><strong>%MM%</strong> : Mois en chiffres (01-12)</li>
-                <li><strong>%DD%</strong> : Jour du mois (01-31)</li>
-            </ul>
-        </div>
-    </section>
+        </aside>
+    </div>
 </div>

@@ -190,30 +190,34 @@ export class UserListComponent implements OnInit {
     }
 
     manageRoles(user: UserRepresentation) {
-        this.selectedUser = user;
+        this.selectedUser = { ...user }; // Clone to avoid direct mutation before confirmation
         this.showRoleModal = true;
+        
+        // 1. Instant Normalization and Pre-Check
+        const currentRole = user.role ? user.role.toUpperCase().replace('ROLE_', '').trim() : '';
+        this.userRoles = currentRole ? [currentRole] : [];
+        
+        console.log('Opening modal for:', user.email, 'Current Role Normalized:', currentRole);
 
-        if (user.role && user.role !== 'Aucun' && user.role !== 'AUCUN') {
-            this.userRoles = [user.role];
-        } else {
-            this.userRoles = [];
+        // 2. Fetch from server to ensure synchronization
+        if (user.id) {
+            this.adminService.getUserRoles(user.id).subscribe({
+                next: (roles) => {
+                    const serverRoles = roles.map(r => r.name.toUpperCase().replace('ROLE_', '').trim());
+                    // Business check: we only care about roles defined in our valideRoles
+                    const businessRole = serverRoles.find(r => this.valideRoles.includes(r));
+                    
+                    if (businessRole) {
+                        this.userRoles = [businessRole];
+                        if (this.selectedUser) this.selectedUser.role = businessRole;
+                        // Synchronize back to the main list as well
+                        const index = this.users.findIndex(u => u.id === user.id);
+                        if (index !== -1) this.users[index].role = businessRole;
+                    }
+                },
+                error: (err) => console.error('Roles sync error:', err)
+            });
         }
-
-        this.adminService.getUserRoles(user.id!).subscribe(roles => {
-            this.userRoles = roles.map(r => r.name);
-
-            const allValidRoles = [...this.valideRoles, 'ADMINISTRATEUR'];
-            const businessRole = this.userRoles.find(r => allValidRoles.includes(r));
-
-            if (this.selectedUser) {
-
-                if (businessRole) {
-                    this.selectedUser.role = businessRole;
-                } else if (!this.selectedUser.role || this.selectedUser.role === 'AUCUN') {
-                    this.selectedUser.role = 'AUCUN';
-                }
-            }
-        });
     }
 
     closeRoleModal() {
@@ -223,7 +227,10 @@ export class UserListComponent implements OnInit {
     }
 
     hasRole(roleName: string): boolean {
-        return this.userRoles.includes(roleName);
+        if (!roleName || !this.userRoles || this.userRoles.length === 0) return false;
+        const normalizedTarget = roleName.toUpperCase().replace('ROLE_', '').trim();
+        // Check if any of our detected roles match the target
+        return this.userRoles.some(r => r.toUpperCase().replace('ROLE_', '').trim() === normalizedTarget);
     }
 
     addRole(roleName: string) {
@@ -269,7 +276,6 @@ export class UserListComponent implements OnInit {
                     this.userRoles = [];
                     if (this.selectedUser) this.selectedUser.role = 'AUCUN';
                     this.notify('Rôle retiré avec succès', 'success');
-                    this.loadUsers();
                     this.closeConfirmRole();
                 },
                 error: (err) => this.handleRoleError(err)
@@ -281,7 +287,6 @@ export class UserListComponent implements OnInit {
         this.userRoles = [roleName];
         if (this.selectedUser) this.selectedUser.role = roleName;
         this.notify('Rôle mis à jour avec succès', 'success');
-        this.loadUsers();
         this.closeConfirmRole();
     }
 
@@ -311,7 +316,6 @@ export class UserListComponent implements OnInit {
             next: () => {
                 user.enabled = newStatus;
                 this.notify(`Utilisateur ${newStatus ? 'activé' : 'bloqué'} avec succès`, 'success');
-                this.loadUsers();
                 this.closeConfirmStatus();
             },
             error: (err) => {

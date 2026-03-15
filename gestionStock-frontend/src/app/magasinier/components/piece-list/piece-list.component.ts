@@ -38,6 +38,7 @@ export class PieceListComponent implements OnInit {
     filterMaxPrice: number | null = null;
     showDeleteConfirm = false;
     itemToDelete: PieceDetachee | null = null;
+    isBulkDelete = false;
 
     // Searchable Category
     catSearchTerm: string = '';
@@ -57,6 +58,9 @@ export class PieceListComponent implements OnInit {
 
     parametres: Parametre | null = null;
     private imageCache = new Map<string, string>();
+
+    // Multi-selection
+    selectedIds: Set<number> = new Set();
 
     private keycloak = inject(KeycloakService);
     private platformId = inject(PLATFORM_ID);
@@ -131,10 +135,14 @@ export class PieceListComponent implements OnInit {
                 if (this.selectedPiece?.id === id) {
                     this.selectedPiece = updatedPiece;
                 }
+                if (this.activePiece?.id === id) {
+                    this.activePiece = updatedPiece;
+                }
             },
             error: (err: any) => {
                 const msg = typeof err.error === 'string' ? err.error : (err.error?.message || 'Erreur lors du chargement de l\'image');
                 this.notify(msg, 'error');
+                this.loadPieces(); // Refresh text data even if image upload failed
             }
         });
     }
@@ -146,6 +154,15 @@ export class PieceListComponent implements OnInit {
                 this.pieces = data || [];
                 this.loading = false;
                 this.applyFilters();
+                
+                // Refresh activePiece from the new list to show latest data in detail view
+                if (this.activePiece) {
+                    const fresh = this.pieces.find(p => p.id === this.activePiece?.id);
+                    if (fresh) {
+                        this.activePiece = fresh;
+                    }
+                }
+                
                 this.cdr.detectChanges();
             },
             error: (err: any) => {
@@ -292,6 +309,10 @@ export class PieceListComponent implements OnInit {
         if (this.selectedPiece && this.selectedPiece.id) {
             this.magasinierService.updatePiece(this.selectedPiece.id, pieceData).subscribe({
                 next: (saved) => {
+                    // Update activePiece if it was the one being edited
+                    if (this.activePiece?.id === saved.id) {
+                        this.activePiece = saved;
+                    }
                     if (file && saved.id) {
                         this.doUpload(file, saved.id, 'Pièce mise à jour');
                     } else {
@@ -327,6 +348,7 @@ export class PieceListComponent implements OnInit {
     }
 
     confirmDelete(piece: PieceDetachee): void {
+        this.isBulkDelete = false;
         this.itemToDelete = piece;
         this.showDeleteConfirm = true;
         this.cdr.detectChanges();
@@ -334,6 +356,7 @@ export class PieceListComponent implements OnInit {
 
     cancelDelete(): void {
         this.itemToDelete = null;
+        this.isBulkDelete = false;
         this.showDeleteConfirm = false;
         this.cdr.detectChanges();
     }
@@ -360,20 +383,45 @@ export class PieceListComponent implements OnInit {
      * Avoids exposing raw technical/JSON errors to the user.
      */
     extractErrorMessage(err: any, defaultMsg: string): string {
-        if (typeof err.error === 'object' && err.error !== null) {
-            const m = err.error?.message || err.error?.error || err.error?.detail;
-            if (m && typeof m === 'string' && m.length < 300 && !m.includes('com.') && !m.includes('java.')) {
-                return m;
+        console.error('[ANTIGRAVITY] Raw error object:', err);
+        
+        // 1. Try to find a message in the error body
+        if (err.error) {
+            // String body
+            if (typeof err.error === 'string' && err.error.length < 1000 && !err.error.includes('<!DOCTYPE')) {
+                return err.error;
+            }
+            // Object body
+            if (typeof err.error === 'object') {
+                const fields = ['message', 'error', 'details', 'detail', 'msg'];
+                for (const field of fields) {
+                    if (err.error[field] && typeof err.error[field] === 'string') {
+                        return err.error[field];
+                    }
+                }
             }
         }
-        if (typeof err.error === 'string' && err.error.length < 250
-            && !err.error.includes('com.') && !err.error.includes('at ')) {
-            return err.error;
+
+        // 2. Try the status text or the message field of the error object itself
+        if (err.statusText && err.statusText !== 'Unknown Error' && err.statusText !== 'OK') {
+            return `Erreur ${err.status} : ${err.statusText}`;
         }
-        if (err.status === 400) return 'Données invalides. Veuillez vérifier les champs saisis.';
-        if (err.status === 409) return 'Ce code existe déjà ou la pièce est liée à un stock.';
-        if (err.status === 404) return 'Pièce introuvable.';
-        if (err.status === 500) return 'Une erreur serveur est survenue. Veuillez réessayer.';
+        
+        if (err.message && typeof err.message === 'string' && !err.message.includes('Http failure response')) {
+            return err.message;
+        }
+
+        // 3. Fallback based on HTTP status
+        switch (err.status) {
+            case 400: return 'Données invalides : veuillez vérifier vos champs.';
+            case 401: return 'Session expirée : veuillez vous reconnecter.';
+            case 403: return 'Accès refusé : vous n\'avez pas les droits nécessaires.';
+            case 404: return 'Ressource introuvable.';
+            case 409: return 'Conflit : l\'action est impossible car l\'élément est utilisé ailleurs (stock, produits, etc.).';
+            case 500: return 'Erreur interne du serveur. Veuillez contacter le support.';
+            case 0: return 'Le serveur est injoignable. Vérifiez votre connexion.';
+        }
+
         return defaultMsg;
     }
 
@@ -488,10 +536,6 @@ export class PieceListComponent implements OnInit {
         return variant.id || index;
     }
 
-    switchTab(tab: string): void {
-        this.activeTab = tab;
-        this.cdr.detectChanges();
-    }
 
     applyFilters(): void {
         let results = this.pieces;
@@ -557,6 +601,12 @@ export class PieceListComponent implements OnInit {
 
     selectPiece(piece: PieceDetachee): void {
         this.activePiece = piece;
+        this.activeTab = 'overview';
+        this.cdr.detectChanges();
+    }
+
+    switchTab(tab: string): void {
+        this.activeTab = tab;
         this.cdr.detectChanges();
     }
 
@@ -592,6 +642,15 @@ export class PieceListComponent implements OnInit {
 
         detail._label = label || 'Standard';
         return detail._label;
+    }
+
+    getStockPercentage(variant: any): number {
+        if (!variant.stock || !this.activePiece) return 0;
+        const current = variant.stock.quantite || 0;
+        if (current <= 0) return 0;
+        const max = this.activePiece.seuilMaximum || (this.activePiece.seuilMinimum * 5) || 100;
+        const percentage = (current / max) * 100;
+        return Math.min(percentage, 100);
     }
 
     getVariantAttributes(detail: any): string[] {
@@ -632,6 +691,73 @@ export class PieceListComponent implements OnInit {
         }
         const index = Math.abs(hash) % colors.length;
         return colors[index];
+    }
+
+    // --- MULTI-SELECTION LOGIC ---
+    togglePieceSelection(id: number | undefined, event: Event): void {
+        event.stopPropagation();
+        if (id === undefined) return;
+        if (this.selectedIds.has(id)) {
+            this.selectedIds.delete(id);
+        } else {
+            this.selectedIds.add(id);
+        }
+        this.cdr.detectChanges();
+    }
+
+    toggleAllSelection(): void {
+        if (this.isAllSelected()) {
+            this.selectedIds.clear();
+        } else {
+            this.filteredPiecesList.forEach(p => {
+                if (p.id) this.selectedIds.add(p.id);
+            });
+        }
+        this.cdr.detectChanges();
+    }
+
+    isAllSelected(): boolean {
+        return this.filteredPiecesList.length > 0 && 
+               this.filteredPiecesList.every(p => p.id && this.selectedIds.has(p.id));
+    }
+
+    deleteSelectedPieces(): void {
+        if (this.selectedIds.size === 0) return;
+        this.isBulkDelete = true;
+        this.itemToDelete = null;
+        this.showDeleteConfirm = true;
+        this.cdr.detectChanges();
+    }
+
+    startBulkDelete(): void {
+        const ids = Array.from(this.selectedIds);
+        let successCount = 0;
+        this.loading = true;
+
+        const processNext = (index: number) => {
+            if (index >= ids.length) {
+                this.notify(`${successCount} pièce(s) supprimée(s) avec succès`, 'success');
+                this.selectedIds.clear();
+                this.loadPieces();
+                this.cancelDelete();
+                this.loading = false;
+                return;
+            }
+
+            this.magasinierService.deletePiece(ids[index]).subscribe({
+                next: () => {
+                    successCount++;
+                    processNext(index + 1);
+                },
+                error: (err) => {
+                    const msg = this.extractErrorMessage(err, `Erreur lors de la suppression d'une pièce.`);
+                    this.notify(msg, 'error');
+                    processNext(index + 1);
+                }
+            });
+        };
+
+        processNext(0);
     }
 
 

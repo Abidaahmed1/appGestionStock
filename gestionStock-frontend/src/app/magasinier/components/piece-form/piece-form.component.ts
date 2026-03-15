@@ -31,10 +31,14 @@ export class PieceFormComponent implements OnInit, OnChanges {
     imagePreview: string | null = null;
     selectedFile: File | null = null;
 
-    showCategorySelector = false;
-    showProductSelector = false;
     categorySearchTerm = '';
     productSearchTerm = '';
+    showCategorySelector = false;
+    showProductSelector = false;
+
+    // Cached filtered lists to avoid lag in templates
+    filteredCategoriesList: Categorie[] = [];
+    filteredProductsList: ProduitFini[] = [];
 
     showQuickAddCategory = false;
     showQuickAddProduct = false;
@@ -67,6 +71,8 @@ export class PieceFormComponent implements OnInit, OnChanges {
     ngOnInit() {
         this.resetForm();
         this.loadEntreprise();
+        this.updateFilteredCategoriesList();
+        this.updateFilteredProductsList();
     }
 
     loadEntreprise() {
@@ -91,6 +97,8 @@ export class PieceFormComponent implements OnInit, OnChanges {
     }
 
     resetForm() {
+        this.barcodeDuplicates.clear();
+        this.backendBarcodeErrors.clear();
         if (this.selectedPiece) {
             const pieceToUse = (this.selectedPiece as any).originalPiece || this.selectedPiece;
 
@@ -135,10 +143,14 @@ export class PieceFormComponent implements OnInit, OnChanges {
             this.isAutoProductCode = this.isModuleAuto('PRODUIT');
         }
         this.syncComplementaryAttributes();
+        this.updateFilteredCategoriesList();
+        this.updateFilteredProductsList();
     }
 
     isModuleAuto(moduleName: string): boolean {
-        const config = this.parametres?.numerotationConfigs?.find((c: NumerotationConfig) => c.module === moduleName);
+        const configs = this.parametres?.numerotationConfigs;
+        if (!configs || !Array.isArray(configs)) return true;
+        const config = configs.find((c: NumerotationConfig) => c.module === moduleName);
         return config ? config.automatique !== false : true;
     }
 
@@ -156,21 +168,21 @@ export class PieceFormComponent implements OnInit, OnChanges {
         return prefix;
     }
 
-    getFormatExplanation(moduleName: string): string {
+    getFormatExplanation(moduleName: string): string | null {
         const config = this.parametres?.numerotationConfigs?.find((c: NumerotationConfig) => c.module === moduleName);
         const prefix = config?.prefix || '';
-        
+
         let parts = [];
         if (prefix.includes('%YYYY%')) parts.push("l'année sur 4 chiffres");
         else if (prefix.includes('%YY%')) parts.push("l'année sur 2 chiffres");
-        
+
         if (prefix.includes('%MM%')) parts.push("le mois sur 2 chiffres");
         if (prefix.includes('%DD%')) parts.push("le jour sur 2 chiffres");
-        
+
         if (parts.length > 0) {
             return `Astuce : Le numéro inclut ${parts.join(', ')} suivis d'une séquence.`;
         }
-        return 'Séquence simple (sans date)';
+        return null;
     }
 
     initNewPiece(): PieceDetachee {
@@ -185,6 +197,7 @@ export class PieceFormComponent implements OnInit, OnChanges {
             categorie: { nom: '' },
             unite: undefined,
             imageUrl: '',
+            description: '',
             details: [{ attributs: {}, codeBarre: '' }]
         };
     }
@@ -245,6 +258,7 @@ export class PieceFormComponent implements OnInit, OnChanges {
                     this.newPiece.seuilMinimum = piece.seuilMinimum;
                     this.newPiece.seuilMaximum = piece.seuilMaximum;
                     this.newPiece.imageUrl = piece.imageUrl;
+                    this.newPiece.description = piece.description;
                     this.imagePreview = piece.imageUrl || null;
                     this.newPiece.produitsAssocies = [...(piece.produitsAssocies || [])];
 
@@ -278,6 +292,18 @@ export class PieceFormComponent implements OnInit, OnChanges {
         }
     }
 
+    removeImage(event: MouseEvent): void {
+        event.preventDefault();
+        event.stopPropagation();
+        this.selectedFile = null;
+        this.imagePreview = null;
+        this.newPiece.imageUrl = '';
+        if (this.selectedPiece) {
+            this.selectedPiece.imageUrl = '';
+        }
+        this.cdr.detectChanges();
+    }
+
     getImageUrl(url: string | null | undefined): string {
         if (!url) return 'assets/images/default-produit.svg';
         if (url.startsWith('data:')) return url;
@@ -302,9 +328,20 @@ export class PieceFormComponent implements OnInit, OnChanges {
         this.cdr.detectChanges();
     }
 
-    get filteredCategories() {
-        const term = (this.categorySearchTerm || '').toLowerCase();
-        return (this.categories || []).filter(c => (c.nom || '').toLowerCase().includes(term));
+    updateFilteredCategoriesList(): void {
+        const term = (this.categorySearchTerm || '').toLowerCase().trim();
+        if (!term) {
+            this.filteredCategoriesList = [...(this.categories || [])];
+        } else {
+            this.filteredCategoriesList = (this.categories || []).filter(c =>
+                (c.nom || '').toLowerCase().includes(term)
+            );
+        }
+    }
+
+    onCategorySearchChange(): void {
+        this.updateFilteredCategoriesList();
+        this.cdr.detectChanges();
     }
 
     openQuickAddCategory(event?: Event): void {
@@ -362,12 +399,21 @@ export class PieceFormComponent implements OnInit, OnChanges {
         }
     }
 
-    get filteredProduitsSelection() {
-        const term = (this.productSearchTerm || '').toLowerCase();
-        return this.produitsFinis.filter(p =>
-            p.designation.toLowerCase().includes(term) ||
-            p.code.toLowerCase().includes(term)
-        );
+    updateFilteredProductsList(): void {
+        const term = (this.productSearchTerm || '').toLowerCase().trim();
+        if (!term) {
+            this.filteredProductsList = [...(this.produitsFinis || [])];
+        } else {
+            this.filteredProductsList = (this.produitsFinis || []).filter(p =>
+                (p.designation || '').toLowerCase().includes(term) ||
+                (p.code || '').toLowerCase().includes(term)
+            );
+        }
+    }
+
+    onProductSearchChange(): void {
+        this.updateFilteredProductsList();
+        this.cdr.detectChanges();
     }
 
     getSelectedProductsCount(): number {
@@ -414,12 +460,13 @@ export class PieceFormComponent implements OnInit, OnChanges {
 
     @HostListener('document:click', ['$event'])
     onDocumentClick(event: MouseEvent): void {
-        if (this.showCategorySelector) {
-            const target = event.target as HTMLElement;
-            if (!target.closest('.custom-picker')) {
-                this.showCategorySelector = false;
-                this.cdr.detectChanges();
-            }
+        if (!this.showCategorySelector) return;
+
+        const target = event.target as HTMLElement;
+        const picker = document.querySelector('.picker-container');
+        if (picker && !picker.contains(target)) {
+            this.showCategorySelector = false;
+            this.cdr.detectChanges();
         }
     }
 
@@ -480,12 +527,16 @@ export class PieceFormComponent implements OnInit, OnChanges {
             imageUrl: rawPiece.imageUrl || null,
             unite: rawPiece.unite?.id ? { id: Number(rawPiece.unite.id) } : null,
             categorie: rawPiece.categorie?.id ? { id: Number(rawPiece.categorie.id) } : null,
+            description: String(rawPiece.description || '').trim()
         };
 
         pieceToSave.produitsAssocies = (rawPiece.produitsAssocies || [])
-            .map(p => ({ id: Number(p.id) }));
+            .map(p => ({ 
+                id: Number(p.id),
+                code: p.code,
+                designation: p.designation
+            }));
 
-        // Safety: If imageUrl is an absolute local URL, extract only the path
         if (pieceToSave.imageUrl && pieceToSave.imageUrl.includes('http://localhost:8081')) {
             pieceToSave.imageUrl = pieceToSave.imageUrl.replace('http://localhost:8081', '');
         }
@@ -534,7 +585,6 @@ export class PieceFormComponent implements OnInit, OnChanges {
     }
 
     checkDuplicateBarcodes(): void {
-        this.backendBarcodeErrors.clear();
         this.barcodeDuplicates.clear();
         if (!this.newPiece.details) return;
 
@@ -554,6 +604,7 @@ export class PieceFormComponent implements OnInit, OnChanges {
                 indices.forEach(idx => this.barcodeDuplicates.add(idx));
             }
         });
+        this.cdr.detectChanges();
     }
 
     onCancel(): void {

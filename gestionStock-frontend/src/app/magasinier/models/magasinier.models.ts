@@ -8,10 +8,12 @@ export interface PieceDetachee {
     tauxTVA: number;
     archivee: boolean;
     imageUrl?: string;
+    description?: string;
     categorie?: Categorie;
     stocks?: Stock[];
     produitsAssocies?: ProduitFini[];
     details?: DetailPiece[];
+    historiques?: PieceHistorique[];
     entreprise?: any;
     variantDetail?: DetailPiece;
     originalPiece?: PieceDetachee;
@@ -81,4 +83,17 @@ export interface ProduitFini {
     imageUrl?: string;
     pieces?: PieceDetachee[];
     estArchivee?: boolean;
+}
+
+export interface PieceHistorique {
+    id?: number;
+    date: Date;
+    action: string;
+    details: string;
+    utilisateur?: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+    };
 }
