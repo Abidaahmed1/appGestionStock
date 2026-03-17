@@ -30,13 +30,14 @@ export class ProduitListComponent implements OnInit {
     showDeleteConfirm = false;
     itemToDelete: any = null;
     isAutoCode = true;
+    lastUpdateTimestamp = Date.now();
+
 
 
     showAssociatedPiecesModal = false;
     selectedProductForPieces: ProduitFini | null = null;
     associatedPiecesSearchTerm: string = '';
 
-    // Advanced Filters State
     showAdvancedFilters = false;
     minPrice: number | null = null;
     maxPrice: number | null = null;
@@ -73,12 +74,15 @@ export class ProduitListComponent implements OnInit {
     }
 
     isModuleAuto(moduleName: string): boolean {
-        const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+        if (!this.parametres?.numerotationConfigs) return true;
+        const config = this.parametres.numerotationConfigs.find((c: any) => c.module === moduleName);
         return config ? config.automatique !== false : true;
     }
 
+
     getPrefix(moduleName: string): string {
-        const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+        if (!this.parametres?.numerotationConfigs) return '';
+        const config = this.parametres.numerotationConfigs.find((c: any) => c.module === moduleName);
         let prefix = config?.prefix || '';
         if (prefix) {
             const date = new Date();
@@ -91,17 +95,18 @@ export class ProduitListComponent implements OnInit {
         return prefix;
     }
 
+
     getFormatExplanation(moduleName: string): string {
         const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
         const prefix = config?.prefix || '';
-        
+
         let parts = [];
         if (prefix.includes('%YYYY%')) parts.push("l'année sur 4 chiffres");
         else if (prefix.includes('%YY%')) parts.push("l'année sur 2 chiffres");
-        
+
         if (prefix.includes('%MM%')) parts.push("le mois sur 2 chiffres");
         if (prefix.includes('%DD%')) parts.push("le jour sur 2 chiffres");
-        
+
         if (parts.length > 0) {
             return `Astuce : Le numéro inclut ${parts.join(', ')} suivis d'une séquence.`;
         }
@@ -135,12 +140,14 @@ export class ProduitListComponent implements OnInit {
         if (input.files && input.files[0]) {
             this.selectedFile = input.files[0];
             const reader = new FileReader();
-            reader.onload = () => {
-                this.imagePreview = reader.result as string;
+            reader.onload = (e: any) => {
+                this.imagePreview = e.target.result;
+                this.cdr.detectChanges(); // Force l'affichage immédiat de l'aperçu dans la modale
             };
             reader.readAsDataURL(this.selectedFile);
         }
     }
+
 
     uploadImage(event: Event, type: 'piece' | 'produit', id: number): void {
         const input = event.target as HTMLInputElement;
@@ -154,20 +161,38 @@ export class ProduitListComponent implements OnInit {
         const formData = new FormData();
         formData.append('file', file);
 
+        // Mise à jour locale ultra-rapide (Optimistic UI) 
+        const index = this.produits.findIndex(p => p.id === id);
+        if (index !== -1 && this.imagePreview) {
+            this.produits[index].imageUrl = this.imagePreview; // On injecte le Base64 directement
+            this.cdr.detectChanges();
+        }
+
         this.magasinierService.uploadProduitImage(id, formData).subscribe({
             next: (updatedProduit) => {
-                this.notify(successMessage, 'success');
-                this.loadProduits();
+                this.lastUpdateTimestamp = Date.now();
+                
+                // On met à jour l'objet local SANS recharger toute la liste
+                if (index !== -1) {
+                    this.produits[index] = { ...updatedProduit };
+                }
+                
                 if (this.selectedProduit?.id === id) {
                     this.selectedProduit = updatedProduit;
                 }
+                
+                this.notify(successMessage, 'success');
+                this.cdr.detectChanges();
             },
             error: (err) => {
-                console.error('Error uploading produit image:', err);
-                this.notify('Erreur lors du chargement de l\'image', 'error');
+                console.error('Error uploading image:', err);
+                this.notify('Erreur lors de l\'upload, mais les données sont sauvées', 'error');
+                this.loadProduits(); // En cas d'erreur seulement, on recharge pour restaurer l'état
             }
         });
     }
+
+
 
     loadProduits(): void {
         this.magasinierService.getProduits().subscribe({
@@ -233,25 +258,38 @@ export class ProduitListComponent implements OnInit {
         delete payload.pieces;
         delete payload.entreprise;
 
+        // --- PHASE 1 : RÉACTION VISUELLE IMMÉDIATE ---
+        if (this.selectedProduit?.id && this.selectedFile && this.imagePreview) {
+            const index = this.produits.findIndex(p => p.id === this.selectedProduit?.id);
+            if (index !== -1) {
+                // Remplacement immédiat par l'image locale (Base64) dans la liste
+                this.produits[index].imageUrl = this.imagePreview;
+                this.cdr.detectChanges();
+            }
+        }
+        
+        // Fermeture instantanée pour libérer l'utilisateur
+        this.closeCreateModal();
+
+        // --- PHASE 2 : EXÉCUTION RÉELLE (PARALLÈLE POUR UPDATE) ---
         if (this.selectedProduit && this.selectedProduit.id) {
-            this.magasinierService.updateProduit(this.selectedProduit.id, payload).subscribe({
-                next: (saved) => {
-                    if (this.selectedFile && saved.id) {
-                        this.doUpload(this.selectedFile, saved.id, 'Produit mis à jour');
-                    } else {
-                        this.notify('Produit mis à jour', 'success');
-                        this.loadProduits();
-                    }
-                    this.closeCreateModal();
-                    this.cdr.detectChanges();
+            const prodId = this.selectedProduit.id;
+            
+            // On lance l'upload de l'image SANS attendre la mise à jour des données
+            if (this.selectedFile) {
+                this.doUpload(this.selectedFile, prodId, 'Image mise à jour');
+            }
+
+            // En parallèle, on met à jour les informations (Désignation, etc.)
+            this.magasinierService.updateProduit(prodId, payload).subscribe({
+                next: () => {
+                    this.notify('Informations mises à jour', 'success');
+                    this.loadProduits(); // Conserve la cohérence globale
                 },
-                error: (err) => {
-                    const msg = this.extractErrorMessage(err, 'Erreur lors de la mise à jour du produit.');
-                    this.notify(msg, 'error');
-                    this.cdr.detectChanges();
-                }
+                error: (err) => this.notify(this.extractErrorMessage(err, 'Erreur de mise à jour'), 'error')
             });
         } else {
+            // Création : On doit d'abord avoir l'ID généré pour pouvoir uploader
             this.magasinierService.createProduit(payload).subscribe({
                 next: (saved) => {
                     if (this.selectedFile && saved.id) {
@@ -260,17 +298,14 @@ export class ProduitListComponent implements OnInit {
                         this.notify('Produit créé', 'success');
                         this.loadProduits();
                     }
-                    this.closeCreateModal();
-                    this.cdr.detectChanges();
                 },
-                error: (err) => {
-                    const msg = this.extractErrorMessage(err, 'Erreur lors de la création du produit.');
-                    this.notify(msg, 'error');
-                    this.cdr.detectChanges();
-                }
+                error: (err) => this.notify(this.extractErrorMessage(err, 'Erreur de création'), 'error')
             });
         }
     }
+
+
+
 
     confirmDelete(produit: ProduitFini): void {
         this.itemToDelete = produit;
@@ -341,23 +376,30 @@ export class ProduitListComponent implements OnInit {
     getImageUrl(url: string | null | undefined): string {
         if (!url) return 'assets/images/default-produit.svg';
 
-        if (url.startsWith('/api/images') || url.startsWith('/uploads')) {
-            return `http://localhost:8081${url}`;
-        }
+        // Si c'est une prévisualisation locale (Base64), on la retourne directement
+        if (url.startsWith('data:')) return url;
 
-        if (url.includes('/remote.php/dav/files/')) {
+        let finalUrl = url;
+        if (url.startsWith('/api/images') || url.startsWith('/uploads')) {
+            finalUrl = `http://localhost:8081${url}`;
+        } else if (url.includes('/remote.php/dav/files/')) {
             const parts = url.split('/');
             const filename = parts[parts.length - 1];
-            return `http://localhost:8081/api/images/${filename}`;
+            finalUrl = `http://localhost:8081/api/images/${filename}`;
         }
 
-        return url;
+        // Ajout d'un paramètre de version pour forcer le rafraîchissement du cache
+        const separator = finalUrl.includes('?') ? '&' : '?';
+        return `${finalUrl}${separator}v=${this.lastUpdateTimestamp}`;
     }
+
 
     canArchiveProduit(produit: ProduitFini): boolean {
         if (!produit.pieces || produit.pieces.length === 0) return true;
         return produit.pieces.every(p => p.archivee);
     }
+
+
 
     get filteredProduits() {
         if (!this.searchTerm) return this.produits;

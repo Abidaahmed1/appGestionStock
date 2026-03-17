@@ -5,7 +5,6 @@
         <button class="close-btn" (click)="notification = null">✕</button>
     </div>
 
-    <!-- Modern Header Section -->
     <div class="header-section">
         <div class="header-content">
             <div class="title-block">
@@ -24,7 +23,8 @@
             <div class="header-actions">
                 <div class="search-group">
                     <div class="search-wrapper">
-                        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
@@ -38,7 +38,8 @@
                     </select>
                 </div>
                 <button class="btn-primary-gradient" (click)="openCreateModal()" *ngIf="canManage()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
                     </svg>
@@ -48,21 +49,28 @@
         </div>
     </div>
 
-    <!-- Enhanced Card Grid -->
     <div class="card-grid">
         <div class="item-card" *ngFor="let produit of filteredProduits">
             <div class="card-image-wrapper">
-                <img [src]="getImageUrl(produit.imageUrl)" 
-                    onerror="this.onerror=null;this.src='assets/images/default-produit.svg'"
-                    class="product-img">
+                <img [src]="getImageUrl(produit.imageUrl)"
+                    onerror="this.onerror=null;this.src='assets/images/default-produit.svg'" class="product-img">
                 <div class="card-overlay" *ngIf="canManage()">
                     <button class="overlay-btn edit" (click)="openEditModal(produit)" title="Modifier">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
                     </button>
-                    <button class="overlay-btn delete" [class.disabled]="!canArchiveProduit(produit)" 
+                    <button class="overlay-btn delete" [class.disabled]="!canArchiveProduit(produit)"
                         (click)="canArchiveProduit(produit) ? confirmDelete(produit) : $event.stopPropagation()"
                         [title]="!canArchiveProduit(produit) ? 'Impossible de supprimer' : 'Supprimer'">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                            </path>
+                        </svg>
                     </button>
                 </div>
             </div>
@@ -71,7 +79,7 @@
                     <h3>{{ produit.designation }}</h3>
                     <span class="code-badge">{{ produit.code }}</span>
                 </div>
-                
+
                 <div class="card-info-footer">
                     @if (produit.pieces && produit.pieces.length > 0) {
                         <button class="composition-badge" (click)="showAssociatedPieces(produit)">
@@ -80,6 +88,7 @@
                         </button>
                     }
                 </div>
+
             </div>
         </div>
     </div>
@@ -92,7 +101,8 @@
             </svg>
         </div>
         <p>Aucun produit fini trouvé.</p>
-        <button class="btn-outline" (click)="searchTerm = ''; searchCategory = 'all'" *ngIf="searchTerm">Effacer la recherche</button>
+        <button class="btn-outline" (click)="searchTerm = ''; searchCategory = 'all'" *ngIf="searchTerm">Effacer la
+            recherche</button>
     </div>
 </div>
 
@@ -116,109 +126,139 @@
     </div>
 </div>
 
-<div class="modal-overlay produit-modal-overlay" *ngIf="showCreateModal" (click)="closeCreateModal()">
-    <div class="modal-content produit-modal-content" (click)="$event.stopPropagation()">
-        <!-- Enhanced Header -->
+<div class="produit-modal-overlay" *ngIf="showCreateModal" (click)="closeCreateModal()">
+    <div class="produit-modal-container" (click)="$event.stopPropagation()">
         <div class="produit-modal-header">
-            <div class="header-main-info">
-                <div class="icon-circle">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <div class="header-left-group">
+                <div class="decorative-badge">
+                    <svg class="layers-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                        stroke-linejoin="round">
                         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
                     </svg>
                 </div>
-                <div>
-                    <h2>{{ selectedProduit ? 'Modifier le Produit' : 'Nouveau Produit Fini' }}</h2>
-                    <p class="modal-label">{{ selectedProduit ? 'Code: ' + selectedProduit.code : 'Créez une nouvelle fiche produit' }}</p>
+                <div class="titles-container">
+                    <h2>Nouveau Produit Fini</h2>
+                    <p>Créez une nouvelle fiche produit</p>
                 </div>
             </div>
-            <button class="close-modal-btn" (click)="closeCreateModal()">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <button class="close-modal-x" (click)="closeCreateModal()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
             </button>
         </div>
 
-        <form #produitForm="ngForm" (ngSubmit)="produitForm.form.valid && saveProduit()" class="produit-form-body">
-            <div class="form-grid">
-                <!-- Left: Image Upload -->
-                <div class="image-upload-column">
-                    <div class="upload-container" (click)="fileInput.click()" [class.has-image]="imagePreview">
-                        <img *ngIf="imagePreview" [src]="getImageUrl(imagePreview)" class="full-preview">
-                        <div class="upload-placeholder" *ngIf="!imagePreview">
-                            <div class="placeholder-icon">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                            </div>
-                            <span>Cliquez pour ajouter une photo</span>
-                        </div>
-                        <div class="upload-overlay" *ngIf="imagePreview">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                            <span>Changer l'image</span>
-                        </div>
-                    </div>
-                    <input type="file" #fileInput (change)="onFileSelected($event)" hidden accept="image/*">
-                </div>
+        <form #produitForm="ngForm" (ngSubmit)="produitForm.form.valid && saveProduit()">
+            <div class="produit-form-body">
+                <div class="form-main-grid">
+                    <div class="upload-section">
+                        <label class="field-label">Photo du produit</label>
+                        <input type="file" #fileInput (change)="onFileSelected($event)" hidden accept="image/*">
 
-                <!-- Right: Form Fields -->
-                <div class="fields-column">
-                    <div class="form-section">
-                        <h3 class="section-title">Informations Générales</h3>
-                        
-                        <!-- Code Field -->
-                        <div class="form-group">
-                            <label>Code Produit <span class="required">*</span></label>
-                            <p class="field-hint">{{ getFormatExplanation('PRODUIT') }}</p>
-                        </div>
-                        
-                        <div class="form-group">
-                            <div class="code-control">
-                                <ng-container *ngIf="isAutoCode">
-                                    <div class="auto-code-display">
-                                        <div class="auto-icon">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                                        </div>
-                                        <span>Génération automatique activée</span>
-                                    </div>
-                                </ng-container>
+                        <div class="drop-zone group" (click)="fileInput.click()" [class.has-image]="imagePreview">
 
-                                <ng-container *ngIf="!isAutoCode">
-                                    <div class="input-wrapper">
-                                        <input type="text" [(ngModel)]="newProduit.code" name="code" required
-                                            #c="ngModel" [placeholder]="'Ex: ' + getPrefix('PRODUIT') + '100'">
-                                        <div class="validation-icon" *ngIf="c.valid && c.touched">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                                        </div>
-                                    </div>
-                                </ng-container>
-                            </div>
-                        </div>
-
-                        <!-- Designation Field -->
-                        <div class="form-group mt-large">
-                            <label>Désignation <span class="required">*</span></label>
-                            <div class="input-wrapper">
-                                <input type="text" [(ngModel)]="newProduit.designation" name="designation" 
-                                    #d="ngModel" required placeholder="Ex: Moteur Industriel V8">
-                                <div class="validation-icon" *ngIf="d.valid && d.touched">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            <div class="empty-upload-content" *ngIf="!imagePreview">
+                                <div class="upload-circle">
+                                    <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" width="32" height="32"
+                                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                </div>
+                                <div class="upload-text">
+                                    <span class="main-text">Cliquez pour ajouter une photo</span>
+                                    <span class="sub-text">ou glissez-déposez une image</span>
                                 </div>
                             </div>
-                            <span class="error-text" *ngIf="d.invalid && d.touched">Le nom du produit est obligatoire</span>
+
+                            <ng-container *ngIf="imagePreview">
+                                <img [src]="getImageUrl(imagePreview)" class="uploaded-img" alt="Aperçu produit">
+                                <div class="img-hover-overlay">
+                                    <div class="change-photo-badge">
+                                        <span>Changer la photo</span>
+                                    </div>
+                                </div>
+                            </ng-container>
+                        </div>
+                    </div>
+
+                    <div class="fields-section">
+                        <div class="form-fields-card">
+                            <h3 class="section-title">INFORMATIONS GÉNÉRALES</h3>
+
+                            <div class="field-container">
+                                <label class="field-label">Code Produit <span class="required-star">*</span></label>
+                                <p class="help-text">{{ getFormatExplanation('PRODUIT') }}</p>
+
+                                <div class="form-control-wrapper">
+                                    <ng-container *ngIf="isAutoCode">
+                                        <div class="auto-code-indicator">
+                                            <div class="auto-icon-box">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                                    stroke="currentColor" stroke-width="2.5">
+                                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                                </svg>
+                                            </div>
+                                            <span>Génération automatique activée</span>
+                                        </div>
+                                    </ng-container>
+
+                                    <ng-container *ngIf="!isAutoCode">
+                                        <div class="input-inner-wrapper">
+                                            <input type="text" [(ngModel)]="newProduit.code" name="code" required
+                                                #codeModel="ngModel"
+                                                [placeholder]="'Ex: ' + getPrefix('PRODUIT') + '100'"
+                                                class="premium-input">
+                                            <div class="success-icon" *ngIf="codeModel.valid && codeModel.touched">
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                                    stroke="#14b8a6" stroke-width="3">
+                                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </ng-container>
+                                </div>
+                            </div>
+
+                            <div class="field-container no-margin">
+                                <label class="field-label">Désignation <span class="required-star">*</span></label>
+                                <div class="input-inner-wrapper">
+                                    <input type="text" [(ngModel)]="newProduit.designation" name="designation"
+                                        #designationModel="ngModel" required placeholder="Ex: Moteur Industriel V8"
+                                        class="premium-input">
+                                    <div class="success-icon"
+                                        *ngIf="designationModel.valid && designationModel.touched">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#14b8a6"
+                                            stroke-width="3">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <p class="error-msg" *ngIf="designationModel.invalid && designationModel.touched">La
+                                    désignation est obligatoire</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Modal Footer -->
-            <div class="modal-footer">
-                <button type="button" class="btn-ghost" (click)="closeCreateModal()">Annuler</button>
-                <button type="submit" class="btn-submit" [disabled]="produitForm.invalid">
-                    <svg *ngIf="selectedProduit" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                    <svg *ngIf="!selectedProduit" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <div class="produit-modal-footer">
+                <button type="button" class="btn-cancel" (click)="closeCreateModal()">Annuler</button>
+                <button type="submit" class="btn-create" [disabled]="produitForm.invalid">
+                    <svg class="check-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
                     <span>{{ selectedProduit ? 'Mettre à jour' : 'Créer le produit' }}</span>
                 </button>
             </div>
         </form>
     </div>
 </div>
+
 
 <div class="modal-overlay" *ngIf="showAssociatedPiecesModal" (click)="closeAssociatedPiecesModal()">
     <div class="modal-content associated-modal" (click)="$event.stopPropagation()">
@@ -322,8 +362,14 @@
                     <div class="associated-card-info">
                         <code class="associated-card-code">{{ piece.reference }}</code>
                         <h4 class="associated-card-name">{{ piece.designation }}</h4>
-                        <div class="associated-card-price">{{ piece.prixVente | number:'1.2-2' }} {{
-                            entreprise?.devise?.symbole || 'DT' }}</div>
+                        <div class="associated-card-price" *ngIf="piece.details && piece.details.length > 0">
+                            <span class="price-val">{{ (piece.details[0].prixVente || 0) | number:'1.2-2' }}</span>
+                            <span class="price-curr">{{ entreprise?.devise?.symbole || 'DT' }}</span>
+                            <span class="price-unit" *ngIf="piece.unite">/ {{ piece.unite.nom }}</span>
+                        </div>
+                        <div class="associated-card-price no-price" *ngIf="!piece.details || piece.details.length === 0">
+                            <span class="price-na">Prix non défini</span>
+                        </div>
                     </div>
                 </div>
             </div>

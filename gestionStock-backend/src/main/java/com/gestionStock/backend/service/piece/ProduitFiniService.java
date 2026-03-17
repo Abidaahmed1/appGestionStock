@@ -85,6 +85,11 @@ public class ProduitFiniService {
         if (produit.getImageUrl() != null) {
             existing.setImageUrl(produit.getImageUrl());
         }
+        
+        // Mise à jour des pièces associées
+        if (produit.getPieces() != null) {
+            existing.setPieces(produit.getPieces());
+        }
 
         if (existing.getEntreprise() == null) {
             existing.setEntreprise(userService.getCurrentUserEntreprise());
