@@ -5,6 +5,8 @@ import { DashboardDTO } from '../../../logistique/models/logistique.models';
 import { NgApexchartsModule, ChartComponent } from "ng-apexcharts";
 import { MagasinierService } from "../../../magasinier/services/magasinier.service";
 import { FormsModule } from "@angular/forms";
+import { EntrepriseService } from '../../../admin/services/entreprise.service';
+import { Entreprise } from '../../../admin/models/entreprise.model';
 import {
   ApexAxisChartSeries,
   ApexChart,
@@ -42,6 +44,7 @@ export type ChartOptions = {
 export class DashboardComponent implements OnInit {
   metrics?: DashboardDTO;
   loading = true;
+  entreprise: Entreprise | null = null;
   pieces: any[] = [];
   selectedPieceIds: (string | number)[] = [];
   searchTerm: string = '';
@@ -70,6 +73,7 @@ export class DashboardComponent implements OnInit {
   constructor(
     private dashboardService: DashboardService,
     private pieceService: MagasinierService,
+    private entrepriseService: EntrepriseService,
     @Inject(PLATFORM_ID) private platformId: Object
   ) { }
 
@@ -77,6 +81,7 @@ export class DashboardComponent implements OnInit {
     if (isPlatformBrowser(this.platformId)) {
       this.loadPieces();
       this.loadMetrics();
+      this.loadEntreprise();
     }
   }
 
@@ -85,6 +90,28 @@ export class DashboardComponent implements OnInit {
       next: (data) => this.pieces = data,
       error: (err) => console.error('Error loading pieces', err)
     });
+  }
+
+  loadEntreprise() {
+      // Écoute de l'entreprise courante pour les mises à jour en direct
+      this.entrepriseService.currentEntreprise$.subscribe((data: Entreprise | null) => {
+          if (data) {
+              this.entreprise = data;
+          }
+      });
+
+      // Lancement du chargement initial s'il n'est pas déjà fait
+      this.entrepriseService.getCurrentEntreprise().subscribe({
+          error: () => {
+              this.entrepriseService.getAllEntreprises().subscribe({
+                  next: (list: Entreprise[]) => {
+                      if (list && list.length > 0) {
+                          this.entreprise = list[0];
+                      }
+                  }
+              });
+          }
+      });
   }
 
   loadMetrics() {
@@ -252,5 +279,18 @@ export class DashboardComponent implements OnInit {
 
   onPieceChange() {
     this.loadMetrics();
+  }
+
+  getLogoUrl(url: string | null | undefined): string {
+    if (!url) return '';
+    if (url.startsWith('data:image/') || url.startsWith('http')) return url;
+    if (url.startsWith('/api/images') || url.startsWith('/uploads')) {
+        return `http://localhost:8081${url}`;
+    }
+    if (url.includes('/remote.php/dav/files/')) {
+        const parts = url.split('/');
+        return `http://localhost:8081/api/images/${parts[parts.length - 1]}`;
+    }
+    return url;
   }
 }

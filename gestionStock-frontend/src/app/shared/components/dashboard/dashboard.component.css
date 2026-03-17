@@ -10,20 +10,73 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 3rem;
+    background: white;
+    padding: 2rem 2.5rem;
+    border-radius: 20px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.entreprise-logo img {
+    height: 64px;
+    min-width: 64px;
+    object-fit: contain;
+    border-radius: 12px;
+    background: #f8fafc;
+    padding: 6px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.entreprise-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f0f7f7 0%, #e8f4f4 100%);
+    color: #3d7a7f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    border: 1px solid rgba(61, 122, 127, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.entreprise-name {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: #3d7a7f;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.25rem;
 }
 
 .header-content h1 {
-    font-size: 2.25rem;
+    font-size: 2rem;
     font-weight: 800;
     color: #1e293b;
-    margin-bottom: 0.5rem;
-    letter-spacing: -0.04em;
+    margin: 0 0 0.25rem 0;
+    letter-spacing: -0.02em;
 }
 
 .header-content p {
     color: #64748b;
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 500;
+    margin: 0;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
 .btn-refresh {
@@ -131,17 +184,31 @@
 }
 
 /* Dashboard Cards */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
 .card {
     background: white;
     border-radius: 20px;
     border: 1px solid #e2e8f0;
     overflow: hidden;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card:hover {
+    box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+    border-color: rgba(61, 122, 127, 0.4);
 }
 
 .card-header {
     padding: 1.5rem 2rem;
-    background: linear-gradient(135deg, #f0f7f7 0%, #e8f4f4 100%);
+    background: #f8fafc;
     border-bottom: 1px solid rgba(61, 122, 127, 0.12);
     display: flex;
     justify-content: space-between;
@@ -149,19 +216,22 @@
 }
 
 .card-header h3 {
-    font-size: 1.2rem;
+    font-size: 1.25rem;
     font-weight: 800;
     color: #1e293b;
     margin: 0;
+    letter-spacing: -0.01em;
 }
 
 .badge {
     padding: 0.4rem 1rem;
     background: rgba(61, 122, 127, 0.1);
     color: #3d7a7f;
-    border-radius: 10px;
+    border-radius: 20px;
     font-size: 0.75rem;
     font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .chart-wrapper {
@@ -183,8 +253,8 @@
     background: #f8fafc;
     text-align: left;
     font-size: 0.8rem;
-    font-weight: 700;
-    color: #475569;
+    font-weight: 800;
+    color: #64748b;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     border-bottom: 1px solid #e2e8f0;
@@ -193,11 +263,16 @@
 .prediction-table td {
     padding: 1.5rem 2rem;
     border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.prediction-table tr:hover td {
+    background-color: #f8fafc;
 }
 
 .piece-cell .piece-name {
     display: block;
-    font-weight: 700;
+    font-weight: 800;
     color: #1e293b;
     font-size: 1.05rem;
 }

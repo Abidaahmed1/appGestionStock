@@ -486,15 +486,27 @@ export class PieceFormComponent implements OnInit, OnChanges {
             });
         }
 
+        // Validate variant detail rows: barcode required, price required
+        let hasDetailErrors = false;
+        if (this.newPiece.details && this.newPiece.details.length > 0) {
+            this.newPiece.details.forEach(detail => {
+                if (!detail.codeBarre || detail.codeBarre.trim() === '') {
+                    hasDetailErrors = true;
+                }
+                if (detail.prixVente === null || detail.prixVente === undefined) {
+                    hasDetailErrors = true;
+                }
+            });
+        }
+
         const seuilInvalid = this.newPiece.seuilMaximum < this.newPiece.seuilMinimum;
         this.checkDuplicateBarcodes();
         const hasDuplicateBarcodes = this.barcodeDuplicates.size > 0;
 
-        if (form.invalid || !this.newPiece.categorie?.id || hasVariantErrors || seuilInvalid || hasDuplicateBarcodes) {
+        if (form.invalid || !this.newPiece.categorie?.id || hasVariantErrors || hasDetailErrors || seuilInvalid || hasDuplicateBarcodes) {
             Object.keys(form.controls).forEach(key => {
                 form.controls[key].markAsTouched();
             });
-
 
             const container = document.querySelector('.odoo-unified-content');
             if (container) {
@@ -531,7 +543,7 @@ export class PieceFormComponent implements OnInit, OnChanges {
         };
 
         pieceToSave.produitsAssocies = (rawPiece.produitsAssocies || [])
-            .map(p => ({ 
+            .map(p => ({
                 id: Number(p.id),
                 code: p.code,
                 designation: p.designation
@@ -607,6 +619,16 @@ export class PieceFormComponent implements OnInit, OnChanges {
         this.cdr.detectChanges();
     }
 
+    hasEmptyDetailBarcodes(): boolean {
+        if (!this.newPiece.details || this.newPiece.details.length === 0) return false;
+        return this.newPiece.details.some(d => !d.codeBarre || d.codeBarre.trim() === '');
+    }
+
+    hasEmptyDetailPrices(): boolean {
+        if (!this.newPiece.details || this.newPiece.details.length === 0) return false;
+        return this.newPiece.details.some(d => d.prixVente === null || d.prixVente === undefined);
+    }
+
     onCancel(): void {
         this.cancel.emit();
     }
@@ -627,7 +649,6 @@ export class PieceFormComponent implements OnInit, OnChanges {
         }
 
         localOptions.push(value);
-        this.newPiece.details![0].attributs[champ.nom] = value;
         input.value = '';
         this.generateVariations();
         this.cdr.detectChanges();
@@ -731,18 +752,14 @@ export class PieceFormComponent implements OnInit, OnChanges {
         const existingDetails = [...this.newPiece.details];
 
         this.newPiece.details = combinations.map((combo, index) => {
-            const matchingIndex = existingDetails.findIndex(d => {
+            // Find an exact match first
+            let exactMatchIndex = existingDetails.findIndex(d => {
                 const targetAttrs = d.attributs || {};
-                return variantOptions.every(v => {
-                    const existingVal = targetAttrs[v.champ];
-                    // If the attribute is missing or empty in the existing detail, 
-                    // we allow it to match the new combination (Best Match)
-                    return existingVal === undefined || existingVal === null || String(existingVal).trim() === '' || String(existingVal) === String(combo[v.champ]);
-                });
+                return variantOptions.every(v => String(targetAttrs[v.champ]) === String(combo[v.champ]));
             });
 
-            if (matchingIndex > -1) {
-                const existing = existingDetails.splice(matchingIndex, 1)[0];
+            if (exactMatchIndex > -1) {
+                const existing = existingDetails.splice(exactMatchIndex, 1)[0];
                 return {
                     id: existing.id,
                     codeBarre: existing.codeBarre,
@@ -752,11 +769,30 @@ export class PieceFormComponent implements OnInit, OnChanges {
                 };
             }
 
+            // Find a partial match just to inherit prices/taxes, NOT IDs or Barcodes to prevent swapping issues
+            let partialMatchIndex = existingDetails.findIndex(d => {
+                const targetAttrs = d.attributs || {};
+                let matchScore = 0;
+                variantOptions.forEach(v => {
+                    const existingVal = targetAttrs[v.champ];
+                    if (String(existingVal) === String(combo[v.champ])) matchScore++;
+                });
+                return matchScore > 0; // if it shares at least one trait we can use its price
+            });
+
+            let inheritedPrice = templateDetail.prixVente || 0;
+            let inheritedTax = templateDetail.tauxTVA || 0;
+
+            if (partialMatchIndex > -1) {
+                inheritedPrice = existingDetails[partialMatchIndex].prixVente || 0;
+                inheritedTax = existingDetails[partialMatchIndex].tauxTVA || 0;
+            }
+
             return {
                 attributs: { ...combo, ...this.extractOptions(templateDetail.attributs) },
-                codeBarre: index === 0 && existingDetails.length === 0 ? templateDetail.codeBarre : '',
-                prixVente: templateDetail.prixVente || 0,
-                tauxTVA: templateDetail.tauxTVA || 0
+                codeBarre: '',
+                prixVente: inheritedPrice,
+                tauxTVA: inheritedTax
             };
         });
 
@@ -823,7 +859,7 @@ export class PieceFormComponent implements OnInit, OnChanges {
         if (!base) return;
 
         this.newPiece.details.forEach((d, i) => {
-            if (i > 0) {
+            if (i > 0 && !d.id) {
                 d.codeBarre = base + i;
             }
         });
@@ -832,6 +868,7 @@ export class PieceFormComponent implements OnInit, OnChanges {
 
     generateVariantSKU(index: number): void {
         if (!this.newPiece.details || !this.newPiece.details[index]) return;
+        if (this.newPiece.details[index].id) return; // Do not overwrite saved barcodes
 
         const prefix = "300";
         const randomPart = Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
@@ -841,8 +878,11 @@ export class PieceFormComponent implements OnInit, OnChanges {
     }
 
     removeVariant(index: number): void {
-        if (this.newPiece.details && this.newPiece.details.length > 1) {
-            this.newPiece.details.splice(index, 1);
+        if (this.newPiece.details && this.newPiece.details[index]) {
+            // Au lieu de supprimer la ligne, on vide les champs pour éviter les erreurs de suppression en BD
+            this.newPiece.details[index].codeBarre = '';
+            this.newPiece.details[index].prixVente = 0;
+            this.newPiece.details[index].tauxTVA = 0;
             this.cdr.detectChanges();
         }
     }

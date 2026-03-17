@@ -134,9 +134,16 @@ export class MainLayoutComponent implements OnInit {
     }
 
     private loadEntreprise() {
+        // Souscription aux changements d'entreprise en temps réel
+        this.entrepriseService.currentEntreprise$.subscribe(data => {
+            if (data) {
+                this.entreprise.set(data);
+            }
+        });
+
+        // Lancement du chargement initial
         this.entrepriseService.getCurrentEntreprise().subscribe({
-            next: (data: Entreprise) => this.entreprise.set(data),
-            error: (err: any) => console.error('Erreur chargement entreprise:', err)
+            error: (err: any) => console.error('Erreur chargement entreprise initiale:', err)
         });
     }
 

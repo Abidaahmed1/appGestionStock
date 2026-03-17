@@ -154,7 +154,7 @@ export class PieceListComponent implements OnInit {
                 this.pieces = data || [];
                 this.loading = false;
                 this.applyFilters();
-                
+
                 // Refresh activePiece from the new list to show latest data in detail view
                 if (this.activePiece) {
                     const fresh = this.pieces.find(p => p.id === this.activePiece?.id);
@@ -162,7 +162,7 @@ export class PieceListComponent implements OnInit {
                         this.activePiece = fresh;
                     }
                 }
-                
+
                 this.cdr.detectChanges();
             },
             error: (err: any) => {
@@ -199,7 +199,7 @@ export class PieceListComponent implements OnInit {
 
     filterCategoriesList(): void {
         const term = this.catSearchTerm.toLowerCase();
-        this.filteredCategories = this.categories.filter(c => 
+        this.filteredCategories = this.categories.filter(c =>
             (c.nom || '').toLowerCase().includes(term)
         );
         this.showCatSuggestions = true;
@@ -384,7 +384,7 @@ export class PieceListComponent implements OnInit {
      */
     extractErrorMessage(err: any, defaultMsg: string): string {
         console.error('[ANTIGRAVITY] Raw error object:', err);
-        
+
         // 1. Try to find a message in the error body
         if (err.error) {
             // String body
@@ -406,7 +406,7 @@ export class PieceListComponent implements OnInit {
         if (err.statusText && err.statusText !== 'Unknown Error' && err.statusText !== 'OK') {
             return `Erreur ${err.status} : ${err.statusText}`;
         }
-        
+
         if (err.message && typeof err.message === 'string' && !err.message.includes('Http failure response')) {
             return err.message;
         }
@@ -717,8 +717,8 @@ export class PieceListComponent implements OnInit {
     }
 
     isAllSelected(): boolean {
-        return this.filteredPiecesList.length > 0 && 
-               this.filteredPiecesList.every(p => p.id && this.selectedIds.has(p.id));
+        return this.filteredPiecesList.length > 0 &&
+            this.filteredPiecesList.every(p => p.id && this.selectedIds.has(p.id));
     }
 
     deleteSelectedPieces(): void {

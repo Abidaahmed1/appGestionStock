@@ -45,7 +45,7 @@
     <div class="form-body">
 
         <!-- Global Error Bar -->
-        <div class="global-error-bar" *ngIf="pieceForm.submitted && (pieceForm.invalid || !newPiece.categorie?.id)">
+        <div class="global-error-bar" *ngIf="pieceForm.submitted && (pieceForm.invalid || !newPiece.categorie?.id || hasEmptyDetailBarcodes() || hasEmptyDetailPrices())">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
@@ -378,8 +378,8 @@
 
                     <div class="v-input-wrapper">
                         <input type="text" [(ngModel)]="newPiece.details[i].codeBarre" [name]="'v_code_' + i"
-                            class="v-input" placeholder="Code barre..."
-                            [class.is-invalid]="barcodeDuplicates.has(i) || (newPiece.details[i].codeBarre && backendBarcodeErrors.has(newPiece.details[i].codeBarre?.trim() ?? ''))">
+                            class="v-input" placeholder="Code barre..." #vBarcode="ngModel" required
+                            [class.is-invalid]="barcodeDuplicates.has(i) || (newPiece.details[i].codeBarre && backendBarcodeErrors.has(newPiece.details[i].codeBarre?.trim() ?? '')) || (vBarcode.invalid && (pieceForm.submitted || vBarcode.touched))">
 
                         <button type="button" class="btn-copy-v" (click)="generateVariantSKU(i)" title="Générer">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
@@ -397,11 +397,18 @@
                             *ngIf="newPiece.details[i].codeBarre && backendBarcodeErrors.has(newPiece.details[i].codeBarre?.trim() ?? '')">
                             Déjà utilisé en base de données
                         </div>
+                        <div class="error-msg-mini" *ngIf="vBarcode.invalid && (pieceForm.submitted || vBarcode.touched)">
+                            Le code barre est obligatoire
+                        </div>
                     </div>
 
                     <div class="v-input-wrapper">
                         <input type="number" [(ngModel)]="newPiece.details[i].prixVente" [name]="'v_prix_' + i"
-                            class="v-input v-input-money" placeholder="0.00">
+                            class="v-input v-input-money" placeholder="0.00" #vPrix="ngModel" required min="0"
+                            [class.is-invalid]="vPrix.invalid && (pieceForm.submitted || vPrix.touched)">
+                        <div class="error-msg-mini" *ngIf="vPrix.invalid && (pieceForm.submitted || vPrix.touched)">
+                            Le prix est obligatoire
+                        </div>
                     </div>
 
                     <div class="v-input-wrapper">

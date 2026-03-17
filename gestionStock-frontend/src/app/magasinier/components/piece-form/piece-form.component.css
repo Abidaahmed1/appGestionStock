@@ -504,6 +504,23 @@
     border: 1px solid var(--gray-200);
     border-radius: 8px;
     font-size: 14px;
+    transition: all 150ms;
+}
+
+.v-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: var(--white);
+    box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
+}
+
+.v-input.is-invalid {
+    border-color: var(--red-500);
+    background-color: #fffafb;
+}
+
+.v-input.is-invalid:focus {
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
 }
 
 .v-input:read-only {

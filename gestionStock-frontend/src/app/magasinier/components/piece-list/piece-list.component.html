@@ -339,7 +339,11 @@
                             <div class="overview-cards-grid">
                                 <div class="overview-info-card">
                                     <div class="card-icon-box">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path
+                                                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                        </svg>
                                     </div>
                                     <div class="card-text-box">
                                         <span class="card-label">Référence</span>
@@ -348,7 +352,11 @@
                                 </div>
                                 <div class="overview-info-card">
                                     <div class="card-icon-box">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                                        </svg>
                                     </div>
                                     <div class="card-text-box">
                                         <span class="card-label">Catégorie</span>
@@ -357,7 +365,12 @@
                                 </div>
                                 <div class="overview-info-card">
                                     <div class="card-icon-box">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10" />
+                                            <path d="M12 8v8" />
+                                            <path d="M8 12h8" />
+                                        </svg>
                                     </div>
                                     <div class="card-text-box">
                                         <span class="card-label">Unité</span>
@@ -366,25 +379,41 @@
                                 </div>
                                 <div class="overview-info-card stock-highlight-card">
                                     <div class="card-icon-box">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10H3"/><path d="M21 6H3"/><path d="M21 14H3"/><path d="M21 18H3"/></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M21 10H3" />
+                                            <path d="M21 6H3" />
+                                            <path d="M21 14H3" />
+                                            <path d="M21 18H3" />
+                                        </svg>
                                     </div>
                                     <div class="card-text-box">
                                         <span class="card-label">Stock Total</span>
                                         <div class="stock-total-display">
-                                            <span class="card-value highlight">{{ getTotalStock(activePiece) | number:'1.2-2' }}</span>
-                                            <span class="stock-badge" [class.badge-danger]="getTotalStock(activePiece) <= 0" 
-                                                  [class.badge-warning]="getTotalStock(activePiece) > 0 && getTotalStock(activePiece) < (activePiece.seuilMinimum || 0)"
-                                                  [class.badge-success]="getTotalStock(activePiece) >= (activePiece.seuilMinimum || 0)">
-                                                {{ getTotalStock(activePiece) <= 0 ? 'Rupture' : (getTotalStock(activePiece) < (activePiece.seuilMinimum || 0) ? 'Faible' : 'Sain') }}
-                                            </span>
+                                            <span class="card-value highlight">{{ getTotalStock(activePiece) |
+                                                number:'1.2-2' }}</span>
+                                            <span class="stock-badge"
+                                                [class.badge-danger]="getTotalStock(activePiece) <= 0"
+                                                [class.badge-warning]="getTotalStock(activePiece) > 0 && getTotalStock(activePiece) < (activePiece.seuilMinimum || 0)"
+                                                [class.badge-success]="getTotalStock(activePiece) >= (activePiece.seuilMinimum || 0)">
+                                                {{ getTotalStock(activePiece) <= 0 ? 'Rupture' :
+                                                    (getTotalStock(activePiece) < (activePiece.seuilMinimum || 0)
+                                                    ? 'Faible' : 'Sain' ) }} </span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="description-premium-card" *ngIf="activePiece.description">
                                 <div class="desc-header">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                        <polyline points="14 2 14 8 20 8" />
+                                        <line x1="16" y1="13" x2="8" y2="13" />
+                                        <line x1="16" y1="17" x2="8" y2="17" />
+                                        <polyline points="10 9 9 9 8 9" />
+                                    </svg>
                                     DESCRIPTION
                                 </div>
                                 <div class="desc-content">
@@ -398,7 +427,12 @@
                                     <img [src]="getImageUrl(activePiece.imageUrl)" [alt]="activePiece.designation">
                                 </div>
                                 <div class="image-overlay-info" *ngIf="activePiece.imageUrl">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                        <polyline points="17 8 12 3 7 8" />
+                                        <line x1="12" y1="3" x2="12" y2="15" />
+                                    </svg>
                                     Image haute résolution
                                 </div>
                             </div>
@@ -412,17 +446,32 @@
                                     <div class="variant-info-section">
                                         <div class="variant-identity">
                                             <div class="variant-icon-badge">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="7.5 4.21 12 6.81 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 3 12"/><polyline points="21 12 16.5 14.6 16.5 19.79"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2.5">
+                                                    <path
+                                                        d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                                    <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
+                                                    <polyline points="7.5 19.79 7.5 14.6 3 12" />
+                                                    <polyline points="21 12 16.5 14.6 16.5 19.79" />
+                                                    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                                                    <line x1="12" y1="22.08" x2="12" y2="12" />
+                                                </svg>
                                             </div>
                                             <div class="variant-text-group">
                                                 <div class="variant-attr-chips">
-                                                    <span class="attr-chip" *ngFor="let attr of getVariantAttributes(variant)">
+                                                    <span class="attr-chip"
+                                                        *ngFor="let attr of getVariantAttributes(variant)">
                                                         <span class="attr-dot"></span>
                                                         {{ attr }}
                                                     </span>
                                                 </div>
                                                 <div class="variant-barcode-pill" *ngIf="variant.codeBarre">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14M21 5v14"/></svg>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12"
+                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                        stroke-width="2.5">
+                                                        <path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14M21 5v14" />
+                                                    </svg>
                                                     {{ variant.codeBarre }}
                                                 </div>
                                             </div>
@@ -431,11 +480,14 @@
                                         <div class="variant-financials-mini">
                                             <div class="financial-item">
                                                 <span class="f-label">Prix Vente</span>
-                                                <span class="f-value">{{ (variant.prixVente || activePiece.prixVente) | number:'1.2-2' }} <small>{{ entreprise?.devise?.code || 'DT' }}</small></span>
+                                                <span class="f-value">{{ (variant.prixVente || activePiece.prixVente) |
+                                                    number:'1.2-2' }} <small>{{ entreprise?.devise?.code || 'DT'
+                                                        }}</small></span>
                                             </div>
                                             <div class="financial-item">
                                                 <span class="f-label">TVA</span>
-                                                <span class="f-value">{{ (variant.tauxTVA || activePiece.tauxTVA) || 0 }}%</span>
+                                                <span class="f-value">{{ (variant.tauxTVA || activePiece.tauxTVA) || 0
+                                                    }}%</span>
                                             </div>
                                         </div>
                                     </div>
@@ -444,23 +496,29 @@
                                         <div class="stock-status-display">
                                             <div class="stock-gauge-wrapper">
                                                 <div class="stock-gauge-bg">
-                                                    <div class="stock-gauge-fill" [style.width.%]="getStockPercentage(variant)" 
-                                                         [class.gauge-low]="(variant.stock?.quantite || 0) < activePiece.seuilMinimum"
-                                                         [class.gauge-empty]="(variant.stock?.quantite || 0) <= 0"></div>
+                                                    <div class="stock-gauge-fill"
+                                                        [style.width.%]="getStockPercentage(variant)"
+                                                        [class.gauge-low]="(variant.stock?.quantite || 0) < activePiece.seuilMinimum"
+                                                        [class.gauge-empty]="(variant.stock?.quantite || 0) <= 0"></div>
                                                 </div>
                                             </div>
                                             <div class="stock-numeric-info">
                                                 <div class="qty-info">
-                                                    <span class="qty-amount" [class.danger]="(variant.stock?.quantite || 0) <= 0" 
-                                                          [class.warning]="(variant.stock?.quantite || 0) > 0 && (variant.stock?.quantite || 0) < activePiece.seuilMinimum">
+                                                    <span class="qty-amount"
+                                                        [class.danger]="(variant.stock?.quantite || 0) <= 0"
+                                                        [class.warning]="(variant.stock?.quantite || 0) > 0 && (variant.stock?.quantite || 0) < activePiece.seuilMinimum">
                                                         {{ variant.stock?.quantite || 0 | number:'1.2-2' }}
                                                     </span>
-                                                    <span class="qty-unit">{{ activePiece.unite?.abbreviation || 'unités' }}</span>
+                                                    <span class="qty-unit">{{ activePiece.unite?.abbreviation ||
+                                                        'unités' }}</span>
                                                 </div>
-                                                <div class="stock-condition-pill" [class.pill-ok]="(variant.stock?.quantite || 0) >= activePiece.seuilMinimum"
-                                                     [class.pill-low]="(variant.stock?.quantite || 0) > 0 && (variant.stock?.quantite || 0) < activePiece.seuilMinimum"
-                                                     [class.pill-empty]="(variant.stock?.quantite || 0) <= 0">
-                                                    {{ (variant.stock?.quantite || 0) <= 0 ? 'Rupture' : ((variant.stock?.quantite || 0) < activePiece.seuilMinimum ? 'Faible' : 'Sain') }}
+                                                <div class="stock-condition-pill"
+                                                    [class.pill-ok]="(variant.stock?.quantite || 0) >= activePiece.seuilMinimum"
+                                                    [class.pill-low]="(variant.stock?.quantite || 0) > 0 && (variant.stock?.quantite || 0) < activePiece.seuilMinimum"
+                                                    [class.pill-empty]="(variant.stock?.quantite || 0) <= 0">
+                                                    {{ (variant.stock?.quantite || 0) <= 0 ? 'Rupture' :
+                                                        ((variant.stock?.quantite || 0) < activePiece.seuilMinimum
+                                                        ? 'Faible' : 'Sain' ) }} </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -468,68 +526,71 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="detail-products-content" *ngIf="activeTab === 'products'">
-                        <div class="assoc-grid-detail">
-                            <div class="product-item-mini" *ngFor="let prod of activePiece.produitsAssocies">
-                                <div class="prod-thumb">
-                                    <img [src]="getImageUrl(prod.imageUrl)" alt="">
+                        <div class="detail-products-content" *ngIf="activeTab === 'products'">
+                            <div class="assoc-grid-detail">
+                                <div class="product-item-mini" *ngFor="let prod of activePiece.produitsAssocies">
+                                    <div class="prod-thumb">
+                                        <img [src]="getImageUrl(prod.imageUrl)" alt="">
+                                    </div>
+                                    <div class="prod-details">
+                                        <span class="p-name">{{ prod.designation }}</span>
+                                        <span class="p-code">{{ prod.code }}</span>
+                                    </div>
                                 </div>
-                                <div class="prod-details">
-                                    <span class="p-name">{{ prod.designation }}</span>
-                                    <span class="p-code">{{ prod.code }}</span>
+                                <div class="empty-assoc" *ngIf="!activePiece.produitsAssocies?.length">
+                                    Aucun produit associé à cette pièce.
                                 </div>
-                            </div>
-                            <div class="empty-assoc" *ngIf="!activePiece.produitsAssocies?.length">
-                                Aucun produit associé à cette pièce.
                             </div>
                         </div>
-                    </div>
 
-                    <div class="detail-history-content" *ngIf="activeTab === 'history'">
-                        <div class="timeline-container">
-                            <div class="timeline-item" *ngFor="let entry of activePiece.historiques">
-                                <div class="timeline-marker">
-                                    <div class="marker-dot" [class.dot-create]="entry.action === 'Création'"
-                                        [class.dot-modify]="entry.action === 'Modification'"
-                                        [class.dot-stock]="entry.action === 'Mise à jour stock'"></div>
-                                    <div class="marker-line"></div>
-                                </div>
-                                <div class="timeline-content">
-                                    <div class="timeline-header">
-                                        <span class="event-action" [class.badge-create]="entry.action === 'Création'"
-                                            [class.badge-modify]="entry.action === 'Modification'"
-                                            [class.badge-stock]="entry.action === 'Mise à jour stock'">
-                                            {{ entry.action }}
-                                        </span>
-                                        <span class="event-date">{{ entry.date | date:'dd MMM yyyy HH:mm' }}</span>
+                        <div class="detail-history-content" *ngIf="activeTab === 'history'">
+                            <div class="timeline-container">
+                                <div class="timeline-item" *ngFor="let entry of activePiece.historiques">
+                                    <div class="timeline-marker">
+                                        <div class="marker-dot" [class.dot-create]="entry.action === 'Création'"
+                                            [class.dot-modify]="entry.action === 'Modification'"
+                                            [class.dot-stock]="entry.action === 'Mise à jour stock'"></div>
+                                        <div class="marker-line"></div>
                                     </div>
-                                    <div class="timeline-body">
-                                        <p class="event-details">{{ entry.details }}</p>
-                                        <div class="event-user" *ngIf="entry.utilisateur">
-                                            <div class="user-avatar-mini">
-                                                {{ entry.utilisateur.firstName[0] }}{{ entry.utilisateur.lastName[0] }}
-                                            </div>
-                                            <span class="user-name-label">
-                                                {{ entry.utilisateur.firstName }} {{ entry.utilisateur.lastName }}
+                                    <div class="timeline-content">
+                                        <div class="timeline-header">
+                                            <span class="event-action"
+                                                [class.badge-create]="entry.action === 'Création'"
+                                                [class.badge-modify]="entry.action === 'Modification'"
+                                                [class.badge-stock]="entry.action === 'Mise à jour stock'">
+                                                {{ entry.action }}
                                             </span>
+                                            <span class="event-date">{{ entry.date | date:'dd MMM yyyy HH:mm' }}</span>
+                                        </div>
+                                        <div class="timeline-body">
+                                            <p class="event-details">{{ entry.details }}</p>
+                                            <div class="event-user" *ngIf="entry.utilisateur">
+                                                <div class="user-avatar-mini">
+                                                    {{ entry.utilisateur.firstName[0] }}{{ entry.utilisateur.lastName[0]
+                                                    }}
+                                                </div>
+                                                <span class="user-name-label">
+                                                    {{ entry.utilisateur.firstName }} {{ entry.utilisateur.lastName }}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div class="empty-timeline" *ngIf="!activePiece.historiques?.length">
-                                <div class="empty-state-card">
-                                    <div class="empty-icon-wrapper">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"
-                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                            <circle cx="12" cy="12" r="10" />
-                                            <polyline points="12 6 12 12 16 14" />
-                                        </svg>
+                                <div class="empty-timeline" *ngIf="!activePiece.historiques?.length">
+                                    <div class="empty-state-card">
+                                        <div class="empty-icon-wrapper">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="1.5">
+                                                <circle cx="12" cy="12" r="10" />
+                                                <polyline points="12 6 12 12 16 14" />
+                                            </svg>
+                                        </div>
+                                        <h3>Aucun historique</h3>
+                                        <p>Les modifications apportées à cette pièce apparaîtront ici.</p>
                                     </div>
-                                    <h3>Aucun historique</h3>
-                                    <p>Les modifications apportées à cette pièce apparaîtront ici.</p>
                                 </div>
                             </div>
                         </div>
@@ -537,30 +598,30 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Modals -->
-    <div class="modal-overlay delete-modal" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
-        <div class="modal-content small confirm-danger" (click)="$event.stopPropagation()">
-            <div class="confirm-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2">
-                    <path
-                        d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" />
-                </svg>
-            </div>
-            <h2>Confirmer la suppression</h2>
-            <p *ngIf="!isBulkDelete">Voulez-vous vraiment supprimer la pièce <strong>{{ itemToDelete?.designation
-                    }}</strong> ?</p>
-            <p *ngIf="isBulkDelete">Voulez-vous vraiment supprimer les <strong>{{ selectedIds.size }}</strong> pièces
-                sélectionnées ?</p>
-            <div class="confirm-actions">
-                <button class="btn-cancel" (click)="cancelDelete()">Annuler</button>
-                <button class="btn-confirm-delete"
-                    (click)="isBulkDelete ? startBulkDelete() : (itemToDelete?.id && deletePiece(itemToDelete!.id!))">
-                    <span *ngIf="!loading">Oui, Supprimer</span>
-                    <span *ngIf="loading">Suppression...</span>
-                </button>
+        <!-- Modals -->
+        <div class="modal-overlay delete-modal" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
+            <div class="modal-content small confirm-danger" (click)="$event.stopPropagation()">
+                <div class="confirm-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path
+                            d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" />
+                    </svg>
+                </div>
+                <h2>Confirmer la suppression</h2>
+                <p *ngIf="!isBulkDelete">Voulez-vous vraiment supprimer la pièce <strong>{{ itemToDelete?.designation
+                        }}</strong> ?</p>
+                <p *ngIf="isBulkDelete">Voulez-vous vraiment supprimer les <strong>{{ selectedIds.size }}</strong>
+                    pièces
+                    sélectionnées ?</p>
+                <div class="confirm-actions">
+                    <button class="btn-cancel" (click)="cancelDelete()">Annuler</button>
+                    <button class="btn-confirm-delete"
+                        (click)="isBulkDelete ? startBulkDelete() : (itemToDelete?.id && deletePiece(itemToDelete!.id!))">
+                        <span *ngIf="!loading">Oui, Supprimer</span>
+                        <span *ngIf="loading">Suppression...</span>
+                    </button>
+                </div>
             </div>
         </div>
-    </div>

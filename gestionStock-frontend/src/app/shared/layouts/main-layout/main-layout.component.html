@@ -203,30 +203,9 @@
 
         <div class="page-container">
             @if (isHomePage()) {
-            <div class="welcome-banner">
-                <h1>Bienvenue, {{ username() }}</h1>
-                <p>Voici l'état actuel de votre stock et de vos opérations.</p>
-            </div>
-
-            <div class="stats-grid" *ngIf="entreprise()">
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">ENTREPRISE</span>
-                    </div>
-                    <div class="stat-value">{{ entreprise()?.nom }}</div>
-                    <div class="stat-trend">{{ entreprise()?.adresse }}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-header">
-                        <span class="stat-label">CONTACT GÉNÉRAL</span>
-                    </div>
-                    <div class="stat-value" style="font-size: 1.1rem; color: #64748b;">
-                        {{ entreprise()?.email }}
-                    </div>
-                    <div class="stat-trend">{{ entreprise()?.telephone }}</div>
-                </div>
-            </div>
+            <!-- Empty home page condition, layout handled by DashboardComponent -->
             }
+
 
             <div class="router-content">
                 <router-outlet></router-outlet>
