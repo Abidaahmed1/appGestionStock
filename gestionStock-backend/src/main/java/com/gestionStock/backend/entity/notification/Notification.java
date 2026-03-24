@@ -5,7 +5,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.gestionStock.backend.entity.Stock.Stock;
+import com.gestionStock.backend.entity.piece.PieceDetachee;
 import com.gestionStock.backend.entity.user.User;
 
 import jakarta.persistence.Entity;
@@ -54,8 +54,8 @@ public class Notification {
     private Set<NotificationTarget> targets = new HashSet<>();
 
     @ManyToMany
-    @JoinTable(name = "notification_stock", joinColumns = @jakarta.persistence.JoinColumn(name = "notification_id"), inverseJoinColumns = @jakarta.persistence.JoinColumn(name = "stock_id"))
+    @JoinTable(name = "notification_piece", joinColumns = @jakarta.persistence.JoinColumn(name = "notification_id"), inverseJoinColumns = @jakarta.persistence.JoinColumn(name = "piece_id"))
     @JsonIgnore
     @Builder.Default
-    private Set<Stock> stocks = new HashSet<>();
+    private Set<PieceDetachee> pieces = new HashSet<>();
 }

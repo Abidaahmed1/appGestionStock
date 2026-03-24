@@ -8,7 +8,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
-import com.gestionStock.backend.entity.Stock.TypeStock;
 import com.gestionStock.backend.entity.fournisseur.BonCommandeFournisseur;
 import com.gestionStock.backend.entity.fournisseur.LigneCommande;
 import com.gestionStock.backend.entity.fournisseur.StatutCommande;
@@ -19,10 +18,8 @@ import com.gestionStock.backend.exceptions.FournisseurException;
 import com.gestionStock.backend.repository.fournisseur.BonCommandeFournisseurRepository;
 import com.gestionStock.backend.service.notification.NotificationService;
 import com.gestionStock.backend.service.user.UserService;
-import com.gestionStock.backend.repository.stock.StockRepository;
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
-import com.gestionStock.backend.entity.Stock.Stock;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
 
 @Service
@@ -36,8 +33,9 @@ public class BonCommandeFournisseurService {
     private final BonCommandeFournisseurPersistHelper persistHelper;
     private final UserService userService;
     private final NotificationService notificationService;
-    private final StockRepository stockRepo;
     private final com.gestionStock.backend.entity.parametre.NumerotationService numerotationService;
+
+    private final com.gestionStock.backend.repository.entreprise.EntrepriseRepository entrepriseRepository;
 
     public List<BonCommandeFournisseur> getAll() {
         com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
@@ -91,8 +89,6 @@ public class BonCommandeFournisseurService {
         return bon;
     }
 
-
-
     private void validateBon(BonCommandeFournisseur bon) {
         if (bon.getDateArrivee() != null) {
             LocalDate today = LocalDate.now();
@@ -111,6 +107,18 @@ public class BonCommandeFournisseurService {
                     throw new FournisseurException(
                             "Le prix unitaire de « " + designation + " » doit être supérieur à 0.");
                 }
+                if (ligne.getRemise() != null && ligne.getRemise() < 0) {
+                    String designation = ligne.getPiece() != null ? ligne.getPiece().getDesignation()
+                            : "Ligne " + (i + 1);
+                    throw new FournisseurException(
+                            "Le taux de remise de « " + designation + " » ne peut pas être négatif.");
+                }
+                if (ligne.getTaxe() != null && ligne.getTaxe() < 0) {
+                    String designation = ligne.getPiece() != null ? ligne.getPiece().getDesignation()
+                            : "Ligne " + (i + 1);
+                    throw new FournisseurException(
+                            "Le taux de taxe de « " + designation + " » ne peut pas être négatif.");
+                }
             }
         }
     }
@@ -126,15 +134,21 @@ public class BonCommandeFournisseurService {
         if (isNew) {
             bon.setDateCmd(LocalDateTime.now());
             com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
-            bon.setEntreprise(entreprise);
-            if (bon.getNumeroCmd() == null || bon.getNumeroCmd().isEmpty() || "0".equals(bon.getNumeroCmd()) || "AUTO".equalsIgnoreCase(bon.getNumeroCmd())) {
+            if (entreprise != null) {
+                bon.setEntreprise(entreprise);
+            } else if (bon.getEntreprise() != null && bon.getEntreprise().getId() != null) {
+                bon.setEntreprise(entrepriseRepository.findById(bon.getEntreprise().getId()).orElse(null));
+            }
+            if (bon.getNumeroCmd() == null || bon.getNumeroCmd().isEmpty() || "0".equals(bon.getNumeroCmd())
+                    || "AUTO".equalsIgnoreCase(bon.getNumeroCmd())) {
                 synchronized (NUMERO_CMD_LOCK) {
                     bon.setNumeroCmd(numerotationService.generateNextNumber("BON_COMMANDE"));
                 }
             } else {
                 numerotationService.validateReference("BON_COMMANDE", bon.getNumeroCmd());
                 if (repository.findByNumeroCmd(bon.getNumeroCmd()).isPresent()) {
-                    throw new IllegalStateException("Une commande avec ce numéro (" + bon.getNumeroCmd() + ") existe déjà");
+                    throw new IllegalStateException(
+                            "Une commande avec ce numéro (" + bon.getNumeroCmd() + ") existe déjà");
                 }
             }
             if (bon.getStatut() == null) {
@@ -146,11 +160,6 @@ public class BonCommandeFournisseurService {
                 String firstName = jwt.getClaimAsString("given_name");
                 String lastName = jwt.getClaimAsString("family_name");
                 String email = jwt.getClaimAsString("email");
-
-                if (firstName == null)
-                    firstName = "Utilisateur";
-                if (lastName == null)
-                    lastName = "Inconnu";
 
                 User creator = userService.provisionUserIfNeeded(userId, firstName, lastName, email,
                         Role.RESPONSABLE_LOGISTIQUE);
@@ -218,41 +227,6 @@ public class BonCommandeFournisseurService {
             } catch (Exception e) {
                 System.err.println("Erreur lors de l'envoi de la notification : " + e.getMessage());
             }
-
-            if (savedBon.getLignes() != null) {
-                for (LigneCommande ligne : savedBon.getLignes()) {
-                    if (ligne.getPiece() != null && ligne.getPiece().getId() != null) {
-                        if (ligne.getDetailPiece() != null && ligne.getDetailPiece().getId() != null) {
-                            Stock stock = stockRepo.findByDetailPieceId(ligne.getDetailPiece().getId()).orElse(null);
-
-                            if (stock == null) {
-                                stock = new Stock();
-                                stock.setPiece(ligne.getPiece());
-                                stock.setQuantite(0);
-                                stock.setType(TypeStock.EN_REAPPROVISIONNEMENT);
-                                stockRepo.save(stock);
-                            } else {
-                                stock.setType(TypeStock.EN_REAPPROVISIONNEMENT);
-                                stockRepo.save(stock);
-                            }
-                        } else {
-                            List<Stock> stocks = stockRepo.findByPieceId(ligne.getPiece().getId());
-                            if (stocks.isEmpty()) {
-                                Stock newStock = new Stock();
-                                newStock.setPiece(ligne.getPiece());
-                                newStock.setQuantite(0);
-                                newStock.setType(TypeStock.EN_REAPPROVISIONNEMENT);
-                                stockRepo.save(newStock);
-                            } else {
-                                for (Stock stock : stocks) {
-                                    stock.setType(TypeStock.EN_REAPPROVISIONNEMENT);
-                                    stockRepo.save(stock);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
         }
 
         return savedBon;
@@ -269,6 +243,7 @@ public class BonCommandeFournisseurService {
         bon.setNumeroCmd(existing.getNumeroCmd());
         bon.setDateCmd(existing.getDateCmd());
         bon.setCreateur(existing.getCreateur());
+        bon.setEntreprise(existing.getEntreprise());
 
         if (bon.getLignes() != null) {
             bon.getLignes().forEach(ligne -> ligne.setBonCommandeFournisseur(bon));

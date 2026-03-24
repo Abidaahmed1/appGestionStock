@@ -16,6 +16,10 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -23,10 +27,14 @@ import com.gestionStock.backend.entity.entreprise.Entreprise;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Entity
 @Getter
 @Setter
 @EqualsAndHashCode(of = "code")
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Fournisseur {
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
@@ -36,7 +44,8 @@ public class Fournisseur {
 	@ManyToOne
 	@JoinColumn(name = "entreprise_id")
 	private Entreprise entreprise;
-	private boolean archivee = false;
+	@Builder.Default
+	private Boolean archivee = false;
 
 	@NotBlank(message = "L'adresse est obligatoire")
 	private String adresse;
@@ -57,10 +66,12 @@ public class Fournisseur {
 	@Size(min = 8, max = 8, message = "Le numéro de téléphone doit contenir 8 chiffres")
 	private String tel;
 
+	@Builder.Default
 	@JsonIgnore
 	@OneToMany(mappedBy = "fournisseur")
 	private Set<Bon> Bons = new HashSet<>();
 
+	@Builder.Default
 	@JsonIgnore
 	@OneToMany(mappedBy = "fournisseur")
 	private Set<BonCommandeFournisseur> bonCommandes = new HashSet<>();

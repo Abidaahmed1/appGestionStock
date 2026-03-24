@@ -1,22 +1,27 @@
+import { TypeChamp, Parametre, NumerotationConfig } from '../../shared/models/parametre.model';
+
+export { TypeChamp };
+export type { Parametre, NumerotationConfig };
+
 export interface PieceDetachee {
     id?: number;
     designation: string;
-    prixVente: number;
     reference: string;
+    codeBarre?: string;
+    prixVente: number;
+    tauxTVA: number;
     seuilMinimum: number;
     seuilMaximum: number;
-    tauxTVA: number;
+    quantite?: number;
     archivee: boolean;
     imageUrl?: string;
     description?: string;
     categorie?: Categorie;
-    stocks?: Stock[];
     produitsAssocies?: ProduitFini[];
     details?: DetailPiece[];
+    variations?: PieceDetachee[];
     historiques?: PieceHistorique[];
     entreprise?: any;
-    variantDetail?: DetailPiece;
-    originalPiece?: PieceDetachee;
     unite?: Unite;
 }
 
@@ -28,39 +33,9 @@ export interface Unite {
 
 export interface DetailPiece {
     id?: number;
-    attributs: { [key: string]: any };
-    codeBarre?: string;
-    prixVente?: number;
-    tauxTVA?: number;
-    stock?: Stock;
-}
-
-export interface ChampPersonnalise {
-    nom: string;
-    type: string;
-    obligatoire: boolean;
-    variante: boolean;
-    options: string[];
-    defaultValue?: string;
-    description?: string;
-    ordre: number;
-    actif: boolean;
-    _showAddInput?: boolean;
-}
-
-export interface NumerotationConfig {
-    module: string;
-    prefix: string;
-    numeroDebut: string;
-    redemarrer: string;
-    automatique?: boolean;
-    actif: boolean;
-}
-
-export interface Parametre {
-    id?: number;
-    champsPersonnalises: ChampPersonnalise[];
-    numerotationConfigs: NumerotationConfig[];
+    parametre: Parametre;
+    parametreNom?: string;
+    valeur: string;
 }
 
 export interface Categorie {
@@ -68,13 +43,10 @@ export interface Categorie {
     nom: string;
     code?: string;
     description?: string;
+    archivee?: boolean;
 }
 
-export interface Stock {
-    id?: number;
-    quantite: number;
-    type: string;
-}
+
 
 export interface ProduitFini {
     id?: number;

@@ -31,15 +31,39 @@ public class CategorieService {
     }
 
     public Categorie create(Categorie categorie) {
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
+        
+        // Recherche d'une catégorie existante par nom (insensible à la casse) dans cette entreprise
+        List<Categorie> allCats = categorieRepo.findByEntreprise(entreprise);
+        Categorie existing = allCats.stream()
+                .filter(c -> c.getNom().equalsIgnoreCase(categorie.getNom()))
+                .findFirst()
+                .orElse(null);
+
+        if (existing != null) {
+            if (Boolean.TRUE.equals(existing.isArchivee())) {
+                existing.setArchivee(false);
+                return categorieRepo.save(existing);
+            }
+            throw new com.gestionStock.backend.exceptions.PieceException("La catégorie '" + categorie.getNom() + "' existe déjà.");
+        }
+
         if (categorie.getCode() == null || categorie.getCode().trim().isEmpty()
                 || "AUTO".equalsIgnoreCase(categorie.getCode())) {
             synchronized (CATEGORIE_LOCK) {
-                categorie.setCode(numerotationService.generateNextNumber("CATEGORIE"));
+                String nextCode;
+                do {
+                    nextCode = numerotationService.generateNextNumber("CATEGORIE");
+                } while (categorieRepo.findByCode(nextCode).isPresent());
+                categorie.setCode(nextCode);
             }
         } else {
             numerotationService.validateReference("CATEGORIE", categorie.getCode());
         }
-        categorie.setEntreprise(userService.getCurrentUserEntreprise());
+        if (categorie.getArchivee() == null) {
+            categorie.setArchivee(false);
+        }
+        categorie.setEntreprise(entreprise);
         return categorieRepo.save(categorie);
     }
 

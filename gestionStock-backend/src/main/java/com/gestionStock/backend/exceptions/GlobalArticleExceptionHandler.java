@@ -74,17 +74,24 @@ public class GlobalArticleExceptionHandler extends ResponseEntityExceptionHandle
 		return new ResponseEntity<>(e, HttpStatus.NOT_FOUND);
 	}
 
-	// 409 – Contrainte d'unicité violée (doublon en BDD)
+	// 409 – Contrainte d'intégrité violée (doublon, null, ou référence)
 	@ExceptionHandler(DataIntegrityViolationException.class)
 	public ResponseEntity<Erreur> handleDataIntegrity(DataIntegrityViolationException ex) {
 		String cause = ex.getRootCause() != null ? ex.getRootCause().getMessage() : ex.getMessage();
-		String message = "Un enregistrement avec ces données existe déjà : "
-				+ (cause != null ? cause : "Contrainte d'unicité violée.");
+		String message = "Erreur d'intégrité des données : " + cause;
 
 		Map<String, String> details = new HashMap<>();
 		if (cause != null && !cause.isBlank()) {
 			details.put("cause", cause);
+			if (cause.contains("violates unique constraint")) {
+				message = "Un enregistrement avec ces données existe déjà.";
+			} else if (cause.contains("violates foreign key constraint")) {
+				message = "Impossible de supprimer ou modifier cet élément car il est utilisé par d'autres données (ex: une pièce détachée).";
+			} else if (cause.contains("violates not-null constraint")) {
+				message = "Un champ obligatoire est manquant.";
+			}
 		}
+
 		Erreur e = new Erreur(LocalDateTime.now(), message, details.isEmpty() ? null : details,
 				HttpStatus.CONFLICT.value());
 		return new ResponseEntity<>(e, HttpStatus.CONFLICT);

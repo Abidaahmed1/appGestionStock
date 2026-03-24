@@ -2,7 +2,7 @@ import { Component, OnInit, NgZone, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { ParametreService, Parametre, ChampPersonnalise, TypeChamp } from '../../services/parametre.service';
+import { ParametreService, Parametre, TypeChamp, NumerotationConfig } from '../../services/parametre.service';
 
 @Component({
     selector: 'app-piece-configuration',
@@ -13,7 +13,7 @@ import { ParametreService, Parametre, ChampPersonnalise, TypeChamp } from '../..
 })
 export class PieceConfigurationComponent implements OnInit {
     parametre: Parametre | null = null;
-    champs: ChampPersonnalise[] = [];
+    champs: Parametre[] = [];
     loading = true;
     errorMessage: string | null = null;
     notification: { message: string, type: 'success' | 'error' } | null = null;
@@ -28,6 +28,7 @@ export class PieceConfigurationComponent implements OnInit {
         { value: TypeChamp.BOOLEAN, label: 'Oui/Non' },
         { value: TypeChamp.DATE, label: 'Date' },
         { value: TypeChamp.SELECT, label: 'Liste déroulante' },
+        { value: TypeChamp.LISTE, label: 'Liste de valeurs' },
         { value: TypeChamp.EMAIL, label: 'Email' },
         { value: TypeChamp.URL, label: 'URL' },
         { value: TypeChamp.TEXTAREA, label: 'Zone de texte' }
@@ -70,36 +71,22 @@ export class PieceConfigurationComponent implements OnInit {
         this.loading = true;
         this.errorMessage = null;
 
-        this.ngZone.runOutsideAngular(() => {
-            setTimeout(() => {
-                this.ngZone.run(() => {
-                    if (this.loading) {
-                        this.loading = false;
-                        this.errorMessage = "Le serveur est trop lent à répondre.";
-                    }
-                });
-            }, 5000);
-        });
-
-        // Utilise /api/parametres/current : le backend détermine l'entreprise
-        // du user connecté automatiquement (via getCurrentUserEntreprise())
-        this.parametreService.getCurrentParametre().subscribe({
+        this.parametreService.getCurrentParametres().subscribe({
             next: (data) => {
-                this.parametre = data;
-                this.entrepriseId = data.entreprise?.id ?? this.entrepriseId;
-                this.champs = data.champsPersonnalises.map(c => ({
+                this.champs = (data || []).map(c => ({
                     ...c,
-                    options: c.options || []
-                }));
+                    options: c.options || [],
+                    selected: false
+                })).sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
 
                 // Dynamisation de l'affichage de la référence selon la configuration de numérotation
-                if (data.numerotationConfigs) {
-                    const pieceConfig = data.numerotationConfigs.find(c => c.module === 'PIECE');
-                    if (pieceConfig) {
-                        const referenceAttr = this.defaultAttributes.find(a => a.nom === 'Référence');
-                        if (referenceAttr) {
-                            referenceAttr.type = `Texte (${pieceConfig.prefix}*)`;
-                        }
+                const pieceConfig = this.champs.find(p => p.numerotationConfigs?.some((nc: NumerotationConfig) => nc.module === 'PIECE'))
+                    ?.numerotationConfigs?.find((nc: NumerotationConfig) => nc.module === 'PIECE');
+
+                if (pieceConfig) {
+                    const referenceAttr = this.defaultAttributes.find(a => a.nom === 'Référence');
+                    if (referenceAttr) {
+                        referenceAttr.type = `Texte (${pieceConfig.prefix}*)`;
                     }
                 }
 
@@ -125,7 +112,7 @@ export class PieceConfigurationComponent implements OnInit {
     }
 
     ajouterLigne(): void {
-        const nouveauChamp: ChampPersonnalise = {
+        const nouveauChamp: Parametre = {
             nom: '',
             type: TypeChamp.TEXT,
             obligatoire: false,
@@ -134,7 +121,8 @@ export class PieceConfigurationComponent implements OnInit {
             ordre: this.champs.length,
             actif: true,
             description: '',
-            defaultValue: ''
+            defaultValue: '',
+            numerotationConfigs: []
         };
         this.champs.push(nouveauChamp);
     }
@@ -188,12 +176,12 @@ export class PieceConfigurationComponent implements OnInit {
 
     onTypeChange(index: number): void {
         const champ = this.champs[index];
-        if (champ.type !== TypeChamp.SELECT && !champ.variante) {
+        if (champ.type !== TypeChamp.SELECT && champ.type !== TypeChamp.LISTE && !champ.variante) {
             champ.options = [];
         }
     }
 
-    addOption(champ: ChampPersonnalise, input: HTMLInputElement): void {
+    addOption(champ: Parametre, input: HTMLInputElement): void {
         const value = input.value.trim();
         if (value && !champ.options.includes(value)) {
             champ.options.push(value);
@@ -202,38 +190,30 @@ export class PieceConfigurationComponent implements OnInit {
     }
 
     save(): void {
-        if (!this.parametre || !this.parametre.id) {
-            this.errorMessage = "Impossible d'enregistrer : ID du paramètre manquant.";
-            return;
-        }
-
         this.loading = true;
         this.errorMessage = null;
 
-        const finalChamps = this.champs.map(c => {
+        // Clean internal UI state before sending
+        const finalChamps = this.champs.map((c, index) => {
             const { selected, ...rest } = c as any;
-            return rest as ChampPersonnalise;
+            return { ...rest, ordre: index };
         });
 
-        const updatedParametre: Parametre = {
-            ...this.parametre,
-            champsPersonnalises: finalChamps
-        };
-
-        this.parametreService.updateParametre(this.parametre.id, updatedParametre).subscribe({
-            next: (data) => {
-                this.parametre = data;
-                this.champs = data.champsPersonnalises.map(c => ({
+        this.parametreService.updateParametresBulk(finalChamps).subscribe({
+            next: (data: Parametre[]) => {
+                this.champs = (data || []).map((c: Parametre) => ({
                     ...c,
-                    options: c.options || []
-                }));
+                    options: c.options || [],
+                    selected: false
+                })).sort((a: Parametre, b: Parametre) => (a.ordre || 0) - (b.ordre || 0));
+
                 this.loading = false;
                 this.notify('Configuration enregistrée avec succès !', 'success');
             },
-            error: (err) => {
+            error: (err: any) => {
                 console.error('Erreur lors de l\'enregistrement', err);
                 this.loading = false;
-                this.errorMessage = "Erreur lors de l'enregistrement des modifications.";
+                this.errorMessage = err.error?.message || "Erreur lors de l'enregistrement des modifications (Conflit).";
             }
         });
     }

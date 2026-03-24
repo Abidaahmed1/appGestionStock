@@ -4,10 +4,10 @@ import com.gestionStock.backend.entity.entreprise.Entreprise;
 import com.gestionStock.backend.repository.parametre.NumerotationSequenceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -16,20 +16,29 @@ public class NumerotationService {
     private final ParametreService parametreService;
     private final NumerotationSequenceRepository sequenceRepository;
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public String generateNextNumber(String module) {
-        Optional<Parametre> optParam = parametreService.getCurrentParametre();
-        if (optParam.isEmpty()) {
+        java.util.List<Parametre> params = parametreService.getCurrentParametres();
+        if (params.isEmpty()) {
             return "DEFAULT-" + System.currentTimeMillis();
         }
 
-        Parametre parametre = optParam.get();
-        Entreprise entreprise = parametre.getEntreprise();
+        // On cherche la config dans n'importe quel paramètre (en général ils l'auront
+        // tous ou on en choisit un)
+        NumerotationConfig config = null;
+        Entreprise entreprise = params.get(0).getEntreprise();
 
-        NumerotationConfig config = parametre.getNumerotationConfigs().stream()
-                .filter(c -> c.getModule().equals(module) && c.isActif())
-                .findFirst()
-                .orElse(getDefaultConfig(module));
+        for (Parametre p : params) {
+            config = p.getNumerotationConfigs().stream()
+                    .filter(c -> c.getModule().equals(module) && c.isActif())
+                    .findFirst()
+                    .orElse(null);
+            if (config != null)
+                break;
+        }
+
+        if (config == null)
+            config = getDefaultConfig(module);
 
         return generate(config, entreprise.getId());
     }
@@ -77,15 +86,22 @@ public class NumerotationService {
         if (reference == null || reference.trim().isEmpty())
             return;
 
-        Optional<Parametre> optParam = parametreService.getCurrentParametre();
-        if (optParam.isEmpty())
+        java.util.List<Parametre> params = parametreService.getCurrentParametres();
+        if (params.isEmpty())
             return;
 
-        Parametre parametre = optParam.get();
-        NumerotationConfig config = parametre.getNumerotationConfigs().stream()
-                .filter(c -> c.getModule().equals(module))
-                .findFirst()
-                .orElse(getDefaultConfig(module));
+        NumerotationConfig config = null;
+        for (Parametre p : params) {
+            config = p.getNumerotationConfigs().stream()
+                    .filter(c -> c.getModule().equals(module))
+                    .findFirst()
+                    .orElse(null);
+            if (config != null)
+                break;
+        }
+
+        if (config == null)
+            config = getDefaultConfig(module);
 
         if (!config.isActif())
             return;

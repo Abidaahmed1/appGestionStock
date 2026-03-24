@@ -1,0 +1,133 @@
+.confirm-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100000;
+}
+
+.confirm-modal-content {
+    background: #ffffff;
+    border-radius: 16px;
+    width: 500px;
+    max-width: 90%;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+    animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    overflow: hidden;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.confirm-header-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 24px 32px;
+}
+
+.warning-icon {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+}
+
+.warning-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.confirm-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+}
+
+.confirm-body {
+    padding: 0 32px 24px 32px;
+}
+
+.confirm-message {
+    font-size: 0.95rem;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.confirm-divider {
+    height: 1px;
+    background-color: #f1f5f9;
+    width: 100%;
+}
+
+.confirm-actions {
+    display: flex;
+    flex-direction: row-reverse;
+    /* Put primary action on the right */
+    align-items: center;
+    gap: 12px;
+    padding: 20px 32px;
+    background-color: #f8fafc;
+}
+
+.btn-stay {
+    background-color: #0d9488;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    padding: 11px 24px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(13, 148, 136, 0.1);
+}
+
+.btn-stay:hover {
+    background-color: #0f766e;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(13, 148, 136, 0.2);
+}
+
+.btn-stay:active {
+    transform: translateY(0);
+}
+
+.btn-quit {
+    background-color: transparent;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 11px 24px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-quit:hover {
+    background-color: #ffffff;
+    color: #ef4444;
+    border-color: #fecaca;
+    background-color: #fff1f2;
+}
+
+.btn-quit:active {
+    background-color: #fca5a5;
+}

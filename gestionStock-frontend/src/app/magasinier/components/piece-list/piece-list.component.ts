@@ -3,9 +3,11 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { KeycloakService } from 'keycloak-angular';
 import { MagasinierService } from '../../services/magasinier.service';
-import { PieceDetachee, Categorie, ProduitFini, Parametre, ChampPersonnalise, DetailPiece, Stock, Unite } from '../../models/magasinier.models';
+import { PieceDetachee, Categorie, ProduitFini, Parametre, DetailPiece, Unite } from '../../models/magasinier.models';
 import { EntrepriseService } from '../../../admin/services/entreprise.service';
 import { Entreprise } from '../../../admin/models/entreprise.model';
+
+import Swal from 'sweetalert2';
 
 import { PieceFormComponent } from '../piece-form/piece-form.component';
 
@@ -52,11 +54,16 @@ export class PieceListComponent implements OnInit {
 
     // New properties for Master-Detail view
     activePiece: PieceDetachee | null = null;
+    activeGroup: { main: PieceDetachee; variations: PieceDetachee[]; expanded: boolean } | null = null;
     activeTab: string = 'overview'; // For detail view tabs
     viewMode: 'table' | 'grid' = 'table';
 
+    tableLayout: 'expanded' | 'collapsed' = 'expanded';
+    showLayoutMenu = false;
 
-    parametres: Parametre | null = null;
+    showAssocProducts: boolean = true; // Added for expanding/collapsing the products list
+
+    parametres: Parametre[] = [];
     private imageCache = new Map<string, string>();
 
     // Multi-selection
@@ -77,9 +84,125 @@ export class PieceListComponent implements OnInit {
                 this.cdr.detectChanges();
             }
         }
+        if (this.showLayoutMenu) {
+            const target = event.target as HTMLElement;
+            if (!target.closest('.layout-toggle-container')) {
+                this.showLayoutMenu = false;
+                this.cdr.detectChanges();
+            }
+        }
+        if (this.showSlimLayoutMenu) {
+            const target = event.target as HTMLElement;
+            if (!target.closest('.slim-layout-toggle')) {
+                this.showSlimLayoutMenu = false;
+                this.cdr.detectChanges();
+            }
+        }
     }
 
     constructor(private magasinierService: MagasinierService) { }
+
+    private groupedPiecesCache: { main: PieceDetachee; variations: PieceDetachee[]; expanded: boolean; expandedSide?: boolean }[] = [];
+    private lastFilteredListRef: PieceDetachee[] = [];
+
+    slimSearchTerm: string = '';
+    slimFilteredGroups: any[] = [];
+    slimFilteredFlatPieces: PieceDetachee[] = [];
+
+    private slimSearchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    onSlimSearchChange(term: string) {
+        this.slimSearchTerm = term;
+        if (this.slimSearchTimeout) {
+            clearTimeout(this.slimSearchTimeout);
+        }
+        this.slimSearchTimeout = setTimeout(() => {
+            this.applySlimFilters();
+            this.cdr.detectChanges();
+        }, 300);
+    }
+
+    applySlimFilters() {
+        const groups = this.groupedPiecesList; // triggers grouping if needed
+        const list = this.filteredPiecesList;
+
+        if (!this.slimSearchTerm) {
+            this.slimFilteredGroups = groups;
+            this.slimFilteredFlatPieces = list;
+            return;
+        }
+
+        const term = this.slimSearchTerm.toLowerCase();
+        this.slimFilteredGroups = groups.filter(g => {
+            const matchesMain = g.main.designation?.toLowerCase().includes(term) || g.main.reference?.toLowerCase().includes(term);
+            const matchesVariations = g.variations.some(v => v.designation?.toLowerCase().includes(term) || v.reference?.toLowerCase().includes(term));
+            return matchesMain || matchesVariations;
+        });
+
+        this.slimFilteredFlatPieces = list.filter(p =>
+            p.designation?.toLowerCase().includes(term) ||
+            p.reference?.toLowerCase().includes(term)
+        );
+    }
+
+    get groupedPiecesList(): { main: PieceDetachee; variations: PieceDetachee[]; expanded: boolean; expandedSide?: boolean }[] {
+        if (this.lastFilteredListRef === this.filteredPiecesList) {
+            return this.groupedPiecesCache;
+        }
+
+        const map = new Map<string, { main: PieceDetachee; variations: PieceDetachee[]; expanded: boolean; expandedSide?: boolean }>();
+        const oldStateMap = new Map<string, any>();
+
+        for (const oldGroup of this.groupedPiecesCache) {
+            oldStateMap.set(oldGroup.main.designation || 'Sans Nom', oldGroup);
+        }
+
+        for (const piece of this.filteredPiecesList) {
+            const key = piece.designation || 'Sans Nom';
+            if (!map.has(key)) {
+                let expanded = false;
+                let expandedSide = false;
+                if (oldStateMap.has(key)) {
+                    expanded = oldStateMap.get(key).expanded;
+                    expandedSide = oldStateMap.get(key).expandedSide;
+                }
+                map.set(key, { main: piece, variations: [], expanded, expandedSide });
+            } else {
+                map.get(key)!.variations.push(piece);
+            }
+        }
+
+        this.groupedPiecesCache = Array.from(map.values());
+        this.lastFilteredListRef = this.filteredPiecesList;
+        return this.groupedPiecesCache;
+    }
+
+    toggleGroupMode(mode: 'expanded' | 'collapsed') {
+        this.tableLayout = mode;
+        this.showLayoutMenu = false;
+        this.cdr.detectChanges();
+    }
+
+    slimListLayout: 'expanded' | 'collapsed' = 'collapsed';
+    showSlimLayoutMenu = false;
+
+    toggleSlimMenu(event: Event) {
+        event.stopPropagation();
+        this.showSlimLayoutMenu = !this.showSlimLayoutMenu;
+        this.cdr.detectChanges();
+    }
+
+    toggleSlimLayoutMode(mode: 'expanded' | 'collapsed') {
+        this.slimListLayout = mode;
+        this.showSlimLayoutMenu = false;
+        this.cdr.detectChanges();
+    }
+
+    toggleGroup(group: any, event: Event) {
+        event.stopPropagation();
+        group.expanded = !group.expanded;
+        this.cdr.detectChanges();
+    }
 
     ngOnInit() {
         if (isPlatformBrowser(this.platformId)) {
@@ -232,11 +355,15 @@ export class PieceListComponent implements OnInit {
     handleQuickAddCategory(category: Categorie): void {
         this.magasinierService.createCategorie(category).subscribe({
             next: (cat) => {
-                this.categories.push(cat);
+                this.categories = [...this.categories, cat];
                 this.notify('Catégorie ajoutée', 'success');
                 this.cdr.detectChanges();
             },
-            error: (err: any) => this.notify('Erreur lors de l\'ajout de la catégorie', 'error')
+            error: (err: any) => {
+                const msg = this.extractErrorMessage(err, 'Erreur lors de l\'ajout de la catégorie');
+                this.notify(msg, 'error');
+                this.cdr.detectChanges();
+            }
         });
     }
 
@@ -244,7 +371,7 @@ export class PieceListComponent implements OnInit {
         this.magasinierService.createProduit(data.product).subscribe({
             next: (prod) => {
                 const finalize = (finalProd: ProduitFini) => {
-                    this.produitsFinis.push(finalProd);
+                    this.produitsFinis = [...this.produitsFinis, finalProd];
                     this.notify('Produit ajouté', 'success');
                     this.cdr.detectChanges();
                 };
@@ -260,19 +387,20 @@ export class PieceListComponent implements OnInit {
                     finalize(prod);
                 }
             },
-            error: (err: any) => this.notify('Erreur lors de l\'ajout du produit', 'error')
+            error: (err: any) => {
+                const msg = this.extractErrorMessage(err, 'Erreur lors de l\'ajout du produit');
+                this.notify(msg, 'error');
+                this.cdr.detectChanges();
+            }
         });
     }
 
 
     loadParametres(): void {
-
         this.magasinierService.getAllParametres().subscribe({
             next: (data) => {
-                if (data && data.length > 0) {
-                    this.parametres = data[0];
-                    this.cdr.detectChanges();
-                }
+                this.parametres = data || [];
+                this.cdr.detectChanges();
             },
             error: (err: any) => console.error('Erreur chargement paramètres:', err)
         });
@@ -285,7 +413,14 @@ export class PieceListComponent implements OnInit {
     }
 
     openEditModal(piece: PieceDetachee): void {
-        this.selectedPiece = piece;
+        const groupItems = this.pieces.filter(p => p.designation === piece.designation);
+
+        // Populate the selected piece's variations with its siblings
+        this.selectedPiece = {
+            ...piece,
+            variations: groupItems.filter(p => p.id !== piece.id)
+        };
+
         this.formError = null;
         this.showCreateModal = true;
         this.cdr.detectChanges();
@@ -301,11 +436,6 @@ export class PieceListComponent implements OnInit {
         const pieceData = data.piece;
         const file = data.file;
 
-        // if (pieceData.prixVente <= 0) {
-        //     this.notify('Le prix d\'achat doit être supérieur à 0', 'error');
-        //     return;
-        // }
-
         if (this.selectedPiece && this.selectedPiece.id) {
             this.magasinierService.updatePiece(this.selectedPiece.id, pieceData).subscribe({
                 next: (saved) => {
@@ -316,7 +446,7 @@ export class PieceListComponent implements OnInit {
                     if (file && saved.id) {
                         this.doUpload(file, saved.id, 'Pièce mise à jour');
                     } else {
-                        this.notify('Pièce mise à jour', 'success');
+                        this.notify('La pièce a été mise à jour avec succès.', 'success');
                         this.loadPieces();
                     }
                     this.closeCreateModal();
@@ -333,7 +463,7 @@ export class PieceListComponent implements OnInit {
                     if (file && saved.id) {
                         this.doUpload(file, saved.id, 'Pièce créée');
                     } else {
-                        this.notify('Pièce créée', 'success');
+                        this.notify('La pièce a été créée avec succès.', 'success');
                         this.loadPieces();
                     }
                     this.closeCreateModal();
@@ -417,7 +547,7 @@ export class PieceListComponent implements OnInit {
             case 401: return 'Session expirée : veuillez vous reconnecter.';
             case 403: return 'Accès refusé : vous n\'avez pas les droits nécessaires.';
             case 404: return 'Ressource introuvable.';
-            case 409: return 'Conflit : l\'action est impossible car l\'élément est utilisé ailleurs (stock, produits, etc.).';
+            case 409: return 'Conflit : cet élément (nom ou code) existe déjà ou est déjà utilisé.';
             case 500: return 'Erreur interne du serveur. Veuillez contacter le support.';
             case 0: return 'Le serveur est injoignable. Vérifiez votre connexion.';
         }
@@ -429,7 +559,7 @@ export class PieceListComponent implements OnInit {
         this.notification = { message, type };
         this.cdr.detectChanges();
         if (isPlatformBrowser(this.platformId)) {
-            const duration = type === 'success' ? 1500 : 5000;
+            const duration = type === 'success' ? 3000 : 5000;
             this.ngZone.runOutsideAngular(() => {
                 setTimeout(() => {
                     this.ngZone.run(() => {
@@ -536,8 +666,26 @@ export class PieceListComponent implements OnInit {
         return variant.id || index;
     }
 
+    groupTrackBy(index: number, group: any): string | number {
+        return group.main?.id || index;
+    }
 
-    applyFilters(): void {
+
+    private mainSearchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    applyFilters(fromDebounce = false): void {
+        // If called directly from template (ngModelChange), debounce it
+        if (!fromDebounce) {
+            if (this.mainSearchTimeout) {
+                clearTimeout(this.mainSearchTimeout);
+            }
+            this.mainSearchTimeout = setTimeout(() => {
+                this.applyFilters(true);
+                this.cdr.detectChanges();
+            }, 300);
+            return;
+        }
+
         let results = this.pieces;
 
         if (this.searchTerm) {
@@ -545,20 +693,36 @@ export class PieceListComponent implements OnInit {
             results = results.filter(p => {
                 const designation = (p.designation || '').toLowerCase();
                 const reference = (p.reference || '').toLowerCase();
-                const hasCodeBarreMatch = p.details?.some(d => (d.codeBarre || '').toLowerCase().includes(term));
+                const codeBarre = (p.codeBarre || '').toLowerCase();
+
+                const hasCodeBarreMatch = codeBarre.includes(term) ||
+                    (p.variations?.some(v => (v.codeBarre || '').toLowerCase().includes(term)) ?? false);
 
                 if (this.searchCategory === 'all') {
                     const matchesBasic = designation.includes(term) ||
                         reference.includes(term) ||
                         hasCodeBarreMatch;
+
                     const matchesProduct = p.produitsAssocies?.some(prod =>
                         (prod.designation || '').toLowerCase().includes(term) ||
                         (prod.code || '').toLowerCase().includes(term)
                     );
-                    return matchesBasic || !!matchesProduct;
+
+                    const matchesVariation = p.variations?.some(v =>
+                        (v.designation || '').toLowerCase().includes(term) ||
+                        (v.reference || '').toLowerCase().includes(term)
+                    ) ?? false;
+
+                    return matchesBasic || !!matchesProduct || matchesVariation;
                 }
-                if (this.searchCategory === 'reference') return reference.includes(term);
-                if (this.searchCategory === 'designation') return designation.includes(term);
+                if (this.searchCategory === 'reference') {
+                    return reference.includes(term) ||
+                        (p.variations?.some(v => (v.reference || '').toLowerCase().includes(term)) ?? false);
+                }
+                if (this.searchCategory === 'designation') {
+                    return designation.includes(term) ||
+                        (p.variations?.some(v => (v.designation || '').toLowerCase().includes(term)) ?? false);
+                }
                 if (this.searchCategory === 'codeBarre') return hasCodeBarreMatch;
                 if (this.searchCategory === 'produit') {
                     return !!p.produitsAssocies?.some(prod =>
@@ -597,11 +761,43 @@ export class PieceListComponent implements OnInit {
         if (this.activePiece && !this.filteredPiecesList.find(p => p.id === this.activePiece?.id)) {
             this.activePiece = null;
         }
+        if (this.activeGroup && !this.filteredPiecesList.find(p => p.designation === this.activeGroup?.main.designation)) {
+            this.activeGroup = null;
+        }
+
+        this.applySlimFilters();
     }
 
     selectPiece(piece: PieceDetachee): void {
         this.activePiece = piece;
+        this.activeGroup = null;
         this.activeTab = 'overview';
+        this.cdr.detectChanges();
+    }
+
+    selectGroup(group: any, event: Event): void {
+        event.stopPropagation();
+
+        // Force the sidebar tree to toggle open/close when clicking the main group
+        group.expandedSide = !group.expandedSide;
+
+        this.activeGroup = group;
+        this.activePiece = null;
+        this.activeTab = 'overview';
+        this.cdr.detectChanges();
+    }
+
+    selectPieceFromGroup(variant: PieceDetachee, event: Event): void {
+        event.stopPropagation();
+        this.activePiece = variant;
+        // Do not reset activeGroup, so the tree on the left stays visible for the group.
+        this.activeTab = 'overview';
+        this.cdr.detectChanges();
+    }
+
+    closeDetail(): void {
+        this.activePiece = null;
+        this.activeGroup = null;
         this.cdr.detectChanges();
     }
 
@@ -610,59 +806,60 @@ export class PieceListComponent implements OnInit {
         this.cdr.detectChanges();
     }
 
-    closeDetail(): void {
-        this.activePiece = null;
-        this.cdr.detectChanges();
-    }
+
 
     getTotalStock(piece: any): number {
-        if (piece._totalStock !== undefined) return piece._totalStock;
-
-        let total = 0;
-        if (piece.stock && !Array.isArray(piece.stock)) {
-            total = piece.stock.quantite || 0;
-        } else if (piece.stocks && Array.isArray(piece.stocks)) {
-            total = piece.stocks.reduce((sum: number, s: any) => sum + (s.quantite || 0), 0);
-        } else if (piece.details && piece.details.length > 0) {
-            total = piece.details.reduce((sum: number, dp: any) => sum + (dp.stock?.quantite || 0), 0);
-        }
-
-        piece._totalStock = total;
-        return total;
+        return piece.quantite || 0;
     }
 
-    getVariantLabel(detail: any): string {
-        if (detail._label !== undefined) return detail._label;
+    getVariantLabel(variant: PieceDetachee): string {
+        if (!variant.details || variant.details.length === 0) return 'Standard';
 
-        const attributes = detail.attributs || {};
-        const label = Object.entries(attributes)
-            .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && String(value).trim() !== '')
-            .map(([_, value]) => value)
+        const label = variant.details
+            .filter(d => d.parametre?.variante && d.valeur)
+            .map(d => d.valeur)
             .join(' - ');
 
-        detail._label = label || 'Standard';
-        return detail._label;
+        return label || 'Standard';
     }
 
     getStockPercentage(variant: any): number {
-        if (!variant.stock || !this.activePiece) return 0;
-        const current = variant.stock.quantite || 0;
+        if (!this.activePiece) return 0;
+        const current = this.activePiece.quantite || 0;
         if (current <= 0) return 0;
         const max = this.activePiece.seuilMaximum || (this.activePiece.seuilMinimum * 5) || 100;
         const percentage = (current / max) * 100;
         return Math.min(percentage, 100);
     }
 
-    getVariantAttributes(detail: any): string[] {
-        if (detail._attrList) return detail._attrList;
+    getVariantAttributes(variant: PieceDetachee): string[] {
+        if (!variant.details || variant.details.length === 0) return [];
+        return variant.details
+            .filter(d => d.valeur && d.parametre)
+            .map(d => `${d.parametre.nom} : ${d.valeur}`);
+    }
 
-        const attributes = detail.attributs || {};
-        const list = Object.entries(attributes)
-            .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && String(value).trim() !== '')
-            .map(([key, value]) => `${key} : ${value}`);
+    getGroupAttributes(group: { main: PieceDetachee, variations: PieceDetachee[] }): { key: string, values: string[] }[] {
+        if (!group) return [];
+        const map = new Map<string, Set<string>>();
+        const allPieces = [group.main, ...(group.variations || [])];
 
-        detail._attrList = list;
-        return list;
+        allPieces.forEach(p => {
+            if (p.details) {
+                p.details.forEach((d: any) => {
+                    if (d.parametre && d.valeur) {
+                        const name = d.parametre.nom;
+                        if (!map.has(name)) map.set(name, new Set<string>());
+                        map.get(name)!.add(d.valeur);
+                    }
+                });
+            }
+        });
+
+        return Array.from(map.entries()).map(([key, values]) => ({
+            key,
+            values: Array.from(values)
+        }));
     }
 
     isArray(obj: any): boolean {
@@ -670,17 +867,7 @@ export class PieceListComponent implements OnInit {
     }
 
     getUnassignedStock(piece: any): number {
-        if (piece._unassignedStock !== undefined) return piece._unassignedStock;
-
-        let stock = 0;
-        if (piece.stock && !Array.isArray(piece.stock)) {
-            stock = piece.stock.quantite || 0;
-        } else if (piece.stocks && Array.isArray(piece.stocks)) {
-            stock = piece.stocks.reduce((sum: number, s: any) => sum + (s.quantite || 0), 0);
-        }
-
-        piece._unassignedStock = stock;
-        return stock;
+        return piece.quantite || 0;
     }
 
     getVariantColorClass(label: string): string {

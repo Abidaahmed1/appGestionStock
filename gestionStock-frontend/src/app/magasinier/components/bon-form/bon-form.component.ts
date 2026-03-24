@@ -49,8 +49,8 @@ export class BonFormComponent implements OnInit {
     };
 
     fournisseurs: Fournisseur[] = [];
-    stocks: Stock[] = [];
     pieces: any[] = [];
+    piecesRawData: any[] = [];
 
     activeTab: 'produits' | 'autres' = 'produits';
     isEditMode = false;
@@ -81,7 +81,6 @@ export class BonFormComponent implements OnInit {
         if (isPlatformBrowser(this.platformId)) {
             this.loadFournisseurs();
             this.loadPieces();
-            this.loadStocks();
             this.loadSourceBons();
             this.loadEntreprise();
             this.loadParametres();
@@ -111,27 +110,37 @@ export class BonFormComponent implements OnInit {
     loadParametres() {
         this.magasinierService.getAllParametres().subscribe({
             next: (data) => {
-                if (data && data.length > 0) {
-                    this.parametres = data[0];
-                    if (!this.isEditMode) {
-                        const module = this.getModuleForType(this.bon.typeBon);
-                        this.isAutoNumeroBon = this.isModuleAuto(module);
-                        this.bon.numeroBon = this.isAutoNumeroBon ? 'AUTO' : '';
-                    }
-                    this.cdr.detectChanges();
+                this.parametres = data || [];
+                if (this.parametres.length > 0 && !this.isEditMode) {
+                    const module = this.getModuleForType(this.bon.typeBon);
+                    this.isAutoNumeroBon = this.isModuleAuto(module);
+                    this.bon.numeroBon = this.isAutoNumeroBon ? 'AUTO' : '';
                 }
+                this.cdr.detectChanges();
             },
             error: (err) => console.error('Erreur chargement paramètres:', err)
         });
     }
 
     isModuleAuto(moduleName: string): boolean {
-        const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+        let configs: any[] = [];
+        (this.parametres || []).forEach((p: any) => {
+            if (p.numerotationConfigs) {
+                configs = configs.concat(p.numerotationConfigs);
+            }
+        });
+        const config = configs.find((c: any) => c.module === moduleName);
         return config ? config.automatique !== false : true;
     }
 
     getPrefix(moduleName: string): string {
-        const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+        let configs: any[] = [];
+        (this.parametres || []).forEach((p: any) => {
+            if (p.numerotationConfigs) {
+                configs = configs.concat(p.numerotationConfigs);
+            }
+        });
+        const config = configs.find((c: any) => c.module === moduleName);
         let prefix = config?.prefix || '';
         if (prefix) {
             const date = new Date();
@@ -145,16 +154,22 @@ export class BonFormComponent implements OnInit {
     }
 
     getFormatExplanation(moduleName: string): string | null {
-        const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+        let configs: any[] = [];
+        (this.parametres || []).forEach((p: any) => {
+            if (p.numerotationConfigs) {
+                configs = configs.concat(p.numerotationConfigs);
+            }
+        });
+        const config = configs.find((c: any) => c.module === moduleName);
         const prefix = config?.prefix || '';
-        
+
         let parts = [];
         if (prefix.includes('%YYYY%')) parts.push("l'année sur 4 chiffres");
         else if (prefix.includes('%YY%')) parts.push("l'année sur 2 chiffres");
-        
+
         if (prefix.includes('%MM%')) parts.push("le mois sur 2 chiffres");
         if (prefix.includes('%DD%')) parts.push("le jour sur 2 chiffres");
-        
+
         if (parts.length > 0) {
             return `Astuce : Le numéro inclut ${parts.join(', ')} suivis d'une séquence.`;
         }
@@ -258,10 +273,10 @@ export class BonFormComponent implements OnInit {
 
     private updateLinesWithPrices() {
         this.mouvement.ligneMouvement.forEach(line => {
-            if (line.stock?.piece?.id) {
-                const pieceId = line.stock.piece.id;
-                const detailId = line.stock.detailPiece?.id;
-                const pieceInfo = this.pieces.find(p => p.id === pieceId && (!detailId || p.variantDetail?.id === detailId));
+            if (line.piece?.id) {
+                const pieceId = line.piece.id;
+                // Since we aggregate pieces, we match primarily by piece ID
+                const pieceInfo = this.pieces.find(p => p.id === pieceId);
 
                 if (pieceInfo) {
                     line.prixHTVA = pieceInfo.prixVente ?? 0;
@@ -323,7 +338,8 @@ export class BonFormComponent implements OnInit {
                 quantite: oldLigne.quantite,
                 prixHTVA: oldLigne.prixHTVA,
                 tauxTVA: oldLigne.tauxTVA,
-                stock: oldLigne.stock
+                piece: oldLigne.piece,
+                detailPiece: oldLigne.detailPiece
             }));
         } else {
             this.mouvement.ligneMouvement = [];
@@ -347,41 +363,28 @@ export class BonFormComponent implements OnInit {
 
     loadPieces() {
         this.magasinierService.getPieces().subscribe(data => {
+            this.piecesRawData = data;
             this.pieces = this.explodePieces(data);
             this.cdr.detectChanges();
         });
     }
 
     explodePieces(pieces: any[]): any[] {
-        const exploded: any[] = [];
-        pieces.forEach(p => {
-            if (p.details && p.details.length > 0) {
-                p.details.forEach((detail: any) => {
-                    const attributes = detail.attributs || {};
-                    const variantLabel = Object.entries(attributes)
-                        .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && String(value).trim() !== '')
-                        .map(([_, value]) => value)
-                        .join(' - ');
-
-                    exploded.push({
-                        ...p,
-                        designation: `${p.designation} [${variantLabel}]`,
-                        stock: detail.stock,
-                        originalPiece: p,
-                        variantDetail: detail
-                    });
-                });
-            } else {
-                exploded.push(p);
+        return pieces.map(p => {
+            let variantLabel = '';
+            if (p.details && Array.isArray(p.details)) {
+                variantLabel = p.details
+                    .filter((d: any) => d.parametre && d.valeur)
+                    .map((d: any) => `${d.parametre.nom} ${d.valeur}`)
+                    .join(' ');
             }
-        });
-        return exploded;
-    }
 
-    loadStocks() {
-        this.logistiqueService.getAllStocks().subscribe(data => {
-            this.stocks = data;
-            this.cdr.detectChanges();
+            return {
+                ...p,
+                aggregatedDesignation: variantLabel ? `${p.designation} - ${variantLabel}` : p.designation,
+                originalPiece: p,
+                allDetails: p.details || []
+            };
         });
     }
 
@@ -439,7 +442,8 @@ export class BonFormComponent implements OnInit {
             quantite: 1,
             prixHTVA: 0,
             tauxTVA: 19,
-            stock: { piece: null, quantite: 0, type: null } as any
+            piece: null,
+            detailPiece: null
         });
         this.cdr.detectChanges();
     }
@@ -455,8 +459,8 @@ export class BonFormComponent implements OnInit {
             this.closeDropdown();
         } else {
             this.openDropdownIndex = index;
-            const piece = this.mouvement.ligneMouvement[index].stock?.piece;
-            this.pieceSearchText = piece ? piece.designation : '';
+            const piece = this.mouvement.ligneMouvement[index].piece;
+            this.pieceSearchText = piece ? (piece.aggregatedDesignation || piece.designation) : '';
             this.filterPieces();
         }
     }
@@ -467,7 +471,8 @@ export class BonFormComponent implements OnInit {
         } else {
             const search = this.pieceSearchText.toLowerCase();
             this.filteredPieces = this.pieces.filter(p =>
-                p.designation.toLowerCase().includes(search) ||
+                p.aggregatedDesignation?.toLowerCase().includes(search) ||
+                p.designation?.toLowerCase().includes(search) ||
                 (p.reference && p.reference.toLowerCase().includes(search))
             ).slice(0, 10);
         }
@@ -475,51 +480,21 @@ export class BonFormComponent implements OnInit {
 
     selectPiece(index: number, piece: any) {
         const line = this.mouvement.ligneMouvement[index];
-
-        let stock: any = null;
-
-        if (piece.variantDetail) {
-            stock = piece.stock;
-            if (!stock) {
-                stock = this.stocks.find(s => s.detailPiece?.id === piece.variantDetail.id);
-            }
-        } else {
-            stock = piece.stock;
-            if (!stock) {
-                stock = this.stocks.find(s => s.piece?.id === piece.id && !s.detailPiece);
-            }
-        }
-
-        if (!stock) {
-            stock = {
-                piece: piece.originalPiece || piece,
-                detailPiece: piece.variantDetail || null,
-                quantite: 0,
-                type: 'DISPONIBLE'
-            };
-        }
-
-        if (!stock.detailPiece && piece.variantDetail) {
-            stock.detailPiece = piece.variantDetail;
-        }
-
-
         const rootPiece = piece.originalPiece || piece;
-        line.stock = {
-            ...stock,
-            piece: {
-                id: rootPiece.id,
-                designation: rootPiece.designation,
-                reference: rootPiece.reference
-            },
-            detailPiece: stock.detailPiece || piece.variantDetail || null
+
+        line.piece = {
+            id: rootPiece.id,
+            designation: rootPiece.designation, // CORE name only
+            aggregatedDesignation: piece.aggregatedDesignation, // Kept for search input
+            reference: rootPiece.reference,
+            quantite: rootPiece.quantite,
+            allDetails: piece.allDetails || rootPiece.details || []
         };
-        line.tauxTVA = piece.tauxTVA ?? 19;
+        line.detailPiece = null;
+        line.tauxTVA = rootPiece.tauxTVA ?? 19;
 
         if (this.mouvement.typeMouvement === TypeMouvement.SORTIE_VENTE) {
-            line.prixHTVA = piece.prixVente ?? 0;
-        } else if (this.bon.typeBon === TypeBon.SORTIE) {
-            line.prixHTVA = 0;
+            line.prixHTVA = rootPiece.prixVente ?? 0;
         } else {
             line.prixHTVA = 0;
         }
@@ -574,72 +549,33 @@ export class BonFormComponent implements OnInit {
         return this.showSupplierDropdown ? this.supplierSearchText : (this.bon.fournisseur ? this.bon.fournisseur.nom : '');
     }
 
-    getStockRootName(stock: any): string {
-        if (!stock) return '—';
-
-        const rootName = stock.piece?.designation ||
-            stock.designation ||
-            (stock.piece?.id ? `Produit #${stock.piece.id}` : '—');
-
-        return rootName || '—';
+    getPieceRootName(ligne: any): string {
+        if (!ligne || !ligne.piece) return '—';
+        return ligne.piece.designation || '—';
     }
 
-
-
-
-    getStockVariantDescription(stock: any): string {
-        if (!stock || !stock.detailPiece) return '';
-
-        const attributes = stock.detailPiece.attributs || {};
-
-        const rawName = (attributes as any).nom || (attributes as any).name || '';
-        const variantName = typeof rawName === 'string' ? rawName.trim() : String(rawName || '').trim();
-
-        const detailParts = Object.entries(attributes)
-            .filter(([key, value]) =>
-                !key.startsWith('_') &&
-                key !== 'nom' &&
-                key !== 'name' &&
-                value !== null &&
-                value !== '' &&
-                String(value).trim() !== ''
-            )
-            .map(([key, value]) => {
-                const label = key
-                    .replace(/^_+/, '')
-                    .replace(/_/g, ' ')
-                    .replace(/\s+/g, ' ')
-                    .trim()
-                    .toLowerCase()
-                    .replace(/^\w/, c => c.toUpperCase());
-                return `${label}: ${value}`;
-            });
-
-        const details = detailParts.join(' - ');
-
-        if (variantName && details) {
-            return `${variantName} — ${details}`;
-        }
-
-        if (variantName) {
-            return variantName;
-        }
-
-        return details;
+    getPieceVariantArray(ligne: any): string[] {
+        if (!ligne || !ligne.piece) return [];
+        const details = ligne.piece.allDetails || ligne.piece.details || [];
+        return details
+            .filter((d: any) => d.parametre && d.valeur)
+            .map((d: any) => `${d.parametre.nom}: ${d.valeur}`);
     }
 
-    getStockDesignation(stock: any): string {
-        const rootName = this.getStockRootName(stock);
-        if (rootName === '—') return '—';
+    getPieceDesignation(ligne: any): string {
+        const root = this.getPieceRootName(ligne);
+        if (root === '—') return '—';
 
-        const variantLabel = this.getStockVariantDescription(stock);
-        return variantLabel ? `${rootName} - ${variantLabel}` : rootName;
+        const variantArray = this.getPieceVariantArray(ligne);
+        return variantArray.length > 0 ? `${root} - ${variantArray.join(' ')}` : root;
     }
 
     getPieceDisplayValue(index: number, ligne: any): string {
         if (this.openDropdownIndex === index) return this.pieceSearchText;
-        return this.getStockDesignation(ligne.stock);
+        return this.getPieceDesignation(ligne);
     }
+
+
 
     get totalBrut(): number {
         return this.mouvement.ligneMouvement?.reduce((acc, ligne) => acc + (ligne.quantite * (ligne.prixHTVA || 0)), 0) || 0;
@@ -666,10 +602,10 @@ export class BonFormComponent implements OnInit {
         );
 
         for (const line of this.mouvement.ligneMouvement) {
-            if (!line.stock?.piece?.id) continue;
+            if (!line.piece?.id) continue;
 
-            const pieceId = line.stock.piece.id;
-            const originalLine: any = (Array.isArray(originLines) ? originLines : Array.from(originLines)).find((l: any) => l.stock?.piece?.id === pieceId);
+            const pieceId = line.piece.id;
+            const originalLine: any = (Array.isArray(originLines) ? originLines : Array.from(originLines)).find((l: any) => l.piece?.id === pieceId);
             const originalQty = originalLine ? originalLine.quantite : 0;
 
             if (originalQty === 0) continue;
@@ -685,7 +621,7 @@ export class BonFormComponent implements OnInit {
 
             if (alreadyReturnedQty + line.quantite > originalQty) {
                 const remaining = originalQty - alreadyReturnedQty;
-                return `La quantité de retour pour '${line.stock.piece.designation}' dépasse la limite autorisée. Reste possible : ${remaining} (Déjà retourné : ${alreadyReturnedQty}/${originalQty}).`;
+                return `La quantité de retour pour '${line.piece.designation}' dépasse la limite autorisée. Reste possible : ${remaining} (Déjà retourné : ${alreadyReturnedQty}/${originalQty}).`;
             }
         }
         return null;
@@ -717,23 +653,14 @@ export class BonFormComponent implements OnInit {
         if (this.mouvement.ligneMouvement.length === 0) {
             this.errors['lignes'] = 'Le bon doit contenir au moins une ligne.';
         } else {
-            const stockRequestTotals = new Map<string, number>();
-
             this.mouvement.ligneMouvement.forEach((l, i) => {
-                if (!l.stock?.piece) {
+                if (!l.piece) {
                     this.errors[`ligne_${i}_piece`] = `Ligne ${i + 1}: Produit obligatoire`;
                 } else {
                     if (this.bon.typeBon === TypeBon.SORTIE) {
-                        const stockId = l.stock.id ? `id_${l.stock.id}` :
-                            (l.stock.detailPiece?.id ? `var_${l.stock.detailPiece.id}` : `p_${l.stock.piece.id}`);
-
-                        const currentTotal = (stockRequestTotals.get(stockId) || 0) + l.quantite;
-                        stockRequestTotals.set(stockId, currentTotal);
-
-                        const available = l.stock.quantite || 0;
-                        if (currentTotal > available) {
-                            const design = this.getStockDesignation(l.stock);
-                            this.errors[`ligne_${i}_qte`] = `Ligne ${i + 1}: Quantité insuffisante pour '${design}' (Total requis: ${currentTotal}, Disponible: ${available})`;
+                        const available = l.piece.quantite || 0;
+                        if (l.quantite > available) {
+                            this.errors[`ligne_${i}_qte`] = `Ligne ${i + 1}: Quantité insuffisante pour '${l.piece.designation}' (Requis: ${l.quantite}, Disponible: ${available})`;
                         }
                     }
                 }
@@ -767,25 +694,17 @@ export class BonFormComponent implements OnInit {
 
         // 2. Build Extremely clean Movement Payload
         const lines: any[] = (this.mouvement.ligneMouvement || [])
-            .filter(l => l.stock?.piece?.id)
+            .filter(l => l.piece?.id)
             .map(l => {
                 const line: any = {
                     quantite: Number(l.quantite || 0),
                     prixHTVA: Number(l.prixHTVA || 0),
                     tauxTVA: Number(l.tauxTVA || 19),
-                    stock: { id: l.stock.id || null }
+                    piece: { id: l.piece.id },
+                    detailPiece: l.detailPiece ? { id: l.detailPiece.id } : null
                 };
 
-                // Only send piece/detail if creating a NEW stock (id is null)
-                if (!l.stock.id) {
-                    if (l.stock.piece?.id) line.stock.piece = { id: l.stock.piece.id };
-                    if (l.stock.detailPiece?.id) line.stock.detailPiece = { id: l.stock.detailPiece.id };
-                }
-
                 if (l.id && l.id !== 0) line.id = l.id;
-
-                // Cleanup: remove id: null if present to be safe
-                if (line.stock.id === null) delete line.stock.id;
 
                 return line;
             });

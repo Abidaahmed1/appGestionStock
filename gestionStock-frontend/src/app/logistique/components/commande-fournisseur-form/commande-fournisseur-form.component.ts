@@ -107,26 +107,36 @@ export class CommandeFournisseurFormComponent implements OnInit {
   loadParametres() {
     this.magasinierService.getAllParametres().subscribe({
       next: (data) => {
-        if (data && data.length > 0) {
-          this.parametres = data[0];
-          if (!this.isEditMode) {
-            this.isAutoNumeroCmd = this.isModuleAuto('BON_COMMANDE');
-            this.commande.numeroCmd = this.isAutoNumeroCmd ? 'AUTO' : '';
-          }
-          this.cdr.detectChanges();
+        this.parametres = data || [];
+        if (this.parametres.length > 0 && !this.isEditMode) {
+          this.isAutoNumeroCmd = this.isModuleAuto('BON_COMMANDE');
+          this.commande.numeroCmd = this.isAutoNumeroCmd ? 'AUTO' : '';
         }
+        this.cdr.detectChanges();
       },
       error: (err) => console.error('Erreur chargement paramètres:', err)
     });
   }
 
   isModuleAuto(moduleName: string): boolean {
-    const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+    let configs: any[] = [];
+    (this.parametres || []).forEach((p: any) => {
+      if (p.numerotationConfigs) {
+        configs = configs.concat(p.numerotationConfigs);
+      }
+    });
+    const config = configs.find((c: any) => c.module === moduleName);
     return config ? config.automatique !== false : true;
   }
 
   getPrefix(moduleName: string): string {
-    const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+    let configs: any[] = [];
+    (this.parametres || []).forEach((p: any) => {
+      if (p.numerotationConfigs) {
+        configs = configs.concat(p.numerotationConfigs);
+      }
+    });
+    const config = configs.find((c: any) => c.module === moduleName);
     let prefix = config?.prefix || '';
     if (prefix) {
       const date = new Date();
@@ -140,18 +150,24 @@ export class CommandeFournisseurFormComponent implements OnInit {
   }
 
   getFormatExplanation(moduleName: string): string {
-    const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
+    let configs: any[] = [];
+    (this.parametres || []).forEach((p: any) => {
+      if (p.numerotationConfigs) {
+        configs = configs.concat(p.numerotationConfigs);
+      }
+    });
+    const config = configs.find((c: any) => c.module === moduleName);
     const prefix = config?.prefix || '';
-    
+
     let parts = [];
     if (prefix.includes('%YYYY%')) parts.push("l'année sur 4 chiffres");
     else if (prefix.includes('%YY%')) parts.push("l'année sur 2 chiffres");
-    
+
     if (prefix.includes('%MM%')) parts.push("le mois sur 2 chiffres");
     if (prefix.includes('%DD%')) parts.push("le jour sur 2 chiffres");
-    
+
     if (parts.length > 0) {
-        return `Astuce : Le numéro inclut ${parts.join(', ')} suivis d'une séquence.`;
+      return `Astuce : Le numéro inclut ${parts.join(', ')} suivis d'une séquence.`;
     }
     return 'Séquence simple (sans date)';
   }
@@ -190,28 +206,21 @@ export class CommandeFournisseurFormComponent implements OnInit {
   }
 
   explodePieces(pieces: any[]): any[] {
-    const exploded: any[] = [];
-    pieces.forEach(p => {
-      if (p.details && p.details.length > 0) {
-        p.details.forEach((detail: any) => {
-          const attributes = detail.attributs || {};
-          const variantLabel = Object.entries(attributes)
-            .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && String(value).trim() !== '')
-            .map(([_, value]) => value)
-            .join(' - ');
-
-          exploded.push({
-            ...p,
-            designation: `${p.designation} [${variantLabel}]`,
-            detailPiece: detail,
-            originalPiece: p
-          });
-        });
-      } else {
-        exploded.push(p);
+    return pieces.map(p => {
+      let variantLabel = '';
+      if (p.details && Array.isArray(p.details)) {
+        variantLabel = p.details
+          .filter((d: any) => d.parametre && d.valeur)
+          .map((d: any) => `${d.parametre.nom} ${d.valeur}`)
+          .join(' ');
       }
+
+      return {
+        ...p,
+        designation: variantLabel ? `${p.designation} - ${variantLabel}` : p.designation,
+        originalPiece: p
+      };
     });
-    return exploded;
   }
 
   loadEntreprise() {
@@ -324,9 +333,6 @@ export class CommandeFournisseurFormComponent implements OnInit {
       } catch (e) {
         console.error('Error calculating date', e);
       }
-    } else {
-      // If no valid catalog entries with delivery days found, clear arrival date or use order date as fallback
-      // this.commande.dateArrivee = ''; 
     }
     this.cdr.detectChanges();
   }
@@ -351,10 +357,6 @@ export class CommandeFournisseurFormComponent implements OnInit {
             ligne.remise = catalogEntry.tauxRemise || 0;
             ligne.taxe = 19;
           }
-        } else if (this.isEditable) {
-          // Reset to default/suggested if no catalog match (e.g. qty below min)
-          // We only clear if it hasn't been manually set to something else? 
-          // For now, let's keep it simple: if it doesn't match catalog, user must handle it.
         }
       }
     });
@@ -369,7 +371,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
 
   addLigne() {
     if (!this.commande.lignes) this.commande.lignes = [];
-    this.commande.lignes.push({ piece: null, qteCmd: 1, prixAchat: 1, taxe: 19, remise: 0 });
+    this.commande.lignes.push({ piece: null, qteCmd: 1, prixAchat: 0, taxe: 19, remise: 0 });
     this.cdr.detectChanges();
   }
 
@@ -407,7 +409,15 @@ export class CommandeFournisseurFormComponent implements OnInit {
   selectPiece(index: number, piece: any) {
     if (!this.commande.lignes) return;
 
-    const existingIndex = this.commande.lignes.findIndex((l, idx) => l.piece?.id === piece.id && idx !== index);
+    const pieceIdObj = piece.originalPiece ? piece.originalPiece.id : piece.id;
+    const detailIdObj = piece.detailPiece?.id || null;
+
+    const existingIndex = this.commande.lignes.findIndex((l, idx) => {
+      const matchingPiece = (l.piece?.id || l.piece) === pieceIdObj;
+      const matchingDetail = (l.detailPiece?.id || null) === detailIdObj;
+      return matchingPiece && matchingDetail && idx !== index;
+    });
+
     if (existingIndex !== -1) {
       this.commande.lignes[existingIndex].qteCmd += this.commande.lignes[index].qteCmd;
       this.commande.lignes.splice(index, 1);
@@ -419,6 +429,8 @@ export class CommandeFournisseurFormComponent implements OnInit {
     const ligne = this.commande.lignes[index];
     ligne.piece = piece.originalPiece || piece;
     ligne.detailPiece = piece.detailPiece || null;
+    // Store the exact string that was shown in the dropdown (e.g. "chemise [bleu - M]") for display in the input
+    (ligne as any).transientDesignation = piece.designation;
 
     ligne.qteCmd = this.calculateRecommendedQuantity(piece, index);
 
@@ -433,25 +445,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
 
   getTotalPieceStock(piece: any, detailPieceId?: number): number {
     const p = piece.originalPiece || piece;
-
-    // Si une variante spécifique est demandée
-    if (detailPieceId && p.details && p.details.length > 0) {
-      const detail = p.details.find((d: any) => d.id === detailPieceId);
-      if (detail) return detail.stock?.quantite || 0;
-    }
-
-    // Sinon, calcul du total global (fallback ou produit sans variante)
-    let total = 0;
-    if (p.stocks && Array.isArray(p.stocks)) {
-      total = p.stocks.reduce((sum: number, s: any) => sum + (s.quantite || 0), 0);
-    } else if (p.details && p.details.length > 0) {
-      total = p.details.reduce((sum: number, dp: any) => sum + (dp.stock?.quantite || 0), 0);
-    }
-
-    if (total === 0 && p.stock?.quantite) {
-      total = p.stock.quantite;
-    }
-    return total;
+    return p.quantite || 0;
   }
 
   getPiecePendingQty(pieceId: number, detailPieceId?: number): number {
@@ -574,45 +568,26 @@ export class CommandeFournisseurFormComponent implements OnInit {
   }
 
   getPieceVariantDescription(ligne: any): string {
-    if (!ligne || !ligne.detailPiece) return '';
+    if (!ligne || !ligne.piece || !ligne.piece.details || !Array.isArray(ligne.piece.details)) return '';
 
-    const attributes = ligne.detailPiece.attributs || {};
+    const detailParts = ligne.piece.details
+      .filter((d: any) => d.valeur && d.parametre)
+      .map((d: any) => `${d.parametre.nom} ${d.valeur}`);
 
-    const rawName = (attributes as any).nom || (attributes as any).name || '';
-    const variantName = typeof rawName === 'string' ? rawName.trim() : String(rawName || '').trim();
+    return detailParts.join(' ');
+  }
 
-    const detailParts = Object.entries(attributes)
-      .filter(([key, value]) =>
-        !key.startsWith('_') &&
-        key !== 'nom' &&
-        key !== 'name' &&
-        value !== null &&
-        value !== '' &&
-        String(value).trim() !== ''
-      )
-      .map(([key, value]) => {
-        const label = key
-          .replace(/^_+/, '')
-          .replace(/_/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim()
-          .toLowerCase()
-          .replace(/^\w/, c => c.toUpperCase());
-        return `${label}: ${value}`;
-      });
+  getPieceVariantArray(ligne: any): string[] {
+    if (!ligne || !ligne.piece || !ligne.piece.details || !Array.isArray(ligne.piece.details)) return [];
 
-    const details = detailParts.join(' - ');
-
-    if (variantName && details) {
-      return `${variantName} — ${details}`;
-    }
-    if (variantName) {
-      return variantName;
-    }
-    return details;
+    return ligne.piece.details
+      .filter((d: any) => d.valeur && d.parametre)
+      .map((d: any) => `${d.parametre.nom}: ${d.valeur}`);
   }
 
   getPieceDesignation(ligne: any): string {
+    if (ligne.transientDesignation) return ligne.transientDesignation;
+
     const root = this.getPieceRootName(ligne);
     if (root === '—') return '—';
 
@@ -739,27 +714,14 @@ export class CommandeFournisseurFormComponent implements OnInit {
           this.errors[`ligne_${i}_prix_zero`] = `Ligne ${i + 1} (${ligne.piece?.designation}) : le prix unitaire est à 0 ${devise}, veuillez le saisir.`;
         }
 
-
-        if (ligne.piece && ligne.piece.seuilMaximum) {
-          const pieceId = ligne.piece.id || ligne.piece;
-          const detailPieceId = ligne.detailPiece?.id || ligne.detailPiece;
-
-          const currentStock = this.getTotalPieceStock(ligne.piece, detailPieceId);
-          const pendingInOthers = this.getPiecePendingQty(pieceId, detailPieceId);
-          const otherLinesInCurrent = this.getOtherLinesQtyForPiece(pieceId, detailPieceId, i);
-
-          const totalAlreadyCounted = currentStock + pendingInOthers + otherLinesInCurrent;
-          const availableCapacity = ligne.piece.seuilMaximum - totalAlreadyCounted;
-
-          if (totalAlreadyCounted >= ligne.piece.seuilMaximum) {
-            this.errors[`ligne_${i}_max`] = `Ligne ${i + 1} : Seuil maximum (${ligne.piece.seuilMaximum}) déjà atteint ou dépassé pour cette variante (Total actuel: ${totalAlreadyCounted}).`;
-          } else if (ligne.qteCmd < 1) {
-            this.errors[`ligne_${i}_qte`] = `Ligne ${i + 1} : la quantité doit être ≥ 1.`;
-          } else if (ligne.qteCmd > availableCapacity) {
-            this.errors[`ligne_${i}_max`] = `Ligne ${i + 1} : le seuil maximum (${ligne.piece.seuilMaximum}) sera dépassé pour cette variante. Capacité restante : ${availableCapacity}.`;
-          }
-        } else if (ligne.qteCmd < 1) {
+        if (ligne.qteCmd < 1) {
           this.errors[`ligne_${i}_qte`] = `Ligne ${i + 1} : la quantité doit être ≥ 1.`;
+        }
+        if ((ligne.remise || 0) < 0) {
+          this.errors[`ligne_${i}_remise`] = `Ligne ${i + 1} : la remise ne peut pas être négative.`;
+        }
+        if ((ligne.taxe || 0) < 0) {
+          this.errors[`ligne_${i}_taxe`] = `Ligne ${i + 1} : la taxe ne peut pas être négative.`;
         }
       });
     }
@@ -783,6 +745,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
       dateArrivee: (this.commande.dateArrivee && this.commande.dateArrivee !== '') ? this.commande.dateArrivee : null,
       statut: this.commande.statut,
       fournisseur: { id: this.commande.fournisseur?.id },
+      entreprise: this.entreprise?.id ? { id: this.entreprise.id } : null,
       lignes: this.commande.lignes?.map(l => ({
         id: l.id,
         qteCmd: l.qteCmd,

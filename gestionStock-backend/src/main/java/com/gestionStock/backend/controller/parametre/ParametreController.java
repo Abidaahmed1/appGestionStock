@@ -6,7 +6,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import com.gestionStock.backend.entity.parametre.ChampPersonnalise;
 import com.gestionStock.backend.entity.parametre.NumerotationConfig;
 import com.gestionStock.backend.entity.parametre.Parametre;
 import com.gestionStock.backend.entity.parametre.ParametreService;
@@ -28,10 +27,8 @@ public class ParametreController {
     }
 
     @GetMapping("/current")
-    public ResponseEntity<Parametre> getCurrentParametre() {
-        return parametreService.getCurrentParametre()
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<List<Parametre>> getCurrentParametres() {
+        return ResponseEntity.ok(parametreService.getCurrentParametres());
     }
 
     @GetMapping("/{id}")
@@ -42,10 +39,8 @@ public class ParametreController {
     }
 
     @GetMapping("/entreprise/{entrepriseId}")
-    public ResponseEntity<Parametre> getParametreByEntrepriseId(@PathVariable Long entrepriseId) {
-        return parametreService.getParametreByEntrepriseId(entrepriseId)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<List<Parametre>> getParametresByEntrepriseId(@PathVariable Long entrepriseId) {
+        return ResponseEntity.ok(parametreService.getParametresByEntrepriseId(entrepriseId));
     }
 
     @PostMapping
@@ -66,6 +61,12 @@ public class ParametreController {
         }
     }
 
+    @PutMapping("/bulk")
+    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    public ResponseEntity<List<Parametre>> saveAllParametres(@RequestBody List<Parametre> parametres) {
+        return ResponseEntity.ok(parametreService.updateParametres(parametres));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMINISTRATEUR')")
     public ResponseEntity<Void> deleteParametre(@PathVariable Long id) {
@@ -73,57 +74,18 @@ public class ParametreController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/{parametreId}/champs")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
-    public ResponseEntity<Parametre> ajouterChampPersonnalise(
-            @PathVariable Long parametreId,
-            @RequestBody ChampPersonnalise champ) {
-        try {
-            Parametre updatedParametre = parametreService.ajouterChampPersonnalise(parametreId, champ);
-            return ResponseEntity.ok(updatedParametre);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    @PutMapping("/{parametreId}/champs/{nomChamp}")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
-    public ResponseEntity<Parametre> modifierChampPersonnalise(
-            @PathVariable Long parametreId,
-            @PathVariable String nomChamp,
-            @RequestBody ChampPersonnalise champ) {
-        try {
-            Parametre updatedParametre = parametreService.modifierChampPersonnalise(parametreId, nomChamp, champ);
-            return ResponseEntity.ok(updatedParametre);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    @DeleteMapping("/{parametreId}/champs/{nomChamp}")
-    @PreAuthorize("hasRole('ADMINISTRATEUR')")
-    public ResponseEntity<Parametre> supprimerChampPersonnalise(
-            @PathVariable Long parametreId,
-            @PathVariable String nomChamp) {
-        try {
-            Parametre updatedParametre = parametreService.supprimerChampPersonnalise(parametreId, nomChamp);
-            return ResponseEntity.ok(updatedParametre);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
     @GetMapping("/types-champs")
     public ResponseEntity<List<TypeChamp>> getTypesChampsDisponibles() {
         return ResponseEntity.ok(parametreService.getTypesChampsDisponibles());
     }
 
-    @PostMapping("/valider-champ")
-    public ResponseEntity<Boolean> validerValeurChamp(
-            @RequestBody ChampPersonnalise champ,
+    @PostMapping("/valider-valeur")
+    public ResponseEntity<Boolean> validerValeurParametre(
+            @RequestBody Long parametreId,
             @RequestParam String valeur) {
-        boolean isValid = parametreService.validerValeurChamp(champ, valeur);
-        return ResponseEntity.ok(isValid);
+        return parametreService.getParametreById(parametreId)
+                .map(p -> ResponseEntity.ok(parametreService.validerValeurParametre(p, valeur)))
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/numerotation")

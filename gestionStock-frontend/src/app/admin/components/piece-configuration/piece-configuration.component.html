@@ -152,7 +152,7 @@
                             <input type="checkbox" [(ngModel)]="champ.actif" class="odoo-checkbox">
                         </td>
                         <td class="options-cell">
-                            <ng-container *ngIf="champ.variante || champ.type === 'SELECT'">
+                            <ng-container *ngIf="champ.variante || champ.type === 'SELECT' || champ.type === 'LISTE'">
                                 <div class="options-container">
                                     <div class="option-pill" *ngFor="let opt of champ.options; let j = index">
                                         {{ opt }}
@@ -166,7 +166,7 @@
                                     Tapez une valeur et appuyez Entrée
                                 </span>
                             </ng-container>
-                            <ng-container *ngIf="!champ.variante && champ.type !== 'SELECT'">
+                            <ng-container *ngIf="!champ.variante && champ.type !== 'SELECT' && champ.type !== 'LISTE'">
                                 <span class="text-muted italic">Automatique</span>
                             </ng-container>
                         </td>

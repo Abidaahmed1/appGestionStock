@@ -61,5 +61,7 @@ public interface BonRepository extends JpaRepository<Bon, Long> {
 
         boolean existsByNumeroBon(String numeroBon);
 
+        boolean existsByNumeroBonAndEntreprise(String numeroBon, Entreprise entreprise);
+
         java.util.List<Bon> findByBonOrigineId(Long bonOrigineId);
 }

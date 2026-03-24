@@ -1,639 +1,533 @@
-<!-- Modals stay top-level for overlay stacking -->
-<div class="confirm-modal-overlay" *ngIf="showConfirmModal">
-    <div class="confirm-modal-card">
-        <div style="text-align: center;">
-            <div style="font-size: 48px; color: var(--red-500); margin-bottom: 20px; line-height: 1;">&times;</div>
-            <h3 style="font-size: 19px; font-weight: 600; color: var(--gray-900); margin-bottom: 15px;">Supprimer
-                l'option ?</h3>
-            <p style="margin-bottom: 30px; color: var(--gray-600); font-size: 15px; line-height: 1.6;">
-                Voulez-vous vraiment retirer <strong>"{{optionToRemove}}"</strong> pour l'attribut
-                <strong>{{champToRemoveFrom?.nom}}</strong> ?
-            </p>
-        </div>
-        <div class="confirm-modal-actions">
-            <button type="button" class="btn-confirm-cancel" (click)="cancelRemove()">ANNULER</button>
-            <button type="button" class="btn-confirm-delete" (click)="confirmRemoveOption()">SUPPRIMER</button>
-        </div>
-    </div>
-</div>
-
-<form #pieceForm="ngForm" (ngSubmit)="onFormSubmit(pieceForm)" class="piece-premium-form">
-
-    <!-- 1. EN-TÊTE DU FORMULAIRE -->
-    <header class="form-header">
-        <div class="header-left-side">
-            <button type="button" class="btn-back" (click)="onCancel()" title="Retour">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="19" y1="12" x2="5" y2="12"></line>
-                    <polyline points="12 19 5 12 12 5"></polyline>
-                </svg>
-            </button>
-            <div class="title-group">
-                <h1>{{ selectedPiece ? 'Modifier Pièce' : 'Ajouter Pièce' }}</h1>
-                <p class="subtitle">Remplissez les informations de la pièce détachée</p>
+<div class="form-overlay" *ngIf="showModal" (click)="closeModal()">
+    <div class="form-container-premium" (click)="$event.stopPropagation()">
+        <header class="form-header">
+            <div class="header-left-side">
+                <button class="btn-back" (click)="closeModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                        <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                </button>
+                <div class="title-group">
+                    <h1>{{ selectedPiece ? 'Modifier Pièce' : 'Ajouter Pièce' }}</h1>
+                    <p class="subtitle">Remplissez les informations de la pièce détachée</p>
+                </div>
             </div>
-        </div>
-        <div class="header-actions">
-            <button type="button" class="btn-cancel" (click)="onCancel()">ANNULER</button>
-            <button type="submit" class="btn-save">
-                {{ selectedPiece ? 'ENREGISTRER' : 'CRÉER' }}
-            </button>
-        </div>
-    </header>
+            <div class="header-actions">
+                <button type="button" class="btn-cancel" (click)="closeModal()">ANNULER</button>
+                <button type="button" class="btn-save" (click)="onSubmit()"
+                    [disabled]="!isFormValid() || barcodeDuplicates.size > 0">
+                    {{ selectedPiece ? 'METTRE À JOUR' : 'CRÉER' }}
+                </button>
+            </div>
+        </header>
 
-    <div class="form-body">
-
-        <!-- Global Error Bar -->
-        <div class="global-error-bar" *ngIf="pieceForm.submitted && (pieceForm.invalid || !newPiece.categorie?.id || hasEmptyDetailBarcodes() || hasEmptyDetailPrices())">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-            <span>Veuillez remplir tous les champs obligatoires avant de continuer.</span>
-        </div>
-
-        <!-- 2. SECTION INFORMATIONS DE BASE -->
-        <section class="section-card">
-            <h2 class="section-title">INFORMATIONS DE BASE</h2>
-
-            <div class="grid-2">
-                <!-- Left Column: Inputs -->
-                <div class="form-columns-main">
-                    <div class="field-group">
-                        <label class="field-label">Désignation de la pièce <span class="required-star">*</span></label>
-                        <input type="text" [(ngModel)]="newPiece.designation" name="designation" #des="ngModel" required
-                            class="input-premium" placeholder="Ex: Filtre à huile moteur diesel"
-                            [class.is-invalid]="des.invalid && (des.dirty || des.touched || pieceForm.submitted)">
-                        <div class="error-msg-mini"
-                            *ngIf="des.invalid && (des.dirty || des.touched || pieceForm.submitted)">
-                            La désignation est obligatoire.
-                        </div>
-                    </div>
-
-                    <div class="field-group">
-                        <label class="field-label">Référence <span class="required-star">*</span></label>
-
-                        <div *ngIf="isAutoReference" class="auto-badge">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                            </svg>
-                            Généré automatiquement ({{ getPrefix('PIECE') }}...)
-                        </div>
-
-                        <div *ngIf="!isAutoReference">
-                            <input type="text" [(ngModel)]="newPiece.reference" name="reference" #ref="ngModel" required
-                                class="input-premium" [placeholder]="'Ex: ' + getPrefix('PIECE') + '001'"
-                                [class.is-invalid]="ref.invalid && (ref.dirty || ref.touched || pieceForm.submitted)">
-                            <div class="error-msg-mini"
-                                *ngIf="ref.invalid && (ref.dirty || ref.touched || pieceForm.submitted)">
-                                La référence est obligatoire.
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="grid-2" style="gap: 16px; margin-bottom: 24px;">
-                        <div class="field-group" style="margin-bottom: 0;">
-                            <label class="field-label">Unité <span class="required-star">*</span></label>
-                            <select [(ngModel)]="newPiece.unite" name="unite" #unit="ngModel" required
-                                class="input-premium select-premium" [compareWith]="compareById"
-                                [class.is-invalid]="unit.invalid && (unit.dirty || unit.touched || pieceForm.submitted)">
-                                <option [ngValue]="undefined" disabled>Sélectionner l'unité</option>
-                                <option *ngFor="let u of unites" [ngValue]="u">{{ u.nom }} ({{ u.abbreviation }})
-                                </option>
-                            </select>
-                        </div>
-                        <div class="field-group" style="margin-bottom: 0;">
-                            <label class="field-label">Catégorie <span class="required-star">*</span></label>
-                            <div class="picker-container">
-                                <div class="input-premium picker-trigger select-premium"
-                                    (click)="toggleCategorySelector($event)"
-                                    [class.is-invalid]="pieceForm.submitted && !newPiece.categorie?.id">
-                                    {{ newPiece.categorie?.nom || 'Choisir une catégorie...' }}
-                                </div>
-                                <div class="picker-dropdown" *ngIf="showCategorySelector">
-                                    <div class="picker-search" (click)="$event.stopPropagation()">
-                                        <input type="text" [(ngModel)]="categorySearchTerm" name="catSearch"
-                                            (ngModelChange)="onCategorySearchChange()" placeholder="Rechercher..."
-                                            class="input-premium">
-                                    </div>
-                                    <div class="picker-list">
-                                        <div class="picker-item" *ngFor="let cat of filteredCategoriesList"
-                                            (click)="selectCategory(cat)">
-                                            {{ cat.nom }}
-                                        </div>
-                                        <div class="picker-no-results" *ngIf="filteredCategoriesList.length === 0">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round">
-                                                <circle cx="11" cy="11" r="8"></circle>
-                                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                            </svg>
-                                            <span class="no-results-text">Aucune catégorie trouvée</span>
-                                            <span class="no-results-subtext">Essayez une autre recherche ou créez-en une
-                                                nouvelle.</span>
-                                        </div>
-                                        <div class="picker-item picker-add-new" (click)="openQuickAddCategory($event)">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                                                stroke-linecap="round" stroke-linejoin="round">
-                                                <line x1="12" y1="5" x2="12" y2="19"></line>
-                                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                                            </svg>
-                                            Nouvelle catégorie
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="field-group">
-                        <label class="field-label">Description</label>
-                        <textarea [(ngModel)]="newPiece.description" name="description"
-                            class="input-premium textarea-premium" rows="4"
-                            placeholder="Décrivez la pièce détachée..."></textarea>
+        <div class="form-body">
+            <form #pieceForm="ngForm">
+                <div class="global-error-bar"
+                    *ngIf="backendBarcodeErrors.size > 0 || errorMessage || getThresholdError()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <div class="error-text-group">
+                        <span class="error-main-msg">Veuillez vérifier vos données, il y a des erreurs.</span>
+                        <span class="error-sub-msg" *ngIf="errorMessage">{{ errorMessage }}</span>
+                        <span class="error-sub-msg" *ngIf="getThresholdError() && !errorMessage">{{ getThresholdError()
+                            }}</span>
+                        <span class="error-sub-msg"
+                            *ngIf="backendBarcodeErrors.size > 0 && !errorMessage && !getThresholdError()">
+                            Certains codes barres sont déjà utilisés en base de données.
+                        </span>
                     </div>
                 </div>
 
-                <!-- Right Column: Image & Thresholds -->
-                <div class="form-columns-side">
-                    <div class="field-group">
-                        <label class="field-label">Image de la pièce</label>
-                        <div class="upload-container" (click)="fileInput.click()">
-                            <img *ngIf="imagePreview" [src]="getImageUrl(imagePreview)" alt="Pièce"
-                                class="preview-image">
-                            <div *ngIf="!imagePreview" class="upload-ui">
-                                <div class="upload-icon">
+                <div class="grid-2">
+                    <div class="form-columns-main">
+                        <section class="section-card">
+                            <h2 class="section-title">Informations Générales</h2>
+
+                            <div class="field-group">
+                                <label class="field-label">Désignation <span class="required-star">*</span></label>
+                                <input type="text" [(ngModel)]="newPiece.designation" name="designation"
+                                    (ngModelChange)="onMainPieceChange()" #desig="ngModel" required
+                                    placeholder="Ex: Filtre à Huile XL" class="input-premium"
+                                    [class.is-invalid]="desig.invalid && (desig.dirty || desig.touched || pieceForm.submitted)">
+                            </div>
+
+                            <div class="grid-2-tight">
+                                <div class="field-group">
+                                    <label class="field-label">Référence <span class="required-star">*</span></label>
+
+                                    <div *ngIf="selectedPiece && newPiece.reference !== 'AUTO'" class="auto-badge"
+                                        style="background-color: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;">
+                                        {{ newPiece.reference }}
+                                    </div>
+
+                                    <div *ngIf="!selectedPiece && isModuleAuto('REFERENCE')" class="auto-badge">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                        </svg>
+                                        Génération AUTO
+                                    </div>
+
+                                    <input type="text" [(ngModel)]="newPiece.reference" name="reference"
+                                        *ngIf="(!selectedPiece && !isModuleAuto('REFERENCE'))" required
+                                        class="input-premium">
+                                </div>
+                            </div>
+
+
+                            <div class="grid-2-tight">
+                                <div class="field-group">
+                                    <label class="field-label">Catégorie <span class="required-star">*</span></label>
+                                    <div class="picker-container p-dropdown" (click)="$event.stopPropagation()">
+                                        <div class="search-input-wrapper">
+                                            <input type="text" #catSearchInput [value]="categorySearchTerm"
+                                                (input)="onCategorySearch($event)"
+                                                (click)="toggleCategoryDropdown(); $event.stopPropagation()"
+                                                name="catSearch" placeholder="Rechercher une catégorie..."
+                                                class="input-premium search-dropdown-input" autocomplete="off">
+                                            <div class="search-icons"
+                                                (mousedown)="toggleCategoryDropdown(); $event.preventDefault(); $event.stopPropagation()">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                    class="dropdown-chevron"
+                                                    [style.transform]="showCategoryDropdown ? 'rotate(180deg)' : 'rotate(0)'">
+                                                    <polyline points="6 9 12 15 18 9"></polyline>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <div class="dropdown-list" *ngIf="showCategoryDropdown">
+                                            <div class="dropdown-item" *ngFor="let cat of filteredCategories"
+                                                (mousedown)="selectCategory(cat); catSearchInput.blur()">
+                                                {{ cat.nom }}
+                                            </div>
+                                            <div class="dropdown-no-results" *ngIf="filteredCategories.length === 0">
+                                                <div class="no-res-text">Aucune catégorie trouvée</div>
+                                                <button type="button" class="btn-add-inline"
+                                                    (click)="toggleCategorieModal($event)">
+                                                    + Ajouter "{{ categorySearchTerm }}"
+                                                </button>
+                                            </div>
+                                            <div class="dropdown-footer" *ngIf="filteredCategories.length > 0">
+                                                <button type="button" class="btn-add-mini-flat"
+                                                    (click)="toggleCategorieModal($event)">
+                                                    + Nouvelle catégorie
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="field-group">
+                                    <label class="field-label">Unité <span class="required-star">*</span></label>
+                                    <select [(ngModel)]="newPiece.unite" name="unite" required class="input-premium"
+                                        [compareWith]="compareById">
+                                        <option *ngFor="let u of unites" [ngValue]="u">{{ u.nom }}</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="section-card">
+                            <h2 class="section-title">Tarification & Stock (Par Défaut)</h2>
+                            <div class="grid-2-tight">
+                                <div class="field-group">
+                                    <label class="field-label">Prix Vente (HT) <span
+                                            class="required-star">*</span></label>
+                                    <div class="input-money-wrapper">
+                                        <input type="number" [(ngModel)]="newPiece.prixVente" name="prixVente"
+                                            (ngModelChange)="onMainPieceChange()" required placeholder="0.00"
+                                            class="input-premium text-center">
+                                        <span class="currency-label">{{ getCurrencyCode() }}</span>
+                                    </div>
+                                </div>
+                                <div class="field-group">
+                                    <label class="field-label">TVA (%)</label>
+                                    <input type="number" [(ngModel)]="newPiece.tauxTVA" name="tauxTVA"
+                                        (ngModelChange)="onMainPieceChange()" placeholder="20" class="input-premium">
+                                </div>
+                                <div class="field-group">
+                                    <label class="field-label">Seuil Min <span class="required-star">*</span></label>
+                                    <input type="number" [(ngModel)]="newPiece.seuilMinimum" name="seuilMin"
+                                        (ngModelChange)="onMainPieceChange()" class="input-premium">
+                                </div>
+                                <div class="field-group">
+                                    <label class="field-label">Seuil Max <span class="required-star">*</span></label>
+                                    <input type="number" [(ngModel)]="newPiece.seuilMaximum" name="seuilMax"
+                                        (ngModelChange)="onMainPieceChange()" class="input-premium">
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="form-columns-side">
+                        <section class="section-card">
+                            <h2 class="section-title">Photo du Modèle</h2>
+                            <div class="upload-container" (click)="fileInput.click()">
+                                <img *ngIf="imagePreview" [src]="getImageUrl(imagePreview)" alt="Aperçu"
+                                    class="preview-image">
+                                <div *ngIf="!imagePreview" class="upload-ui">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24"
                                         fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                                        stroke-linejoin="round">
-                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                        <polyline points="17 8 12 3 7 8"></polyline>
-                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                        stroke-linejoin="round" class="upload-icon">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                        <polyline points="21 15 16 10 5 21"></polyline>
                                     </svg>
+                                    <span class="upload-text">Cliquez pour ajouter une photo</span>
+                                    <span class="upload-hint">Format JPG, PNG (Max 5MB)</span>
                                 </div>
-                                <div class="upload-text">Cliquez pour télécharger</div>
-                                <div class="upload-hint">PNG, JPG jusqu'à 10MB</div>
+                                <button type="button" class="btn-remove-img" *ngIf="imagePreview"
+                                    (click)="removeImage($event)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
+                                <input type="file" #fileInput (change)="onFileSelected($event)" hidden accept="image/*">
                             </div>
-                            <button type="button" class="btn-remove-img" *ngIf="imagePreview"
-                                (click)="removeImage($event)">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
-                                    stroke-linejoin="round">
-                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </svg>
-                            </button>
-                        </div>
-                        <input type="file" #fileInput (change)="onFileSelected($event)" hidden accept="image/*">
-                    </div>
 
-                    <div class="grid-2-tight">
-                        <div class="field-group">
-                            <label class="field-label">Seuil Min <span class="required-star">*</span></label>
-                            <input type="number" [(ngModel)]="newPiece.seuilMinimum" name="seuilMin" #smin="ngModel"
-                                required min="1" class="input-premium"
-                                [class.is-invalid]="smin.invalid && (smin.dirty || smin.touched || pieceForm.submitted)">
-                        </div>
-                        <div class="field-group">
-                            <label class="field-label">Seuil Max <span class="required-star">*</span></label>
-                            <input type="number" [(ngModel)]="newPiece.seuilMaximum" name="seuilMax" #smax="ngModel"
-                                required min="1" class="input-premium"
-                                [class.is-invalid]="(smax.invalid || newPiece.seuilMaximum < newPiece.seuilMinimum) && (smax.dirty || smax.touched || pieceForm.submitted)">
-                        </div>
+                            <div class="field-group" style="margin-top: 24px;">
+                                <label class="field-label">Note / Description</label>
+                                <textarea [(ngModel)]="newPiece.description" name="description"
+                                    class="input-premium textarea-premium"
+                                    placeholder="Informations complémentaires..."></textarea>
+                            </div>
+                        </section>
+
+                        <section class="section-card">
+                            <div class="assoc-header">
+                                <h2 class="section-title" style="margin:0;">Produits Associés</h2>
+                                <button type="button" class="btn-assoc" (click)="toggleProductSelectorModal($event)">
+                                    Gérer ({{ getSelectedProductsCount() }})
+                                </button>
+                            </div>
+                            <div class="assoc-mini-list-preview" *ngIf="newPiece.produitsAssocies?.length">
+                                <span class="mini-prod-tag" *ngFor="let p of newPiece.produitsAssocies">{{ p.designation
+                                    }}</span>
+                            </div>
+                            <p class="no-data" *ngIf="!newPiece.produitsAssocies?.length">Aucun produit associé par
+                                défaut.</p>
+                        </section>
                     </div>
                 </div>
-            </div>
-        </section>
 
-        <!-- 3. SECTION ATTRIBUTS - TABLEAU DES ATTRIBUTS -->
-        <section class="section-card">
-            <h2 class="section-title">ATTRIBUTS & VARIANTES</h2>
-            <p class="section-desc">Gérez les attributs additionnels et configurez les variantes dynamiquement.</p>
+                <section class="section-card">
+                    <h2 class="section-title">Variantes & Options</h2>
+                    <p class="section-desc">Ajoutez des attributs (Taille, Couleur) pour générer automatiquement toutes
+                        les versions de la pièce.</p>
 
-            <div class="table-premium-container">
-                <table class="table-premium">
-                    <thead>
-                        <tr>
-                            <th style="width: 40%;">Attribut</th>
-                            <th style="width: 60%;">Valeurs</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <ng-container *ngFor="let champ of parametres?.champsPersonnalises; let i = index">
-                            <!-- Non-Variant Fields -->
-                            <tr *ngIf="champ.actif && !champ.variante">
-                                <td class="attr-cell">
-                                    <div class="attr-dot-wrapper">
-                                        <div class="attr-dot" [style.background]="'#0d9488'"></div>
-                                        <span class="attr-name">{{ champ.nom }}</span>
-                                        <span class="required-star" *ngIf="champ.obligatoire">*</span>
+                    <div class="table-premium-container">
+                        <table class="table-premium">
+                            <thead>
+                                <tr>
+                                    <th>Attribut</th>
+                                    <th>Options (Saisir et appuyer sur Entrée)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <ng-container *ngFor="let param of localParametres; let i = index">
+                                    <tr *ngIf="param.actif && param.variante">
+                                        <td class="attr-cell">
+                                            <div class="attr-dot-wrapper">
+                                                <div class="attr-dot"></div>
+                                                <span class="attr-name">{{ param.nom }}</span>
+                                            </div>
+                                        </td>
+                                        <td class="val-cell">
+                                            <div class="pills-container">
+                                                <div class="badge-premium-chip" *ngFor="let opt of param.options">
+                                                    <span class="chip-text">{{ opt }}</span>
+                                                    <button type="button" class="chip-remove"
+                                                        (click)="confirmRemoveOption(param, opt, $event)">×</button>
+                                                </div>
+                                            </div>
+                                            <div class="input-dasher-wrapper">
+                                                <input type="text" #optInput
+                                                    (keyup.enter)="addVariantOption(param, optInput)"
+                                                    placeholder="Ajouter une option..." class="input-dasher">
+                                                <span class="input-hint-right">ENTRÉE↵</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </ng-container>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="no-data" *ngIf="!localParametres || !hasVisibleFields(true)" style="margin-top: 24px;">
+                        Aucun attribut de type "Variante" n'est configuré.
+                    </div>
+                </section>
+
+                <section class="section-card" *ngIf="newPiece.variations && newPiece.variations.length > 0">
+                    <h2 class="section-title">Versions de la Pièce ({{ newPiece.variations.length }})</h2>
+                    <p class="section-desc">Chaque ligne représente une version unique. Cliquez sur <b>"Plus de
+                            détails"</b> pour personnaliser chaque version.</p>
+
+                    <div class="v-grid-container">
+                        <div class="v-grid-header">
+                            <div class="v-grid-cell">VERSION</div>
+                            <div class="v-grid-cell">RÉFÉRENCE</div>
+                            <div class="v-grid-cell">CODE BARRE</div>
+                            <div class="v-grid-cell">PRIX ({{ getCurrencyCode() }})</div>
+                            <div class="v-grid-cell">ACTIONS</div>
+                        </div>
+
+                        <div class="v-grid-body">
+                            <ng-container *ngFor="let variant of newPiece.variations; let i = index">
+                                <div class="v-grid-row" [class.is-expanded]="expandedVariantIndex === i">
+                                    <div class="v-cell-name">
+                                        <span class="v-name-pill">{{ getVariantLabel(variant) }}</span>
                                     </div>
-                                </td>
-                                <td class="val-cell">
-                                    <ng-container [ngSwitch]="champ.type">
-                                        <input *ngSwitchCase="'TEXT'" type="text"
-                                            [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dyn_' + i"
-                                            class="input-premium" [placeholder]="champ.description || ''"
-                                            [required]="champ.obligatoire">
-
-                                        <input *ngSwitchCase="'EMAIL'" type="email"
-                                            [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dyn_' + i"
-                                            class="input-premium" [placeholder]="champ.description || ''"
-                                            [required]="champ.obligatoire" email>
-
-                                        <input *ngSwitchCase="'NUMBER'" type="number"
-                                            [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dyn_' + i"
-                                            class="input-premium" [required]="champ.obligatoire">
-
-                                        <select *ngSwitchCase="'SELECT'"
-                                            [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dyn_' + i"
-                                            class="input-premium select-premium" [required]="champ.obligatoire">
-                                            <option value="" disabled selected>Choisir...</option>
-                                            <option *ngFor="let opt of champ.options" [value]="opt">{{ opt }}</option>
-                                        </select>
-
-                                        <select *ngSwitchCase="'LISTE'"
-                                            [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dyn_' + i"
-                                            class="input-premium select-premium" [required]="champ.obligatoire">
-                                            <option value="" disabled selected>Choisir...</option>
-                                            <option *ngFor="let opt of champ.options" [value]="opt">{{ opt }}</option>
-                                        </select>
-
-                                        <label *ngSwitchCase="'BOOLEAN'" class="odoo-checkbox-group"
-                                            style="padding: 8px 0;">
-                                            <input type="checkbox"
-                                                [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]"
-                                                [name]="'dyn_' + i">
-                                            Activé
-                                        </label>
-
-                                        <textarea *ngSwitchCase="'TEXTAREA'"
-                                            [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dyn_' + i"
-                                            class="input-premium textarea-premium" style="min-height: 60px;"
-                                            [placeholder]="champ.description || ''"
-                                            [required]="champ.obligatoire"></textarea>
-
-                                        <input *ngSwitchDefault type="text"
-                                            [(ngModel)]="newPiece.details![0]!.attributs[champ.nom]" [name]="'dyn_' + i"
-                                            class="input-premium" [required]="champ.obligatoire">
-                                    </ng-container>
-                                </td>
-                            </tr>
-
-                            <!-- Variant Fields (with tags) -->
-                            <tr *ngIf="champ.actif && champ.variante">
-                                <td class="attr-cell">
-                                    <div class="attr-dot-wrapper">
-                                        <div class="attr-dot" [style.background]="'#0d9488'"></div>
-                                        <span class="attr-name">{{ champ.nom }}</span>
-                                        <span class="required-star" *ngIf="champ.obligatoire">*</span>
+                                    <div class="v-cell-ref">
+                                        <div *ngIf="variant.reference === 'AUTO'" class="v-auto-text">AUTO</div>
+                                        <div *ngIf="variant.reference !== 'AUTO'" class="v-auto-text"
+                                            style="background-color: #f1f5f9; color: #475569; letter-spacing: 0.5px;">
+                                            {{ variant.reference }}
+                                        </div>
                                     </div>
-                                </td>
-                                <td class="val-cell">
-                                    <div class="pills-container">
-                                        <div class="badge-premium-chip" *ngFor="let opt of getLocalOptions(champ)">
-                                            <span class="chip-text">{{ opt }}</span>
-                                            <button type="button" class="chip-remove"
-                                                (click)="openConfirmRemove(champ, opt, $event)">
+                                    <div class="v-cell-bc">
+                                        <div class="input-dasher-wrapper">
+                                            <input type="text" [(ngModel)]="variant.codeBarre" [name]="'vbc'+i"
+                                                (ngModelChange)="checkDuplicateBarcodes(); syncCommonProperties()"
+                                                placeholder="Code barre..." class="v-mini-input"
+                                                [class.is-invalid]="barcodeDuplicates.has(i) || (variant.codeBarre && backendBarcodeErrors.has(variant.codeBarre.trim()))">
+                                            <button type="button" class="btn-mini-gen-bc"
+                                                (click)="generateBarcode(variant)" title="Générer un code barre">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M3 5v14M8 5v14M11 5v14M16 5v14M21 5v14"></path>
+                                                </svg>
+                                            </button>
+                                            <div class="v-mini-error-text" *ngIf="barcodeDuplicates.has(i)">
+                                                Doublon détecté
+                                            </div>
+                                            <div class="v-mini-error-text"
+                                                *ngIf="variant.codeBarre && backendBarcodeErrors.has(variant.codeBarre)">
+                                                Déjà utilisé en base
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="v-cell-price">
+                                        <input type="number" [(ngModel)]="variant.prixVente" [name]="'vprix'+i"
+                                            class="v-mini-input text-center">
+                                        <span class="v-mini-currency">{{ getCurrencyCode() }}</span>
+                                    </div>
+                                    <div class="v-cell-actions">
+                                        <button type="button" class="btn-v-copy" (click)="copyMainData(variant)"
+                                            title="Copier les données du modèle">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <path
+                                                    d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2">
+                                                </path>
+                                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                                            </svg>
+                                        </button>
+                                        <button type="button" class="btn-v-expand" (click)="toggleVariantExpansion(i)"
+                                            [class.active]="expandedVariantIndex === i">
+                                            <span>{{ expandedVariantIndex === i ? 'Fermer' : 'Plus de détails' }}</span>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                                stroke-linecap="round" stroke-linejoin="round" class="chevron">
+                                                <polyline points="6 9 12 15 18 9"></polyline>
+                                            </svg>
+                                        </button>
+                                        <button type="button" class="btn-v-del" (click)="removeVariant(i)">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="3 6 5 6 21 6"></polyline>
+                                                <path
+                                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                                </path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="v-details-panel" *ngIf="expandedVariantIndex === i">
+                                    <div class="v-details-grid">
+                                        <div class="v-detail-photo">
+                                            <label class="tiny-label">Photo spécifique</label>
+                                            <div class="v-photo-box" (click)="vfi.click()">
+                                                <img *ngIf="variant.imageUrl" [src]="getImageUrl(variant.imageUrl)"
+                                                    alt="">
+                                                <div *ngIf="!variant.imageUrl" class="v-photo-placeholder">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                        stroke-width="2">
+                                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                                        <polyline points="21 15 16 10 5 21"></polyline>
+                                                    </svg>
+                                                </div>
+                                                <input type="file" #vfi (change)="onFileSelected($event, variant)"
+                                                    hidden>
+                                                <button type="button" class="btn-v-photo-remove"
+                                                    *ngIf="variant.imageUrl"
+                                                    (click)="removeImage($event, variant)">×</button>
+                                            </div>
+                                        </div>
+
+                                        <div class="v-detail-fields">
+                                            <div class="v-field-row">
+                                                <div class="field-item">
+                                                    <label class="tiny-label">Seuil Min Stock</label>
+                                                    <input type="number" [(ngModel)]="variant.seuilMinimum"
+                                                        (ngModelChange)="refreshUI()" [name]="'v_smin'+i"
+                                                        class="input-premium">
+                                                </div>
+                                                <div class="field-item">
+                                                    <label class="tiny-label">Seuil Max Stock</label>
+                                                    <input type="number" [(ngModel)]="variant.seuilMaximum"
+                                                        (ngModelChange)="refreshUI()" [name]="'v_smax'+i"
+                                                        class="input-premium">
+                                                </div>
+                                            </div>
+                                            <div class="v-local-error-box" *ngIf="hasVariationError(variant)">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                                     stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                                    <circle cx="12" cy="12" r="10"></circle>
+                                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
                                                 </svg>
-                                            </button>
+                                                <span>L'écart entre les seuils est invalide.</span>
+                                            </div>
+                                            <div class="field-item">
+                                                <label class="tiny-label">Description / Remarque de cette
+                                                    version</label>
+                                                <textarea [(ngModel)]="variant.description" [name]="'v_desc'+i"
+                                                    class="input-premium textarea-premium"
+                                                    style="min-height: 70px;"></textarea>
+                                            </div>
+                                        </div>
+
+                                        <div class="v-detail-assoc">
+                                            <label class="tiny-label">Produits à vendre avec cette version</label>
+                                            <div class="v-assoc-selector"
+                                                (click)="toggleProductSelectorModal($event, variant)">
+                                                <span *ngIf="!variant.produitsAssocies?.length">Aucun produit
+                                                    sélectionné</span>
+                                                <div class="v-assoc-pills" *ngIf="variant.produitsAssocies?.length">
+                                                    <div class="mini-assoc-pill"
+                                                        *ngFor="let p of variant.produitsAssocies; let pi = index">
+                                                        {{ p.designation }}
+                                                        <span
+                                                            (click)="removeAssociatedProduct(pi, variant); $event.stopPropagation()">×</span>
+                                                    </div>
+                                                </div>
+                                                <div class="v-assoc-add">+</div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="input-dasher-wrapper">
-                                        <input type="text" class="input-dasher" placeholder="Ajouter une valeur..."
-                                            (keydown.enter)="$event.preventDefault(); addVariantOption(champ, $any($event.target))">
-                                        <span class="input-hint-right">Pressez Entrée</span>
-                                    </div>
-                                    <div class="error-msg-mini" *ngIf="variantErrors[champ.nom]">
-                                        Veuillez ajouter au moins une valeur pour cet attribut.
-                                    </div>
-                                </td>
-                            </tr>
-                        </ng-container>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Empty State for Attributes -->
-            <div class="no-data" *ngIf="!parametres?.champsPersonnalises || !hasVisibleFields(true)"
-                style="margin-top: 24px;">
-                Aucun attribut de type "Variante" n'est configuré dans les paramètres.
-            </div>
-        </section>
-
-        <!-- 4. TABLEAU DES VARIANTES -->
-        <section class="section-card" *ngIf="newPiece.details && newPiece.details.length > 0">
-            <div class="table-premium-container">
-                <!-- Header -->
-                <div class="variants-table-grid v-header">
-                    <div class="v-header-cell teal">NOM DE L'ÉLÉMENT <span class="required-star">*</span></div>
-                    <div class="v-header-cell">
-                        <div style="display: flex; align-items: center; gap: 4px;">
-                            Code à Barre <span class="required-star">*</span>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                                fill="none" stroke="var(--gray-400)" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"></path>
-                            </svg>
-                        </div>
-                        <div class="v-action-links">
-                            <button type="button" class="link-mini" (click)="generateVariantSKU(0)">GÉNÉRER</button>
-                            <span style="color: var(--gray-200);">|</span>
-                            <button type="button" class="link-mini" (click)="copyBarcodesToAll()">COPIER TOUT</button>
+                                </div>
+                            </ng-container>
                         </div>
                     </div>
-                    <div class="v-header-cell">
-                        PRIX VENTE ({{ entreprise?.devise?.symbole || 'TND' }}) <span class="required-star">*</span>
-                        <div class="v-action-links">
-                            <button type="button" class="link-mini" (click)="copyVenteToAll()">COPIER TOUT</button>
-                        </div>
-                    </div>
-                    <div class="v-header-cell">
-                        TAXES %
-                        <div class="v-action-links">
-                            <button type="button" class="link-mini" (click)="copyTaxToAll()">COPIER TOUT</button>
-                        </div>
-                    </div>
-                    <div class="v-header-cell"></div>
-                </div>
-
-                <!-- Rows -->
-                <div class="v-row variants-table-grid" *ngFor="let detail of newPiece.details; let i = index">
-                    <div>
-                        <div class="v-name-box">
-                            {{ getVariantLabel(detail) }}
-                        </div>
-                    </div>
-
-                    <div class="v-input-wrapper">
-                        <input type="text" [(ngModel)]="newPiece.details[i].codeBarre" [name]="'v_code_' + i"
-                            class="v-input" placeholder="Code barre..." #vBarcode="ngModel" required
-                            [class.is-invalid]="barcodeDuplicates.has(i) || (newPiece.details[i].codeBarre && backendBarcodeErrors.has(newPiece.details[i].codeBarre?.trim() ?? '')) || (vBarcode.invalid && (pieceForm.submitted || vBarcode.touched))">
-
-                        <button type="button" class="btn-copy-v" (click)="generateVariantSKU(i)" title="Générer">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
-                        </button>
-
-                        <div class="error-msg-mini" *ngIf="barcodeDuplicates.has(i)">
-                            Code déjà présent dans le tableau
-                        </div>
-                        <div class="error-msg-mini"
-                            *ngIf="newPiece.details[i].codeBarre && backendBarcodeErrors.has(newPiece.details[i].codeBarre?.trim() ?? '')">
-                            Déjà utilisé en base de données
-                        </div>
-                        <div class="error-msg-mini" *ngIf="vBarcode.invalid && (pieceForm.submitted || vBarcode.touched)">
-                            Le code barre est obligatoire
-                        </div>
-                    </div>
-
-                    <div class="v-input-wrapper">
-                        <input type="number" [(ngModel)]="newPiece.details[i].prixVente" [name]="'v_prix_' + i"
-                            class="v-input v-input-money" placeholder="0.00" #vPrix="ngModel" required min="0"
-                            [class.is-invalid]="vPrix.invalid && (pieceForm.submitted || vPrix.touched)">
-                        <div class="error-msg-mini" *ngIf="vPrix.invalid && (pieceForm.submitted || vPrix.touched)">
-                            Le prix est obligatoire
-                        </div>
-                    </div>
-
-                    <div class="v-input-wrapper">
-                        <input type="number" [(ngModel)]="newPiece.details[i].tauxTVA" [name]="'v_tax_' + i"
-                            class="v-input v-input-tax" placeholder="0">
-                    </div>
-
-                    <div class="v-actions">
-                        <button type="button" class="btn-v-action btn-v-edit" title="Modifier">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                        </button>
-                        <button type="button" class="btn-v-action btn-v-delete" (click)="removeVariant(i)"
-                            title="Supprimer">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2">
-                                </path>
-                                <line x1="10" y1="11" x2="10" y2="17"></line>
-                                <line x1="14" y1="11" x2="14" y2="17"></line>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 5. SECTION PRODUITS ASSOCIÉS -->
-        <section class="section-card">
-            <div class="assoc-header">
-                <h2 class="section-title" style="margin: 0;">PRODUITS ASSOCIÉS</h2>
-                <button type="button" class="btn-assoc" (click)="toggleProductSelectorModal($event)">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    ASSOCIER
-                </button>
-            </div>
-
-            <div class="assoc-grid" *ngIf="newPiece.produitsAssocies?.length">
-                <div class="product-card-premium" *ngFor="let prod of newPiece.produitsAssocies; let i = index">
-                    <div class="prod-img-box">
-                        <img [src]="getImageUrl(prod.imageUrl)" alt="Produit">
-                    </div>
-                    <div class="prod-info-box">
-                        <span class="prod-name">{{ prod.designation }}</span>
-                        <span class="prod-ref">{{ prod.code }}</span>
-                    </div>
-                    <button type="button" class="btn-remove-prod" (click)="removeAssociatedProduct(i)">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <div class="no-data" *ngIf="!newPiece.produitsAssocies?.length">
-                Aucun produit associé.
-            </div>
-        </section>
-
+                </section>
+            </form>
+        </div>
     </div>
-</form>
+</div>
 
-<!-- Product Selector Modal - Modernized -->
-<div class="ps-modal-overlay" *ngIf="showProductSelector" (click)="toggleProductSelectorModal()">
-    <div class="ps-modal-card" (click)="$event.stopPropagation()">
+<div class="product-selector-overlay" *ngIf="showProductSelector" (click)="toggleProductSelectorModal()">
+    <div class="product-selector-card" (click)="$event.stopPropagation()">
         <header class="ps-header">
-            <h3>SÉLECTIONNEZ DES PRODUITS</h3>
-            <button type="button" class="close-btn" (click)="toggleProductSelectorModal()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
+            <h3>Associer des produits finis</h3>
+            <button class="close-btn" (click)="toggleProductSelectorModal()">×</button>
         </header>
-        <div class="ps-search">
-            <input type="text" [(ngModel)]="productSearchTerm" name="psSearch" (ngModelChange)="onProductSearchChange()"
-                placeholder="Rechercher un produit fini..." class="input-premium">
-        </div>
-        <div class="picker-list-p">
-            <div class="ps-item product-card-premium" style="margin-bottom: 8px; cursor: pointer;"
-                *ngFor="let prod of filteredProductsList"
-                [style.border-color]="isProductSelected(prod.id) ? 'var(--primary)' : ''"
-                (click)="toggleProductSelection(prod)">
-                <div class="prod-img-box">
-                    <img [src]="getImageUrl(prod.imageUrl)" alt="">
-                </div>
-                <div class="prod-info-box">
-                    <span class="prod-name">{{ prod.designation }}</span>
-                    <span class="prod-ref">{{ prod.code }}</span>
-                </div>
-                <div class="ps-check" *ngIf="isProductSelected(prod.id)"
-                    style="color: var(--primary); font-weight: 800;">✓</div>
+        <div class="ps-body">
+            <div class="ps-search">
+                <input type="text" [(ngModel)]="productSearchTerm" (ngModelChange)="onProductSearchChange()"
+                    placeholder="Rechercher par nom ou code..." class="input-premium">
             </div>
-            <div class="picker-option picker-add-new" (click)="openQuickAddProduct($event)"
-                style="border: 2px dashed var(--gray-200); text-align: center; border-radius: 12px; margin-top: 16px;">
-                + Nouveau produit
+            <div class="ps-list">
+                <div class="ps-item" *ngFor="let p of filteredProductsList" [class.selected]="isProductSelected(p.id)"
+                    (click)="toggleProductSelection(p)">
+                    <img [src]="getImageUrl(p.imageUrl)" alt="P">
+                    <div class="ps-item-info">
+                        <span class="ps-item-name">{{ p.designation }}</span>
+                        <span class="ps-item-code">{{ p.code }}</span>
+                    </div>
+                    <div class="ps-check">✓</div>
+                </div>
             </div>
         </div>
-        <footer class="modal-premium-footer">
-            <div class="footer-stats">
-                <span class="count-badge">{{ getSelectedProductsCount() }}</span>
-                <span class="count-text">produit(s) sélectionné(s)</span>
-            </div>
-            <button type="button" class="btn-premium-primary" (click)="toggleProductSelectorModal()">VALIDER</button>
+        <footer class="ps-footer">
+            <button class="btn-premium-primary" (click)="toggleProductSelectorModal()">TERMINER ({{
+                getSelectedProductsCount() }})</button>
         </footer>
     </div>
 </div>
 
-<div class="quick-add-overlay" *ngIf="showQuickAddCategory" (click)="closeQuickAddCategory()">
-    <div class="quick-add-content" (click)="$event.stopPropagation()">
-        <header class="modal-premium-header">
-            <div class="header-left">
-                <div class="header-icon-box">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                    </svg>
-                </div>
-                <div class="header-text">
-                    <h3>Nouvelle Catégorie</h3>
-                    <p>Organisez vos pièces par catégorie</p>
-                </div>
-            </div>
-            <button type="button" class="close-btn" (click)="closeQuickAddCategory()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
-        </header>
-        <div class="modal-premium-body">
-            <div class="field-group">
-                <label class="field-label">Nom de la catégorie <span class="required-star">*</span></label>
-                <input type="text" [(ngModel)]="newCategory.nom" name="qcnom" placeholder="Ex: Moteurs, Freins..."
-                    class="input-premium">
-            </div>
-            <div class="field-group">
-                <label class="field-label">Code <span class="required-star">*</span></label>
-                <div *ngIf="isAutoCategoryCode" class="auto-badge" style="margin-bottom: 8px;">
-                    Généré automatiquement ({{ getPrefix('CATEGORIE') }}...)
-                </div>
-                <input type="text" [(ngModel)]="newCategory.code" name="qccode" *ngIf="!isAutoCategoryCode"
-                    [placeholder]="'Ex: ' + getPrefix('CATEGORIE') + '01'" class="input-premium">
-                <p class="subtitle" style="font-size: 11px;">{{ getFormatExplanation('CATEGORIE') }}</p>
-            </div>
+<div class="confirm-modal-overlay" *ngIf="showConfirmModal">
+    <div class="confirm-modal-card">
+        <div class="confirm-icon">⚠️</div>
+        <h3>Supprimer l'option ?</h3>
+        <p>Voulez-vous vraiment supprimer "<strong>{{ optionToRemove }}</strong>" ? Cela impactera les versions
+            générées.</p>
+        <div class="confirm-modal-actions">
+            <button class="btn-premium-secondary" (click)="cancelDelete()">ANNULER</button>
+            <button class="btn-confirm-delete" (click)="onConfirmDelete()">SUPPRIMER</button>
         </div>
-        <footer class="modal-premium-footer">
-            <button type="button" class="btn-premium-secondary" (click)="closeQuickAddCategory()">Annuler</button>
-            <button type="button" class="btn-premium-primary" (click)="submitQuickAddCategory()">AJOUTER</button>
-        </footer>
     </div>
 </div>
 
-<!-- Quick Add Product Modal -->
-<div class="quick-add-overlay" *ngIf="showQuickAddProduct" (click)="closeQuickAddProduct()">
-    <div class="quick-add-content" style="max-width: 650px;" (click)="$event.stopPropagation()">
-        <header class="modal-premium-header">
-            <div class="header-left">
-                <div class="header-icon-box">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m7.5 4.27 9 5.15" />
-                        <path
-                            d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-                    </svg>
-                </div>
-                <div class="header-text">
-                    <h3>Ajouter un produit</h3>
-                    <p>Creez rapidement un produit fini associé</p>
-                </div>
-            </div>
-            <button type="button" class="close-btn" (click)="closeQuickAddProduct()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
-        </header>
-        <div class="modal-premium-body">
-            <div class="grid-2">
-                <div class="field-group">
-                    <label class="field-label">Image produit</label>
-                    <div class="upload-container" style="height: 180px;" (click)="qpFileInput.click()">
-                        <img *ngIf="newProductPreview" [src]="newProductPreview" alt="Produit" class="preview-image">
-                        <span *ngIf="!newProductPreview" style="font-size: 13px; color: var(--gray-400);">Ajouter
-                            image</span>
-                        <input type="file" #qpFileInput (change)="onQuickProductFileSelected($event)" hidden
-                            accept="image/*">
-                    </div>
-                </div>
-                <div>
-                    <div class="field-group">
-                        <label class="field-label">Code Produit <span class="required-star">*</span></label>
-                        <div *ngIf="isAutoProductCode" class="auto-badge" style="margin-bottom: 8px;">
-                            AUTO
-                        </div>
-                        <input type="text" [(ngModel)]="newProduct.code" name="qpcode" *ngIf="!isAutoProductCode"
-                            placeholder="Ex: PROD-001" class="input-premium">
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label">Désignation <span class="required-star">*</span></label>
-                        <input type="text" [(ngModel)]="newProduct.designation" name="qpnom"
-                            placeholder="Nom du produit" class="input-premium">
-                    </div>
-                </div>
-            </div>
+<div class="confirm-modal-overlay" *ngIf="showQuickAddCategorie" (click)="toggleCategorieModal()">
+    <div class="confirm-modal-card quick-add-card" (click)="$event.stopPropagation()">
+        <div class="quick-add-header">
+            <h3>Nouvelle Catégorie</h3>
+            <button class="close-btn" (click)="toggleCategorieModal()">×</button>
         </div>
-        <footer class="modal-premium-footer">
-            <button type="button" class="btn-premium-secondary" (click)="closeQuickAddProduct()">Annuler</button>
-            <button type="button" class="btn-premium-primary" (click)="submitQuickAddProduct()">CRÉER</button>
-        </footer>
+        <div class="field-group">
+            <label class="field-label">Nom <span class="required-star">*</span></label>
+            <input type="text" [(ngModel)]="newCategory.nom" name="newCatNom" class="input-premium"
+                placeholder="Ex: Filtration" autofocus>
+        </div>
+        <div class="field-group">
+            <label class="field-label">Code</label>
+            <div class="auto-badge" *ngIf="newCategory.code === 'AUTO'">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                Génération AUTO
+            </div>
+            <input type="text" [(ngModel)]="newCategory.code" name="newCatCode" class="input-premium"
+                placeholder="Code catégorie..." *ngIf="newCategory.code !== 'AUTO'">
+        </div>
+        <div class="field-group">
+            <label class="field-label">Description</label>
+            <textarea [(ngModel)]="newCategory.description" name="newCatDesc" class="input-premium textarea-premium"
+                placeholder="Description..." style="min-height: 70px;"></textarea>
+        </div>
+        <div class="confirm-modal-actions mt-4">
+            <button class="btn-premium-secondary" (click)="toggleCategorieModal()">ANNULER</button>
+            <button class="btn-premium-primary" (click)="submitQuickAddCategorie()">CRÉER</button>
+        </div>
     </div>
 </div>
+
+<app-confirm-dialog 
+    [show]="showUnsavedChangesDialog" 
+    title="Changements non sauvegardés"
+    message="Voulez-vous sauvegarder vos modifications avant de quitter ?"
+    confirmText="Sauvegarder"
+    cancelText="Quitter sans sauvegarder"
+    (confirm)="handleSaveFromDialog()" 
+    (cancel)="onConfirmQuit()">
+</app-confirm-dialog>

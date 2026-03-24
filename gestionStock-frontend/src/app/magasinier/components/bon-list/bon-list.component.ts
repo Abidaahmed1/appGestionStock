@@ -30,7 +30,9 @@ export class BonListComponent implements OnInit {
     showAdvancedFilter = false;
     userRoles: string[] = [];
     showDeleteConfirm = false;
+    isBulkDelete = false;
     itemToDelete: any = null;
+    selectedBonIds: Set<number> = new Set();
     TypeBon = TypeBon;
 
     filterType: TypeBon | null = null;
@@ -146,6 +148,7 @@ export class BonListComponent implements OnInit {
     cancelDelete(): void {
         this.showDeleteConfirm = false;
         this.itemToDelete = null;
+        this.isBulkDelete = false;
         this.cdr.detectChanges();
     }
 
@@ -153,6 +156,7 @@ export class BonListComponent implements OnInit {
         this.logistiqueService.deleteBon(id).subscribe({
             next: () => {
                 this.notify('Bon supprimé', 'success');
+                this.selectedBonIds.delete(id);
                 this.loadBons();
                 this.cancelDelete();
             },
@@ -160,6 +164,80 @@ export class BonListComponent implements OnInit {
                 this.notify('Erreur lors de la suppression', 'error');
             }
         });
+    }
+
+    toggleSelection(id: number | undefined, event?: Event): void {
+        if (event) event.stopPropagation();
+        if (id === undefined) return;
+
+        if (this.selectedBonIds.has(id)) {
+            this.selectedBonIds.delete(id);
+        } else {
+            this.selectedBonIds.add(id);
+        }
+        this.cdr.detectChanges();
+    }
+
+    toggleAllSelections(event: any): void {
+        const checked = event.target.checked;
+        if (checked) {
+            this.filteredBons.forEach(bon => {
+                if (bon.id) this.selectedBonIds.add(bon.id);
+            });
+        } else {
+            this.selectedBonIds.clear();
+        }
+        this.cdr.detectChanges();
+    }
+
+    isBonSelected(id: number | undefined): boolean {
+        return id !== undefined && this.selectedBonIds.has(id);
+    }
+
+    get allBonsSelected(): boolean {
+        const filtered = this.filteredBons;
+        return filtered.length > 0 && filtered.every(bon => bon.id && this.selectedBonIds.has(bon.id));
+    }
+
+    confirmBulkDelete(): void {
+        this.isBulkDelete = true;
+        this.showDeleteConfirm = true;
+        this.cdr.detectChanges();
+    }
+
+    executeBulkDelete(): void {
+        const idsToDelete = Array.from(this.selectedBonIds);
+        let completed = 0;
+        let errors = 0;
+
+        idsToDelete.forEach(id => {
+            this.logistiqueService.deleteBon(id).subscribe({
+                next: () => {
+                    completed++;
+                    if (completed + errors === idsToDelete.length) {
+                        this.finishBulkDelete(completed, errors);
+                    }
+                },
+                error: () => {
+                    errors++;
+                    if (completed + errors === idsToDelete.length) {
+                        this.finishBulkDelete(completed, errors);
+                    }
+                }
+            });
+        });
+    }
+
+    private finishBulkDelete(completed: number, errors: number): void {
+        const totalCount = completed + errors;
+        if (errors === 0) {
+            this.notify(`${completed} bon(s) supprimé(s)`, 'success');
+        } else {
+            this.notify(`${completed} bon(s) supprimé(s), ${errors} erreur(s)`, errors === totalCount ? 'error' : 'success');
+        }
+        this.selectedBonIds.clear();
+        this.loadBons();
+        this.cancelDelete();
     }
 
     toggleOptionsMenu(event: MouseEvent) {

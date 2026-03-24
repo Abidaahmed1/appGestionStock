@@ -47,13 +47,15 @@ export interface Stock {
     id?: number;
     piece: any;
     quantite: number;
-    type: TypeStock;
+    type?: string;
     detailPiece?: any;
+    reference?: string;
 }
 
 export interface LigneMouvement {
     id?: number;
-    stock: Stock;
+    piece: any;
+    detailPiece?: any;
     quantite: number;
     prixHTVA: number;
     tauxTVA: number;

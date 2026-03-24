@@ -7,7 +7,7 @@ import com.gestionStock.backend.entity.user.User;
 import com.gestionStock.backend.entity.notification.NotificationTarget;
 import com.gestionStock.backend.repository.notification.NotificationRepository;
 import com.gestionStock.backend.repository.notification.NotificationTargetRepository;
-import com.gestionStock.backend.repository.stock.StockRepository;
+import com.gestionStock.backend.repository.piece.PieceDetacheeRepository;
 import com.gestionStock.backend.repository.user.UserRepository;
 import com.gestionStock.backend.service.user.UserService;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +26,7 @@ public class NotificationService {
     private final NotificationRepository notificationRepo;
     private final NotificationTargetRepository targetRepo;
     private final UserRepository userRepository;
-    private final StockRepository stockRepository;
+    private final PieceDetacheeRepository pieceRepository;
     private final UserService userService;
 
     public List<Notification> getNotificationsForUser(String userId) {
@@ -94,8 +94,8 @@ public class NotificationService {
         }
 
         if (relatedId != null) {
-            stockRepository.findById(relatedId).ifPresent(stock -> {
-                notification.getStocks().add(stock);
+            pieceRepository.findById(relatedId).ifPresent(piece -> {
+                notification.getPieces().add(piece);
             });
         }
 
@@ -126,8 +126,8 @@ public class NotificationService {
         }
 
         if (relatedId != null) {
-            stockRepository.findById(relatedId).ifPresent(stock -> {
-                notification.getStocks().add(stock);
+            pieceRepository.findById(relatedId).ifPresent(piece -> {
+                notification.getPieces().add(piece);
             });
         }
 

@@ -3,11 +3,11 @@ package com.gestionStock.backend.service.stock;
 import com.gestionStock.backend.dto.dashboard.DashboardDTO;
 import com.gestionStock.backend.entity.Stock.LigneMouvement;
 import com.gestionStock.backend.entity.Stock.MouvementStock;
-import com.gestionStock.backend.entity.Stock.Stock;
 import com.gestionStock.backend.entity.Stock.TypeMouvement;
 import com.gestionStock.backend.entity.entreprise.Entreprise;
+import com.gestionStock.backend.entity.piece.PieceDetachee;
 import com.gestionStock.backend.repository.stock.MouvementStockRepository;
-import com.gestionStock.backend.repository.stock.StockRepository;
+import com.gestionStock.backend.repository.piece.PieceDetacheeRepository;
 import com.gestionStock.backend.service.user.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class DashboardService {
 
-        private final StockRepository stockRepo;
+        private final PieceDetacheeRepository pieceRepo;
         private final MouvementStockRepository mouvementRepo;
         private final UserService userService;
 
@@ -30,32 +30,34 @@ public class DashboardService {
                 if (entreprise == null)
                         return new DashboardDTO();
 
-                List<Stock> allStock = stockRepo.findByPieceEntreprise(entreprise).stream()
-                                .filter(s -> !s.getPiece().isArchivee())
+                List<PieceDetachee> allPieces = pieceRepo.findByEntreprise(entreprise).stream()
+                                .filter(p -> !p.isArchivee())
                                 .collect(Collectors.toList());
 
                 if (pieceIds != null && !pieceIds.isEmpty()) {
-                        allStock = allStock.stream()
-                                        .filter(s -> pieceIds.contains(s.getPiece().getId()))
+                        allPieces = allPieces.stream()
+                                        .filter(p -> pieceIds.contains(p.getId()))
                                         .collect(Collectors.toList());
                 }
 
-                long totalArticles = allStock.size();
-                long lowStockCount = allStock.stream()
-                                .filter(s -> s.getQuantite() <= s.getPiece().getSeuilMinimum() && s.getQuantite() > 0)
+                long totalArticles = allPieces.size();
+                long lowStockCount = allPieces.stream()
+                                .filter(p -> p.getQuantite() != null && p.getQuantite() <= p.getSeuilMinimum() && p.getQuantite() > 0)
                                 .count();
-                long outOfStockCount = allStock.stream().filter(s -> s.getQuantite() == 0).count();
-                long totalUnits = allStock.stream().mapToLong(Stock::getQuantite).sum();
+                long outOfStockCount = allPieces.stream().filter(p -> p.getQuantite() == null || p.getQuantite() == 0).count();
+                long totalUnits = allPieces.stream().mapToLong(p -> p.getQuantite() != null ? p.getQuantite() : 0).sum();
 
-                // Stock levels for charts (Top 20)
-                List<DashboardDTO.StockLevelDTO> stockLevels = allStock.stream()
+                List<DashboardDTO.StockLevelDTO> stockLevels = allPieces.stream()
                                 .limit(20)
-                                .map(s -> new DashboardDTO.StockLevelDTO(
-                                                s.getPiece().getDesignation(),
-                                                s.getQuantite(),
-                                                s.getPiece().getSeuilMinimum(),
-                                                s.getDetailPiece() != null ? s.getDetailPiece().getAttributs()
-                                                                : new HashMap<>()))
+                                .map(p -> {
+                                        Map<String, Object> technicalDetails = new HashMap<>();
+                                        return new DashboardDTO.StockLevelDTO(
+                                                        p.getDesignation(),
+                                                        p.getQuantite() != null ? p.getQuantite() : 0,
+                                                        p.getSeuilMinimum(),
+                                                        technicalDetails);
+                                })
+                                .collect(Collectors.toMap(s -> s.getDesignation(), s -> s, (s1, s2) -> s1)).values().stream()
                                 .collect(Collectors.toList());
 
                 // Movement Flow (Entries vs Exits) - Last 30 days
@@ -65,7 +67,6 @@ public class DashboardService {
 
                 Map<LocalDate, DashboardDTO.MovementFlowDTO> flowMap = new TreeMap<>();
 
-                // Initialize last 7 days at least to avoid empty charts
                 for (int i = 0; i < 7; i++) {
                         LocalDate d = LocalDate.now().minusDays(i);
                         flowMap.put(d, new DashboardDTO.MovementFlowDTO(d, 0, 0));
@@ -80,11 +81,11 @@ public class DashboardService {
                                         || m.getTypeMouvement() == TypeMouvement.ENTREE_RETOUR);
 
                         long qty = m.getLigneMouvement().stream()
-                                        .filter(l -> l.getStock() != null && l.getStock().getPiece() != null)
+                                        .filter(l -> l.getPiece() != null)
                                         .filter(l -> (pieceIds != null && !pieceIds.isEmpty())
-                                                        ? pieceIds.contains(l.getStock().getPiece().getId())
-                                                        : !l.getStock().getPiece().isArchivee())
-                                        .mapToLong(LigneMouvement::getQuantite).sum();
+                                                        ? pieceIds.contains(l.getPiece().getId())
+                                                        : !l.getPiece().isArchivee())
+                                        .mapToLong(l -> l.getQuantite() != null ? l.getQuantite() : 0).sum();
 
                         if (isEntry) {
                                 flow.setEntryQty(flow.getEntryQty() + qty);
@@ -97,8 +98,7 @@ public class DashboardService {
                                 .sorted(Comparator.comparing(DashboardDTO.MovementFlowDTO::getDate))
                                 .collect(Collectors.toList());
 
-                // Prediction Logic
-                List<DashboardDTO.StockPredictionDTO> predictions = calculatePredictions(allStock, recentMovements);
+                List<DashboardDTO.StockPredictionDTO> predictions = calculatePredictions(allPieces, recentMovements);
 
                 return DashboardDTO.builder()
                                 .totalArticles(totalArticles)
@@ -111,11 +111,10 @@ public class DashboardService {
                                 .build();
         }
 
-        private List<DashboardDTO.StockPredictionDTO> calculatePredictions(List<Stock> stocks,
+        private List<DashboardDTO.StockPredictionDTO> calculatePredictions(List<PieceDetachee> pieces,
                         List<MouvementStock> movements) {
                 Map<Long, Double> dailyConso = new HashMap<>();
 
-                // Group exits by pieceId
                 for (MouvementStock m : movements) {
                         boolean isExit = (m.getTypeMouvement() == TypeMouvement.SORTIE_VENTE ||
                                         m.getTypeMouvement() == TypeMouvement.SORTIE_PERTE ||
@@ -124,43 +123,42 @@ public class DashboardService {
 
                         if (isExit) {
                                 for (LigneMouvement ligne : m.getLigneMouvement()) {
-                                        if (ligne.getStock() != null) {
-                                                Long stockId = ligne.getStock().getId();
-                                                dailyConso.put(stockId,
-                                                                dailyConso.getOrDefault(stockId, 0.0)
-                                                                                + (double) ligne.getQuantite() / 30.0);
+                                        if (ligne.getPiece() != null) {
+                                                Long pieceId = ligne.getPiece().getId();
+                                                int qty = ligne.getQuantite() != null ? ligne.getQuantite() : 0;
+                                                dailyConso.put(pieceId,
+                                                                dailyConso.getOrDefault(pieceId, 0.0)
+                                                                                + (double) qty / 30.0);
                                         }
                                 }
                         }
                 }
 
-                return stocks.stream()
-                                .map(s -> {
-                                        double rate = dailyConso.getOrDefault(s.getId(), 0.0);
+                return pieces.stream()
+                                .map(p -> {
+                                        double rate = dailyConso.getOrDefault(p.getId(), 0.0);
                                         int daysRemaining = 999;
                                         LocalDate target = null;
+                                        int qte = p.getQuantite() != null ? p.getQuantite() : 0;
                                         if (rate > 0) {
-                                                daysRemaining = (int) (s.getQuantite() / rate);
+                                                daysRemaining = (int) (qte / rate);
                                                 target = LocalDate.now().plusDays(daysRemaining);
                                         }
 
                                         return DashboardDTO.StockPredictionDTO.builder()
-                                                        .stockId(s.getId())
-                                                        .pieceId(s.getPiece().getId())
-                                                        .designation(s.getPiece().getDesignation())
-                                                        .reference(s.getPiece().getReference())
-                                                        .categoryName(s.getPiece().getCategorie() != null
-                                                                        ? s.getPiece().getCategorie().getNom()
+                                                        .stockId(p.getId())
+                                                        .pieceId(p.getId())
+                                                        .designation(p.getDesignation())
+                                                        .reference(p.getReference())
+                                                        .categoryName(p.getCategorie() != null
+                                                                        ? p.getCategorie().getNom()
                                                                         : "N/A")
-                                                        .currentQty(s.getQuantite())
-                                                        .minQty(s.getPiece().getSeuilMinimum())
+                                                        .currentQty(qte)
+                                                        .minQty(p.getSeuilMinimum())
                                                         .dailyConsumptionRate(rate)
                                                         .daysRemaining(daysRemaining)
                                                         .estimatedStockoutDate(target)
                                                         .predictionMethod("Moyenne ")
-                                                        .technicalDetails(s.getDetailPiece() != null
-                                                                        ? s.getDetailPiece().getAttributs()
-                                                                        : new HashMap<>())
                                                         .build();
                                 })
                                 .filter(Objects::nonNull)

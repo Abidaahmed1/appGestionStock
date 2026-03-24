@@ -1,91 +1,101 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, inject, ChangeDetectorRef, ChangeDetectionStrategy, HostListener } from '@angular/core';
+import { Component, OnInit, Input, Output, EventEmitter, inject, ChangeDetectorRef, OnChanges, SimpleChanges, HostListener, OnDestroy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { PieceDetachee, Categorie, ProduitFini, Parametre, ChampPersonnalise, Unite, NumerotationConfig } from '../../models/magasinier.models';
+import { FormsModule, NgForm } from '@angular/forms';
+import { PieceDetachee, Categorie, ProduitFini, Parametre, DetailPiece, Unite, TypeChamp } from '../../models/magasinier.models';
+import { Devise } from '../../../admin/models/entreprise.model';
 import { MagasinierService } from '../../services/magasinier.service';
 import { EntrepriseService } from '../../../admin/services/entreprise.service';
-import { Entreprise } from '../../../admin/models/entreprise.model';
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { finalize, Subject, debounceTime, takeUntil } from 'rxjs';
 
 @Component({
     selector: 'app-piece-form',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, ConfirmDialogComponent],
     templateUrl: './piece-form.component.html',
-    styleUrl: './piece-form.component.css',
-    changeDetection: ChangeDetectionStrategy.OnPush
+    styleUrl: './piece-form.component.css'
 })
-export class PieceFormComponent implements OnInit, OnChanges {
+export class PieceFormComponent implements OnInit, OnChanges, OnDestroy {
+    @Input() showModal: boolean = false;
     @Input() selectedPiece: PieceDetachee | null = null;
+    @Input() parametres: Parametre[] = [];
     @Input() categories: Categorie[] = [];
     @Input() produitsFinis: ProduitFini[] = [];
-    @Input() parametres: Parametre | null = null;
     @Input() unites: Unite[] = [];
-    @Input() showModal: boolean = false;
-
-    @Output() save = new EventEmitter<{ piece: PieceDetachee, file: File | null }>();
-    @Output() cancel = new EventEmitter<void>();
+    @Input() errorMessage: string | null = null;
+    @Input() devise: Devise | null | undefined = null;
+    @Output() close = new EventEmitter<void>();
+    @Output() cancel = new EventEmitter<void>(); // Added for consistency with PieceListComponent template
+    @Output() save = new EventEmitter<{ piece: any, file: File | null }>();
     @Output() quickAddCategory = new EventEmitter<Categorie>();
     @Output() quickAddProduct = new EventEmitter<{ product: ProduitFini, file: File | null }>();
 
+    @ViewChild('pieceForm') pieceForm?: NgForm;
+
     newPiece: PieceDetachee = this.initNewPiece();
+    showUnsavedChangesDialog: boolean = false;
     imagePreview: string | null = null;
     selectedFile: File | null = null;
+    localParametres: Parametre[] = [];
+    staticParametres: Parametre[] = [];
+    variantParametres: Parametre[] = [];
 
-    categorySearchTerm = '';
-    productSearchTerm = '';
-    showCategorySelector = false;
-    showProductSelector = false;
-
-    // Cached filtered lists to avoid lag in templates
-    filteredCategoriesList: Categorie[] = [];
+    // Search and Selection
+    productSearchTerm: string = '';
     filteredProductsList: ProduitFini[] = [];
+    showProductSelector: boolean = false;
 
-    showQuickAddCategory = false;
-    showQuickAddProduct = false;
-    newCategory: Categorie = { nom: '', code: 'AUTO', description: '' };
-    newProduct: ProduitFini = { code: 'AUTO', designation: '' };
-    quickProductFile: File | null = null;
+    // Quick Add Categorie
+    showQuickAddCategorie: boolean = false;
+    newCategory: { nom: string, code: string, description: string } = { nom: '', code: 'AUTO', description: '' };
+
+    // Quick Add Product
+    showQuickAddProduct: boolean = false;
+    newProduct: { designation: string, code: string, imageUrl: string } = { designation: '', code: 'AUTO', imageUrl: '' };
     newProductPreview: string | null = null;
-    showConfirmModal = false;
-    optionToRemove: string = '';
-    champToRemoveFrom: any = null;
-    confirmEvent: MouseEvent | null = null;
-    variantErrors: { [key: string]: boolean } = {};
+    newProductFile: File | null = null;
+
+    // Barcode & Duplicates
+    barcodeDuplicates: Set<number> = new Set();
+    backendBarcodeErrors: Set<string> = new Set();
+
+    // Auto-complete toggles
     isAutoReference: boolean = true;
     isAutoCategoryCode: boolean = true;
     isAutoProductCode: boolean = true;
 
+    // Variant Expansion state (Accordéon)
+    expandedVariantIndex: number | null = null;
+    targetPieceForSelection: PieceDetachee | null = null;
+
+    // Search and Dropdown states
+    categorySearchTerm: string = '';
+    showCategoryDropdown: boolean = false;
+    filteredCategories: Categorie[] = [];
+    private categorySearchSubject = new Subject<string>();
+    private destroy$ = new Subject<void>();
+
     private cdr = inject(ChangeDetectorRef);
     private magasinierService = inject(MagasinierService);
     private entrepriseService = inject(EntrepriseService);
-    entreprise: Entreprise | null = null;
-    barcodeDuplicates: Set<number> = new Set();
-    @Input() set errorMessage(value: string | null) {
-        if (value) {
-            this.handleBackendError(value);
-        }
-    }
-    backendBarcodeErrors: Set<string> = new Set();
 
-
-    ngOnInit() {
+    ngOnInit(): void {
         this.resetForm();
-        this.loadEntreprise();
-        this.updateFilteredCategoriesList();
-        this.updateFilteredProductsList();
-    }
 
-    loadEntreprise() {
-        this.entrepriseService.getCurrentEntreprise().subscribe({
-            next: (data) => {
-                this.entreprise = data;
-                this.cdr.detectChanges();
-            },
-            error: (err) => console.error('Erreur chargement entreprise:', err)
+        this.categorySearchSubject.pipe(
+            debounceTime(50),
+            takeUntil(this.destroy$)
+        ).subscribe(term => {
+            this.executeCategorySearch(term);
         });
     }
 
-    ngOnChanges(changes: SimpleChanges) {
+    ngOnDestroy(): void {
+        this.destroy$.next();
+        this.destroy$.complete();
+    }
+
+    ngOnChanges(changes: SimpleChanges): void {
         if (changes['showModal'] && changes['showModal'].currentValue === true &&
             changes['showModal'].previousValue !== true) {
             this.resetForm();
@@ -93,797 +103,829 @@ export class PieceFormComponent implements OnInit, OnChanges {
         } else if (changes['parametres'] && !changes['showModal']) {
             this.resetForm();
             this.cdr.markForCheck();
+        } else {
+            // Refresh lists if they change while modal is open
+            if (changes['categories']) {
+                this.executeCategorySearch(this.categorySearchTerm);
+            }
+            if (changes['parametres']) {
+                this.localParametres = (this.parametres || []).map(p => ({
+                    ...p,
+                    options: p.options ? [...p.options] : [],
+                    numerotationConfigs: p.numerotationConfigs ? p.numerotationConfigs.map(c => ({ ...c })) : []
+                }));
+                this.splitParametres();
+            }
+            if (changes['produitsFinis']) {
+                this.filteredProductsList = [...this.produitsFinis];
+            }
+            if (changes['unites']) {
+                this.cdr.markForCheck();
+            }
         }
     }
 
     resetForm() {
+        this.localParametres = (this.parametres || []).map(p => ({
+            ...p,
+            options: p.options ? [...p.options] : [],
+            numerotationConfigs: p.numerotationConfigs ? p.numerotationConfigs.map(c => ({ ...c })) : []
+        }));
+
+        this.splitParametres();
         this.barcodeDuplicates.clear();
         this.backendBarcodeErrors.clear();
+        this.expandedVariantIndex = null;
+
         if (this.selectedPiece) {
-            const pieceToUse = (this.selectedPiece as any).originalPiece || this.selectedPiece;
-
-            const normalizedDetails = (pieceToUse.details || []).map((d: any) => {
-                const newD = { ...d };
-                if (!newD.attributs) newD.attributs = {};
-                if (this.parametres?.champsPersonnalises) {
-                    this.parametres.champsPersonnalises.forEach(champ => {
-                        if (newD[champ.nom] !== undefined) {
-                            if (newD.attributs[champ.nom] === undefined) {
-                                newD.attributs[champ.nom] = newD[champ.nom];
-                            }
-                            delete newD[champ.nom];
-                        }
-                    });
-                }
-                return newD;
-            });
-
             this.newPiece = {
-                ...pieceToUse,
-                categorie: pieceToUse.categorie ? { ...pieceToUse.categorie } : { nom: '' },
-                details: normalizedDetails.length > 0 ? normalizedDetails : [{ attributs: {} }]
+                ...this.selectedPiece,
+                categorie: this.selectedPiece.categorie ? { ...this.selectedPiece.categorie } : undefined,
+                unite: this.selectedPiece.unite ? { ...this.selectedPiece.unite } : undefined,
+                details: this.selectedPiece.details ? [...this.selectedPiece.details] : [],
+                variations: this.selectedPiece.variations ? this.selectedPiece.variations.map(v => ({
+                    ...v,
+                    details: v.details ? [...v.details] : [],
+                    produitsAssocies: v.produitsAssocies ? [...v.produitsAssocies] : []
+                })) : [],
+                produitsAssocies: this.selectedPiece.produitsAssocies ? [...this.selectedPiece.produitsAssocies] : []
             };
-            this.imagePreview = pieceToUse.imageUrl || null;
+            this.imagePreview = this.newPiece.imageUrl || null;
+            this.initializeDynamicFields();
+            this.categorySearchTerm = this.newPiece.categorie?.nom || '';
         } else {
             this.newPiece = this.initNewPiece();
             this.imagePreview = null;
+            this.selectedFile = null;
+            this.categorySearchTerm = '';
         }
-        this.selectedFile = null;
-        this.initializeDynamicFields();
 
-        if (!this.selectedPiece) {
-            this.isAutoReference = this.isModuleAuto('PIECE');
-            this.newPiece.reference = this.isAutoReference ? 'AUTO' : '';
-            this.isAutoCategoryCode = this.isModuleAuto('CATEGORIE');
-            this.isAutoProductCode = this.isModuleAuto('PRODUIT');
-            this.generateVariations();
-        } else {
-            this.isAutoReference = this.newPiece.reference === 'AUTO';
-            this.isAutoCategoryCode = this.isModuleAuto('CATEGORIE');
-            this.isAutoProductCode = this.isModuleAuto('PRODUIT');
-        }
-        this.syncComplementaryAttributes();
-        this.updateFilteredCategoriesList();
-        this.updateFilteredProductsList();
-    }
+        this.filteredProductsList = [...this.produitsFinis];
+        this.filteredCategories = [...this.categories];
 
-    isModuleAuto(moduleName: string): boolean {
-        const configs = this.parametres?.numerotationConfigs;
-        if (!configs || !Array.isArray(configs)) return true;
-        const config = configs.find((c: NumerotationConfig) => c.module === moduleName);
-        return config ? config.automatique !== false : true;
-    }
-
-    getPrefix(moduleName: string): string {
-        const config = this.parametres?.numerotationConfigs?.find((c: NumerotationConfig) => c.module === moduleName);
-        let prefix = config?.prefix || '';
-        if (prefix) {
-            const date = new Date();
-            prefix = prefix
-                .replace('%YYYY%', date.getFullYear().toString())
-                .replace('%YY%', date.getFullYear().toString().substring(2))
-                .replace('%MM%', (date.getMonth() + 1).toString().padStart(2, '0'))
-                .replace('%DD%', date.getDate().toString().padStart(2, '0'));
-        }
-        return prefix;
-    }
-
-    getFormatExplanation(moduleName: string): string | null {
-        const config = this.parametres?.numerotationConfigs?.find((c: NumerotationConfig) => c.module === moduleName);
-        const prefix = config?.prefix || '';
-
-        let parts = [];
-        if (prefix.includes('%YYYY%')) parts.push("l'année sur 4 chiffres");
-        else if (prefix.includes('%YY%')) parts.push("l'année sur 2 chiffres");
-
-        if (prefix.includes('%MM%')) parts.push("le mois sur 2 chiffres");
-        if (prefix.includes('%DD%')) parts.push("le jour sur 2 chiffres");
-
-        if (parts.length > 0) {
-            return `Astuce : Le numéro inclut ${parts.join(', ')} suivis d'une séquence.`;
-        }
-        return null;
+        this.generateVariations();
     }
 
     initNewPiece(): PieceDetachee {
         return {
             designation: '',
-            prixVente: 0,
             reference: 'AUTO',
+            codeBarre: '',
+            prixVente: 0,
+            tauxTVA: 20,
             seuilMinimum: 0,
             seuilMaximum: 100,
-            tauxTVA: 0,
-            archivee: false,
-            categorie: { nom: '' },
-            unite: undefined,
-            imageUrl: '',
             description: '',
-            details: [{ attributs: {}, codeBarre: '' }]
+            imageUrl: '',
+            unite: undefined,
+            archivee: false,
+            details: [],
+            variations: [],
+            produitsAssocies: []
         };
     }
+    isFormValid(): boolean {
+        // Basic requirement
+        const basicOk = !!(this.newPiece.designation && this.newPiece.categorie && this.newPiece.unite);
 
-    initializeDynamicFields(): void {
-        if (!this.parametres?.champsPersonnalises || !this.newPiece.details) return;
+        // Main Threshold integrity
+        const sMin = Number(this.newPiece.seuilMinimum || 0);
+        const sMax = Number(this.newPiece.seuilMaximum || 0);
+        const thresholdsOk = sMin <= sMax;
 
-        const details = this.newPiece.details;
-        if (details.length === 0) {
-            this.newPiece.details = [{ attributs: {} }];
+        // Variations integrity
+        const variationsOk = !this.newPiece.variations ||
+            this.newPiece.variations.every(v => Number(v.seuilMinimum || 0) <= Number(v.seuilMaximum || 0));
+
+        if (!thresholdsOk || !variationsOk) {
+            console.warn('[Validation] Threshold Error:', { sMin, sMax, variationsOk });
         }
 
-        const firstDetail = this.newPiece.details[0];
+        return basicOk && thresholdsOk && variationsOk;
+    }
 
-        this.parametres.champsPersonnalises.forEach(champ => {
-            if (!(champ.nom in firstDetail.attributs)) {
-                firstDetail.attributs[champ.nom] = champ.defaultValue || '';
+    getThresholdError(): string | null {
+        const sMin = Number(this.newPiece.seuilMinimum || 0);
+        const sMax = Number(this.newPiece.seuilMaximum || 0);
+
+        if (sMin > sMax) {
+            return "Le seuil maximum doit être supérieur au seuil minimum (Modèle Principal).";
+        }
+
+        if (this.newPiece.variations) {
+            const invalidVariant = this.newPiece.variations.find(v => Number(v.seuilMinimum || 0) > Number(v.seuilMaximum || 0));
+            if (invalidVariant) {
+                return `Le seuil maximum doit être supérieur au seuil minimum pour la version : ${invalidVariant.description || 'Spécifique'}.`;
             }
+        }
 
-            const optionsKey = `_options_${champ.nom}`;
+        return null;
+    }
 
-            if (champ.variante && details.length > 0) {
-                const uniqueValues = new Set<string>();
-                details.forEach(d => {
-                    if (d.attributs && d.attributs[champ.nom]) {
-                        uniqueValues.add(String(d.attributs[champ.nom]));
-                    }
+    hasVariationError(v: PieceDetachee): boolean {
+        return Number(v.seuilMinimum || 0) > Number(v.seuilMaximum || 0);
+    }
+
+    compareById(o1: any, o2: any): boolean {
+        return o1 && o2 ? o1.id === o2.id : o1 === o2;
+    }
+
+    splitParametres(): void {
+        this.staticParametres = this.localParametres.filter(p => !p.variante);
+        this.variantParametres = this.localParametres.filter(p => p.variante);
+    }
+
+    isModuleAuto(moduleName: string): boolean {
+        for (const p of (this.localParametres || [])) {
+            const config = p.numerotationConfigs?.find(c => c.module?.toUpperCase() === moduleName.toUpperCase());
+            if (config) return config.automatique !== false;
+        }
+        return true;
+    }
+
+    getPrefix(moduleName: string): string {
+        for (const p of (this.localParametres || [])) {
+            const config = p.numerotationConfigs?.find(c => c.module?.toUpperCase() === moduleName.toUpperCase());
+            if (config) return config.prefix || '';
+        }
+        return '';
+    }
+
+    getCurrencyCode(): string {
+        return this.devise?.code || this.devise?.symbole || 'TND';
+    }
+
+    getFormatExplanation(moduleName: string): string {
+        const prefix = this.getPrefix(moduleName);
+        if (prefix) return `Le code sera généré comme : ${prefix} + numéro séquentiel.`;
+        return `Le code sera généré automatiquement par le système.`;
+    }
+
+    initializeDynamicFields() {
+        console.log('--- INITIALIZING DYNAMIC FIELDS ---');
+        console.log('Local Parametres count:', this.localParametres.length);
+        console.log('New Piece Variations count:', this.newPiece.variations?.length || 0);
+
+        if (!this.newPiece.details) this.newPiece.details = [];
+
+        // Track which params are definitively variants
+        const variantParamNames = new Set<string>();
+
+        // 1. Any param that is globally `variante: true` is a variant
+        this.localParametres.forEach(p => {
+            if (p.variante) variantParamNames.add(p.nom);
+        });
+
+        // 2. Any param found in the details of the variations (siblings) is a variant
+        if (this.newPiece.variations && this.newPiece.variations.length > 0) {
+            this.newPiece.variations.forEach(variant => {
+                variant.details?.forEach(d => {
+                    const name = d.parametreNom || d.parametre?.nom;
+                    if (name) variantParamNames.add(name);
                 });
+            });
+        }
 
-                if (uniqueValues.size > 0) {
-                    firstDetail.attributs[optionsKey] = Array.from(uniqueValues);
-                } else if (!firstDetail.attributs[optionsKey]) {
-                    firstDetail.attributs[optionsKey] = [...(champ.options || [])];
-                }
-            } else if (!firstDetail.attributs[optionsKey]) {
-                firstDetail.attributs[optionsKey] = [...(champ.options || [])];
+        // 3. Any param in main piece that was stored with parametre.variante=true in DB
+        this.newPiece.details.forEach(d => {
+            if (d.parametre?.variante) {
+                const name = d.parametreNom || d.parametre?.nom;
+                if (name) variantParamNames.add(name);
             }
         });
-    }
 
-    getLocalOptions(champ: any): string[] {
-        if (!this.newPiece.details![0].attributs) return champ.options || [];
-        const optionsKey = `_options_${champ.nom}`;
-        return this.newPiece.details![0].attributs[optionsKey] || champ.options || [];
-    }
+        // Collect all pieces to look through (Main piece + Variations)
+        const allPieces = [this.newPiece];
+        if (this.newPiece.variations && this.newPiece.variations.length > 0) {
+            allPieces.push(...this.newPiece.variations);
+        }
 
+        allPieces.forEach(piece => {
+            piece.details?.forEach(d => {
+                const name = d.parametreNom || d.parametre?.nom;
+                if (!name) return;
 
-    onReferenceChange(ref: string): void {
-        if (this.selectedPiece || !ref || ref.length < 5) return;
+                let param = this.localParametres.find(p => p.id === d.parametre?.id || p.nom === name);
+                const isVariant = variantParamNames.has(name);
 
-        this.magasinierService.getPieceByReference(ref).subscribe({
-            next: (piece) => {
-                if (piece) {
-                    this.newPiece.designation = piece.designation;
-                    this.newPiece.prixVente = piece.prixVente;
-                    this.newPiece.categorie = piece.categorie;
-                    this.newPiece.tauxTVA = piece.tauxTVA;
-                    this.newPiece.seuilMinimum = piece.seuilMinimum;
-                    this.newPiece.seuilMaximum = piece.seuilMaximum;
-                    this.newPiece.imageUrl = piece.imageUrl;
-                    this.newPiece.description = piece.description;
-                    this.imagePreview = piece.imageUrl || null;
-                    this.newPiece.produitsAssocies = [...(piece.produitsAssocies || [])];
-
-                    if (piece.details && piece.details.length > 0) {
-                        const templateDetail = piece.details[0];
-                        const cleanAttributs: any = {};
-                        Object.entries(templateDetail.attributs).forEach(([k, v]) => {
-                            cleanAttributs[k] = v;
-                        });
-                        this.newPiece.details = [{ attributs: cleanAttributs, codeBarre: templateDetail.codeBarre || '' }];
+                // If it's a static parameter, only process from the main piece
+                if (!isVariant) {
+                    if (piece === this.newPiece && param) {
+                        const val = d.valeur ? String(d.valeur).trim() : '';
+                        if (val && param.type === 'LISTE' && !param.options?.includes(val)) {
+                            if (!param.options) param.options = [];
+                            param.options.push(val);
+                        }
                     }
-                    this.cdr.detectChanges();
                 }
-            },
-            error: (err) => {
-            }
+                // If it's a variant parameter
+                else {
+                    if (!param) {
+                        console.log(`Attribute "${name}" is missing from settings. Reconstructing virtual param.`);
+                        param = {
+                            id: d.parametre?.id,
+                            nom: name,
+                            variante: true,
+                            actif: true,
+                            type: TypeChamp.LISTE,
+                            options: [],
+                            obligatoire: false,
+                            ordre: 99,
+                            numerotationConfigs: []
+                        };
+                        this.localParametres.push(param);
+                    }
+
+                    if (param) {
+                        // FORCE attribute to be active and a variant
+                        param.variante = true;
+                        param.actif = true;
+
+                        const val = d.valeur ? String(d.valeur).trim() : '';
+                        if (val) {
+                            if (!param.options) param.options = [];
+                            if (!param.options.includes(val)) {
+                                param.options.push(val);
+                            }
+                        }
+                    }
+                }
+            });
         });
+
+        // After reconstructing options, refresh the split parameters
+        this.splitParametres();
     }
 
-
-    onFileSelected(event: Event): void {
-        const input = event.target as HTMLInputElement;
-        if (input.files && input.files[0]) {
-            this.selectedFile = input.files[0];
-            const reader = new FileReader();
-            reader.onload = () => {
-                this.imagePreview = reader.result as string;
-                this.cdr.detectChanges();
-            };
-            reader.readAsDataURL(this.selectedFile);
+    addVariantOption(param: Parametre, input: HTMLInputElement): void {
+        const val = input.value.trim();
+        if (val) {
+            if (!param.options) param.options = [];
+            if (!param.options.includes(val)) {
+                param.options.push(val);
+                this.generateVariations();
+                this.pieceForm?.form.markAsDirty();
+            }
+            input.value = '';
         }
     }
 
-    removeImage(event: MouseEvent): void {
-        event.preventDefault();
-        event.stopPropagation();
-        this.selectedFile = null;
-        this.imagePreview = null;
-        this.newPiece.imageUrl = '';
-        if (this.selectedPiece) {
-            this.selectedPiece.imageUrl = '';
-        }
-        this.cdr.detectChanges();
+    removeVariantOption(param: Parametre, option: string): void {
+        param.options = param.options?.filter(o => o !== option);
+        this.generateVariations();
+        this.pieceForm?.form.markAsDirty();
     }
 
-    getImageUrl(url: string | null | undefined): string {
-        if (!url) return 'assets/images/default-produit.svg';
-        if (url.startsWith('data:')) return url;
-        if (url.startsWith('/api/images') || url.startsWith('/uploads')) {
-            return `http://localhost:8081${url}`;
-        }
-        return url;
-    }
+    private isMatchingCombination(variant: PieceDetachee, combo: any[], variantParams: Parametre[]): boolean {
+        if (!variant.details) return false;
 
-    toggleCategorySelector(event?: Event): void {
-        if (event) {
-            event.stopPropagation();
-            event.preventDefault();
-        }
-        this.showCategorySelector = !this.showCategorySelector;
-        this.cdr.detectChanges();
-    }
-
-    selectCategory(cat: Categorie): void {
-        this.newPiece.categorie = cat;
-        this.showCategorySelector = false;
-        this.cdr.detectChanges();
-    }
-
-    updateFilteredCategoriesList(): void {
-        const term = (this.categorySearchTerm || '').toLowerCase().trim();
-        if (!term) {
-            this.filteredCategoriesList = [...(this.categories || [])];
-        } else {
-            this.filteredCategoriesList = (this.categories || []).filter(c =>
-                (c.nom || '').toLowerCase().includes(term)
+        for (let i = 0; i < variantParams.length; i++) {
+            const param = variantParams[i];
+            const expectedVal = String(combo[i]).trim().toLowerCase();
+            const detail = variant.details.find(d =>
+                (d.parametre?.id === param.id) ||
+                ((d.parametreNom || d.parametre?.nom)?.toLowerCase() === param.nom.toLowerCase())
             );
+
+            if (!detail || String(detail.valeur).trim().toLowerCase() !== expectedVal) {
+                return false;
+            }
         }
+        return true;
     }
 
-    onCategorySearchChange(): void {
-        this.updateFilteredCategoriesList();
-        this.cdr.detectChanges();
-    }
-
-    openQuickAddCategory(event?: Event): void {
-        if (event) {
-            event.stopPropagation();
-            event.preventDefault();
+    generateVariations(): void {
+        const variantParams = this.localParametres.filter(p => p.variante && p.actif && p.options && p.options.length > 0);
+        if (variantParams.length === 0) {
+            this.newPiece.variations = [];
+            return;
         }
-        this.isAutoCategoryCode = this.isModuleAuto('CATEGORIE');
-        this.newCategory = { nom: '', code: this.isAutoCategoryCode ? 'AUTO' : '', description: '' };
-        this.showQuickAddCategory = true;
+
+        const combinations: any[][] = this.getCombinations(variantParams.map(p => p.options!));
+        const existingVariations = this.newPiece.variations || [];
+        let mainPieceMatched = false;
+
+        const newVariations = combinations.map((combo) => {
+            const variantValues = variantParams.map((p, i) => `${p.nom}: ${combo[i]}`).join(' | ');
+
+            // 1. PRIORITIZE EXISTING VARIANTS (from database)
+            // They have the specific barcodes and IDs we need
+            const existing = existingVariations.find(v => this.isMatchingCombination(v, combo, variantParams));
+            if (existing) return existing;
+
+            // 2. FALLBACK TO ROOT PIECE
+            // Only if it matches the combo and hasn't been used yet
+            const isMatch = !mainPieceMatched && this.selectedPiece && this.isMatchingCombination(this.newPiece, combo, variantParams);
+            if (isMatch) {
+                mainPieceMatched = true;
+                this.newPiece.details = variantParams.map((p, i) => {
+                    const existingDetail = this.newPiece.details?.find(d => d.parametre?.id === p.id || (d.parametreNom || d.parametre?.nom)?.toLowerCase() === p.nom.toLowerCase());
+                    return {
+                        id: existingDetail ? existingDetail.id : undefined,
+                        parametre: p,
+                        parametreNom: p.nom,
+                        valeur: combo[i]
+                    };
+                });
+                return this.newPiece;
+            }
+
+            // 4. Fallback for brand NEW variant
+            return {
+                ...this.initNewPiece(),
+                description: `Version ${variantValues}`,
+                reference: 'AUTO',
+                prixVente: this.newPiece.prixVente,
+                tauxTVA: this.newPiece.tauxTVA,
+                seuilMinimum: this.newPiece.seuilMinimum,
+                seuilMaximum: this.newPiece.seuilMaximum,
+                imageUrl: this.newPiece.imageUrl,
+                details: variantParams.map((p, i) => ({
+                    parametre: p,
+                    parametreNom: p.nom,
+                    valeur: combo[i]
+                }))
+            };
+        });
+
+        this.newPiece.variations = newVariations;
+        this.checkDuplicateBarcodes();
+        this.syncCommonProperties();
+    }
+
+    onMainPieceChange(): void {
+        this.syncCommonProperties();
         this.cdr.detectChanges();
     }
 
-    closeQuickAddCategory(): void {
-        this.showQuickAddCategory = false;
+    refreshUI(): void {
         this.cdr.detectChanges();
     }
 
-    submitQuickAddCategory(): void {
-        if (!this.newCategory.nom || !this.newCategory.code) return;
-        this.quickAddCategory.emit({ ...this.newCategory });
-        this.showQuickAddCategory = false;
-        this.newCategory = { nom: '', code: 'AUTO', description: '' };
-    }
+    copyMainData(variant: PieceDetachee): void {
+        if (!variant) return;
 
-    toggleProductSelectorModal(event?: Event): void {
-        if (event) {
-            event.stopPropagation();
-            event.preventDefault();
+        // Recover barcode from main piece if variant's barcode is empty
+        if (!variant.codeBarre && this.newPiece.codeBarre) {
+            variant.codeBarre = this.newPiece.codeBarre;
         }
-        this.showProductSelector = !this.showProductSelector;
+
+        variant.prixVente = this.newPiece.prixVente;
+        variant.tauxTVA = this.newPiece.tauxTVA;
+        variant.seuilMinimum = this.newPiece.seuilMinimum;
+        variant.seuilMaximum = this.newPiece.seuilMaximum;
+        variant.imageUrl = this.newPiece.imageUrl;
+        variant.produitsAssocies = this.newPiece.produitsAssocies ? [...this.newPiece.produitsAssocies] : [];
+        this.checkDuplicateBarcodes();
         this.cdr.detectChanges();
     }
 
-    toggleProductSelection(product: ProduitFini): void {
-        if (!this.newPiece.produitsAssocies) this.newPiece.produitsAssocies = [];
-        const index = this.newPiece.produitsAssocies.findIndex(p => p.id === product.id);
-        if (index === -1) {
-            this.newPiece.produitsAssocies.push({ ...product });
-        } else {
-            this.newPiece.produitsAssocies.splice(index, 1);
-        }
-        this.cdr.detectChanges();
-    }
-
-    isProductSelected(productId?: number): boolean {
-        if (!productId || !this.newPiece.produitsAssocies) return false;
-        return this.newPiece.produitsAssocies.some(p => p.id === productId);
-    }
-
-    removeAssociatedProduct(index: number): void {
-        if (this.newPiece.produitsAssocies) {
-            this.newPiece.produitsAssocies.splice(index, 1);
+    removeVariant(index: number): void {
+        if (this.newPiece.variations) {
+            this.newPiece.variations.splice(index, 1);
+            this.checkDuplicateBarcodes();
+            this.pieceForm?.form.markAsDirty();
             this.cdr.detectChanges();
         }
     }
 
-    updateFilteredProductsList(): void {
-        const term = (this.productSearchTerm || '').toLowerCase().trim();
-        if (!term) {
-            this.filteredProductsList = [...(this.produitsFinis || [])];
-        } else {
-            this.filteredProductsList = (this.produitsFinis || []).filter(p =>
-                (p.designation || '').toLowerCase().includes(term) ||
-                (p.code || '').toLowerCase().includes(term)
-            );
-        }
+    private getCombinations(arrays: any[][]): any[][] {
+        return arrays.reduce((a, b) => a.flatMap(d => b.map(e => [d, e].flat())), [[]]);
     }
 
-    onProductSearchChange(): void {
-        this.updateFilteredProductsList();
+    getVariantLabel(variant: PieceDetachee): string {
+        if (!variant.details) return 'Version Sans Nom';
+        return variant.details
+            .filter(d => d.parametre?.variante || this.localParametres.find(p => p.nom === (d.parametreNom || d.parametre?.nom))?.variante)
+            .map(d => `${d.parametreNom || d.parametre?.nom}: ${d.valeur}`)
+            .join(' | ') || 'Version Standard';
+    }
+
+    generateBarcode(piece: PieceDetachee): void {
+        const timestamp = Date.now().toString().slice(-10);
+        const random = Math.floor(Math.random() * 100).toString().padStart(2, '0');
+        piece.codeBarre = timestamp + random;
+        this.checkDuplicateBarcodes();
         this.cdr.detectChanges();
     }
 
-    getSelectedProductsCount(): number {
-        return this.newPiece.produitsAssocies?.length ?? 0;
+    checkDuplicateBarcodes(): void {
+        this.barcodeDuplicates.clear();
+        const seen = new Map<string, number>();
+
+        this.newPiece.variations?.forEach((v, index) => {
+            const bc = v.codeBarre?.trim().toLowerCase();
+            if (bc) {
+                if (seen.has(bc)) {
+                    const firstIndex = seen.get(bc)!;
+                    this.barcodeDuplicates.add(firstIndex);
+                    this.barcodeDuplicates.add(index);
+                } else {
+                    seen.set(bc, index);
+                }
+            }
+        });
     }
 
-    openQuickAddProduct(event?: Event): void {
+    hasVisibleFields(isVariant: boolean): boolean {
+        return this.localParametres.some(p => p.actif && p.variante === isVariant);
+    }
+
+    onSubmit(): void {
+        console.log('--- STARTING ONSUBMIT ---');
+        try {
+            // Validation: Seuil Min <= Seuil Max
+            if (Number(this.newPiece.seuilMinimum || 0) > Number(this.newPiece.seuilMaximum || 0)) {
+                this.errorMessage = "Le seuil maximum doit être supérieur au seuil minimum (Modèle Principal).";
+                this.scrollToTop();
+                return;
+            }
+
+            // Also check variations
+            if (this.newPiece.variations) {
+                const invalidVariant = this.newPiece.variations.find(v => Number(v.seuilMinimum || 0) > Number(v.seuilMaximum || 0));
+                if (invalidVariant) {
+                    this.errorMessage = `Le seuil maximum doit être supérieur au seuil minimum pour la version : ${invalidVariant.description || 'Spécifique'}.`;
+                    this.scrollToTop();
+                    return;
+                }
+            }
+
+            if (!this.isFormValid()) {
+                this.errorMessage = "Certains champs obligatoires sont manquants (Désignation, Catégorie ou Unité).";
+                this.scrollToTop();
+                return;
+            }
+
+            this.errorMessage = '';
+            this.syncCommonProperties();
+
+            // Final check: if we have variations, the barcode belongs to the versions, not the root.
+            console.log('Sync complete, prepare final mapping...');
+
+            let pieceFinal = { ...this.newPiece };
+            const pieceToSave = this.mapPieceForSave(pieceFinal);
+            if (pieceFinal.variations && pieceFinal.variations.length > 0) {
+                pieceToSave.variations = pieceFinal.variations.map(v => this.mapPieceForSave(v));
+            }
+            console.log('PIECE TO SAVE:', pieceToSave);
+
+            this.save.emit({ piece: pieceToSave, file: this.selectedFile });
+            console.log('Save Event Emitted successfully');
+        } catch (err) {
+            console.error('CRITICAL ERROR in onSubmit:', err);
+            this.errorMessage = "Une erreur est survenue lors de la préparation de l'envoi. Veuillez vérifier la console.";
+            this.scrollToTop();
+        }
+    }
+
+    private scrollToTop(): void {
+        const body = document.querySelector('.form-body');
+        if (body) {
+            body.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }
+
+    syncCommonProperties(): void {
+        if (!this.newPiece.variations || this.newPiece.variations.length === 0) return;
+
+        this.newPiece.variations.forEach((v, index) => {
+            // ALWAYS Sync base info (designation, cat, unit) for all variants
+            v.designation = this.newPiece.designation;
+            v.categorie = this.newPiece.categorie;
+            v.unite = this.newPiece.unite;
+
+            // We no longer sync barcodes between variants because each variant has a SPECIFIC code.
+            // If the variant's barcode is empty AND it matches the root piece, we might pull from root, 
+            // but we stop propagating to all lines.
+
+            if (index === 0) {
+                v.tauxTVA = this.newPiece.tauxTVA;
+                v.seuilMinimum = this.newPiece.seuilMinimum;
+                v.seuilMaximum = this.newPiece.seuilMaximum;
+                if (!v.produitsAssocies || v.produitsAssocies.length === 0) {
+                    v.produitsAssocies = (this.newPiece.produitsAssocies && this.newPiece.produitsAssocies.length > 0)
+                        ? [...this.newPiece.produitsAssocies] : [];
+                }
+            }
+        });
+        this.checkDuplicateBarcodes();
+    }
+
+    private mapPieceForSave(piece: PieceDetachee): any {
+        const mapped: any = {
+            id: piece.id,
+            designation: piece.designation,
+            reference: piece.reference,
+            codeBarre: piece.codeBarre,
+            prixVente: Number(piece.prixVente || 0),
+            tauxTVA: Number(piece.tauxTVA || 0),
+            seuilMinimum: Number(piece.seuilMinimum || 0),
+            seuilMaximum: Number(piece.seuilMaximum || 0),
+            description: piece.description,
+            imageUrl: piece.imageUrl,
+            unite: piece.unite,
+            archivee: piece.archivee ?? false,
+            details: (piece.details || []).map(d => ({
+                id: d.id,
+                parametreNom: d.parametreNom,
+                valeur: d.valeur,
+                parametre: d.parametre ? { id: d.parametre.id } : null
+            }))
+        };
+
+        if (piece.categorie) mapped.categorie = { id: piece.categorie.id };
+
+        mapped.produitsAssocies = (piece.produitsAssocies || []).map(p => ({
+            id: p.id,
+            designation: p.designation,
+            code: p.code
+        }));
+
+        return mapped;
+    }
+
+    closeModal() {
+        if (this.isFormDirty()) {
+            this.showUnsavedChangesDialog = true;
+            this.cdr.detectChanges();
+        } else {
+            this.forceClose();
+        }
+    }
+
+    private isFormDirty(): boolean {
+        // If it's a new piece and nothing has been typed, it's not dirty
+        if (!this.selectedPiece && !this.pieceForm?.dirty && !this.selectedFile) {
+            return false;
+        }
+        return this.pieceForm?.dirty || !!this.selectedFile;
+    }
+
+    onConfirmStay() {
+        this.showUnsavedChangesDialog = false;
+        this.cdr.detectChanges();
+    }
+
+    handleSaveFromDialog() {
+        this.showUnsavedChangesDialog = false;
+        this.onSubmit();
+        this.cdr.detectChanges();
+    }
+
+    onConfirmQuit() {
+        this.showUnsavedChangesDialog = false;
+        this.forceClose();
+        this.cdr.detectChanges();
+    }
+
+    private forceClose() {
+        this.close.emit();
+        this.cancel.emit();
+        this.cdr.detectChanges();
+    }
+
+    getImageUrl(path: string | null | undefined): string {
+        if (!path) return 'assets/img/default-piece.png';
+        if (path.startsWith('data:')) return path;
+        return this.entrepriseService.getImageUrl(path);
+    }
+
+    onFileSelected(event: Event, piece?: PieceDetachee): void {
+        const input = event.target as HTMLInputElement;
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = () => {
+                if (piece) {
+                    piece.imageUrl = reader.result as string;
+                } else {
+                    this.selectedFile = file;
+                    this.imagePreview = reader.result as string;
+                }
+                this.cdr.detectChanges();
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    removeImage(event: MouseEvent, piece?: PieceDetachee): void {
+        event.preventDefault();
+        event.stopPropagation();
+        if (piece) {
+            piece.imageUrl = '';
+        } else {
+            this.selectedFile = null;
+            this.imagePreview = null;
+            this.newPiece.imageUrl = '';
+            if (this.selectedPiece) this.selectedPiece.imageUrl = '';
+        }
+        this.cdr.detectChanges();
+    }
+
+    toggleCategorieModal(event?: Event): void {
+        if (event) event.stopPropagation();
+        this.showQuickAddCategorie = !this.showQuickAddCategorie;
+        if (this.showQuickAddCategorie) {
+            this.showCategoryDropdown = false;
+            // pre-fill nom from search term if any
+            this.newCategory = { nom: this.categorySearchTerm, code: 'AUTO', description: '' };
+        } else {
+            this.newCategory = { nom: '', code: 'AUTO', description: '' };
+        }
+        this.cdr.detectChanges();
+    }
+
+    onCategorySearch(event: Event): void {
+        const value = (event.target as HTMLInputElement).value;
+        this.categorySearchTerm = value;
+        this.showCategoryDropdown = true;
+        this.categorySearchSubject.next(value);
+    }
+
+    private executeCategorySearch(term: string): void {
+        const normalizedTerm = term.toLowerCase().trim();
+        this.filteredCategories = normalizedTerm
+            ? this.categories.filter(c => c.nom.toLowerCase().includes(normalizedTerm))
+            : [...this.categories];
+        this.cdr.detectChanges();
+    }
+
+    openCategoryDropdown(): void {
+        this.filteredCategories = this.categorySearchTerm
+            ? this.categories.filter(c => c.nom.toLowerCase().includes(this.categorySearchTerm.toLowerCase()))
+            : [...this.categories];
+        this.showCategoryDropdown = true;
+    }
+
+    selectCategory(cat: Categorie): void {
+        this.newPiece.categorie = cat;
+        this.categorySearchTerm = cat.nom;
+        this.showCategoryDropdown = false;
+        this.pieceForm?.form.markAsDirty();
+        this.cdr.detectChanges();
+    }
+
+    toggleCategoryDropdown(): void {
+        this.showCategoryDropdown = !this.showCategoryDropdown;
+        if (this.showCategoryDropdown) {
+            this.filteredCategories = [...this.categories];
+        }
+    }
+
+    @HostListener('document:click', ['$event'])
+    onClickOutside(event: MouseEvent) {
+        if (!this.showCategoryDropdown) return;
+        const target = event.target as HTMLElement;
+        if (!target.closest('.p-dropdown')) {
+            this.showCategoryDropdown = false;
+            this.cdr.detectChanges();
+        }
+    }
+
+    submitQuickAddCategorie(): void {
+        if (!this.newCategory.nom) return;
+        this.quickAddCategory.emit({
+            nom: this.newCategory.nom,
+            code: this.newCategory.code,
+            description: this.newCategory.description,
+            archivee: false
+        });
+        // pre-select the just-added category's name in the search field
+        this.categorySearchTerm = this.newCategory.nom;
+        this.newCategory = { nom: '', code: 'AUTO', description: '' };
+        this.showQuickAddCategorie = false;
+    }
+
+    toggleProductSelectorModal(event?: Event, piece?: PieceDetachee): void {
         if (event) {
             event.stopPropagation();
             event.preventDefault();
         }
-        this.isAutoProductCode = this.isModuleAuto('PRODUIT');
-        this.newProduct = { code: this.isAutoProductCode ? 'AUTO' : '', designation: '' };
-        this.quickProductFile = null;
-        this.newProductPreview = null;
-        this.showQuickAddProduct = true;
+        this.targetPieceForSelection = piece || null;
+        this.showProductSelector = !this.showProductSelector;
         this.cdr.detectChanges();
+    }
+
+    toggleProductSelection(product: ProduitFini, piece?: PieceDetachee): void {
+        const targetPiece = piece || this.targetPieceForSelection || this.newPiece;
+        if (!targetPiece.produitsAssocies) targetPiece.produitsAssocies = [];
+        const index = targetPiece.produitsAssocies.findIndex(p => p.id === product.id);
+        if (index === -1) {
+            targetPiece.produitsAssocies.push({ ...product });
+        } else {
+            targetPiece.produitsAssocies.splice(index, 1);
+        }
+        this.pieceForm?.form.markAsDirty();
+        this.cdr.detectChanges();
+    }
+
+    isProductSelected(productId?: number, piece?: PieceDetachee): boolean {
+        const targetPiece = piece || this.targetPieceForSelection || this.newPiece;
+        if (!productId || !targetPiece.produitsAssocies) return false;
+        return targetPiece.produitsAssocies.some(p => p.id === productId);
+    }
+
+    removeAssociatedProduct(index: number, piece?: PieceDetachee): void {
+        const targetPiece = piece || this.newPiece;
+        if (targetPiece.produitsAssocies) {
+            targetPiece.produitsAssocies.splice(index, 1);
+            this.pieceForm?.form.markAsDirty();
+            this.cdr.detectChanges();
+        }
+    }
+
+    onProductSearchChange() {
+        const term = this.productSearchTerm.toLowerCase();
+        this.filteredProductsList = this.produitsFinis.filter(p =>
+            p.designation.toLowerCase().includes(term) ||
+            p.code.toLowerCase().includes(term)
+        );
+    }
+
+    getSelectedProductsCount(piece?: PieceDetachee): number {
+        const targetPiece = piece || this.targetPieceForSelection || this.newPiece;
+        return targetPiece.produitsAssocies?.length ?? 0;
+    }
+
+    openQuickAddProduct(event?: Event): void {
+        if (event) event.stopPropagation();
+        this.showQuickAddProduct = true;
+    }
+
+    closeQuickAddProduct(): void {
+        this.showQuickAddProduct = false;
+        this.newProduct = { designation: '', code: 'AUTO', imageUrl: '' };
+        this.newProductPreview = null;
+        this.newProductFile = null;
     }
 
     onQuickProductFileSelected(event: Event): void {
         const input = event.target as HTMLInputElement;
         if (input.files && input.files[0]) {
-            this.quickProductFile = input.files[0];
+            this.newProductFile = input.files[0];
             const reader = new FileReader();
             reader.onload = () => {
                 this.newProductPreview = reader.result as string;
                 this.cdr.detectChanges();
             };
-            reader.readAsDataURL(this.quickProductFile);
+            reader.readAsDataURL(this.newProductFile);
         }
     }
 
     submitQuickAddProduct(): void {
-        if (!this.newProduct.code || !this.newProduct.designation) return;
-        this.quickAddProduct.emit({ product: { ...this.newProduct }, file: this.quickProductFile });
-        this.showQuickAddProduct = false;
-        this.newProduct = { code: 'AUTO', designation: '' };
+        if (!this.newProduct.designation) return;
+        const product: ProduitFini = {
+            designation: this.newProduct.designation,
+            code: this.newProduct.code
+        };
+        this.quickAddProduct.emit({ product, file: this.newProductFile });
+        this.closeQuickAddProduct();
     }
 
-    closeQuickAddProduct(): void {
-        this.showQuickAddProduct = false;
+    // Accordéon logic
+    toggleVariantExpansion(index: number): void {
+        this.expandedVariantIndex = this.expandedVariantIndex === index ? null : index;
         this.cdr.detectChanges();
     }
 
-    @HostListener('document:click', ['$event'])
-    onDocumentClick(event: MouseEvent): void {
-        if (!this.showCategorySelector) return;
-
-        const target = event.target as HTMLElement;
-        const picker = document.querySelector('.picker-container');
-        if (picker && !picker.contains(target)) {
-            this.showCategorySelector = false;
-            this.cdr.detectChanges();
-        }
-    }
-
-    onFormSubmit(form: any): void {
-        this.variantErrors = {};
-        let hasVariantErrors = false;
-
-        if (this.parametres?.champsPersonnalises) {
-            this.parametres.champsPersonnalises.forEach(champ => {
-                if (champ.actif && champ.variante && champ.obligatoire) {
-                    const options = this.getLocalOptions(champ);
-                    if (!options || options.length === 0) {
-                        this.variantErrors[champ.nom] = true;
-                        hasVariantErrors = true;
-                    }
-                }
-            });
-        }
-
-        // Validate variant detail rows: barcode required, price required
-        let hasDetailErrors = false;
-        if (this.newPiece.details && this.newPiece.details.length > 0) {
-            this.newPiece.details.forEach(detail => {
-                if (!detail.codeBarre || detail.codeBarre.trim() === '') {
-                    hasDetailErrors = true;
-                }
-                if (detail.prixVente === null || detail.prixVente === undefined) {
-                    hasDetailErrors = true;
-                }
-            });
-        }
-
-        const seuilInvalid = this.newPiece.seuilMaximum < this.newPiece.seuilMinimum;
-        this.checkDuplicateBarcodes();
-        const hasDuplicateBarcodes = this.barcodeDuplicates.size > 0;
-
-        if (form.invalid || !this.newPiece.categorie?.id || hasVariantErrors || hasDetailErrors || seuilInvalid || hasDuplicateBarcodes) {
-            Object.keys(form.controls).forEach(key => {
-                form.controls[key].markAsTouched();
-            });
-
-            const container = document.querySelector('.odoo-unified-content');
-            if (container) {
-                container.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-
-            if (seuilInvalid) {
-                console.warn('Seuil Maximum doit être supérieur au Seuil Minimum');
-            }
-
-            this.cdr.detectChanges();
-            return;
-        }
-        this.onSubmit();
-    }
-
-    onSubmit(): void {
-        console.log('[ANTIGRAVITY] Starting robust onSubmit...');
-        const rawPiece = this.newPiece;
-
-        const pieceToSave: any = {
-            id: rawPiece.id ? Number(rawPiece.id) : undefined,
-            designation: String(rawPiece.designation).trim(),
-            prixVente: Number(rawPiece.prixVente || 0),
-            reference: String(rawPiece.reference).trim(),
-            seuilMinimum: Number(rawPiece.seuilMinimum || 0),
-            seuilMaximum: Number(rawPiece.seuilMaximum || 0),
-            tauxTVA: Number(rawPiece.tauxTVA || 0),
-            archivee: !!rawPiece.archivee,
-            imageUrl: rawPiece.imageUrl || null,
-            unite: rawPiece.unite?.id ? { id: Number(rawPiece.unite.id) } : null,
-            categorie: rawPiece.categorie?.id ? { id: Number(rawPiece.categorie.id) } : null,
-            description: String(rawPiece.description || '').trim()
-        };
-
-        pieceToSave.produitsAssocies = (rawPiece.produitsAssocies || [])
-            .map(p => ({
-                id: Number(p.id),
-                code: p.code,
-                designation: p.designation
-            }));
-
-        if (pieceToSave.imageUrl && pieceToSave.imageUrl.includes('http://localhost:8081')) {
-            pieceToSave.imageUrl = pieceToSave.imageUrl.replace('http://localhost:8081', '');
-        }
-
-        const seenIds = new Set<number>();
-        pieceToSave.details = [];
-
-        if (rawPiece.details) {
-            rawPiece.details.forEach(d => {
-                const cleanAttributs: any = {};
-                if (d.attributs) {
-                    Object.entries(d.attributs).forEach(([key, val]) => {
-                        if (!key.startsWith('_') && val !== null && val !== undefined) {
-                            cleanAttributs[key] = val;
-                        }
-                    });
-                }
-
-                const detailObj: any = {
-                    codeBarre: d.codeBarre?.trim() || null,
-                    attributs: cleanAttributs,
-                    prixVente: d.prixVente != null ? Number(d.prixVente) : 0,
-                    tauxTVA: d.tauxTVA != null ? Number(d.tauxTVA) : 0
-                };
-
-                if (d.id) {
-                    const idNum = Number(d.id);
-                    if (seenIds.has(idNum)) return;
-                    seenIds.add(idNum);
-                    detailObj.id = idNum;
-                }
-
-                pieceToSave.details.push(detailObj);
-            });
-        }
-
-        console.log('[ANTIGRAVITY] FINAL VALIDATED PAYLOAD:', JSON.stringify(pieceToSave));
-        this.save.emit({ piece: pieceToSave, file: this.selectedFile });
+    isVariantCustomized(variant: PieceDetachee): boolean {
+        const hasDiffSeuil = variant.seuilMinimum !== this.newPiece.seuilMinimum || variant.seuilMaximum !== this.newPiece.seuilMaximum;
+        const hasDiffProd = (variant.produitsAssocies?.length || 0) !== (this.newPiece.produitsAssocies?.length || 0);
+        const hasDiffImg = variant.imageUrl && variant.imageUrl !== this.newPiece.imageUrl;
+        return !!(hasDiffSeuil || hasDiffImg || hasDiffProd);
     }
 
     private handleBackendError(error: string): void {
         const match = error.match(/Le code barre '(.+?)'/);
         if (match && match[1]) {
-            this.backendBarcodeErrors.add(match[1]);
+            this.backendBarcodeErrors.add(match[1].trim());
         }
     }
 
-    checkDuplicateBarcodes(): void {
-        this.barcodeDuplicates.clear();
-        if (!this.newPiece.details) return;
+    champToRemoveFrom: Parametre | null = null;
+    optionToRemove: string | null = null;
+    showConfirmModal = false;
 
-        const codes = this.newPiece.details.map(d => d.codeBarre?.trim()).filter(c => !!c);
-        const counts: { [key: string]: number[] } = {};
-
-        this.newPiece.details.forEach((detail, index) => {
-            const code = detail.codeBarre?.trim();
-            if (code) {
-                if (!counts[code]) counts[code] = [];
-                counts[code].push(index);
-            }
-        });
-
-        Object.values(counts).forEach(indices => {
-            if (indices.length > 1) {
-                indices.forEach(idx => this.barcodeDuplicates.add(idx));
-            }
-        });
-        this.cdr.detectChanges();
-    }
-
-    hasEmptyDetailBarcodes(): boolean {
-        if (!this.newPiece.details || this.newPiece.details.length === 0) return false;
-        return this.newPiece.details.some(d => !d.codeBarre || d.codeBarre.trim() === '');
-    }
-
-    hasEmptyDetailPrices(): boolean {
-        if (!this.newPiece.details || this.newPiece.details.length === 0) return false;
-        return this.newPiece.details.some(d => d.prixVente === null || d.prixVente === undefined);
-    }
-
-    onCancel(): void {
-        this.cancel.emit();
-    }
-
-    addVariantOption(champ: any, input: HTMLInputElement): void {
-        const value = input.value.trim();
-        if (!value) return;
-
-        const optionsKey = `_options_${champ.nom}`;
-        if (!this.newPiece.details![0].attributs[optionsKey]) {
-            this.newPiece.details![0].attributs[optionsKey] = [];
-        }
-
-        const localOptions = this.newPiece.details![0].attributs[optionsKey];
-        if (localOptions.includes(value)) {
-            input.value = '';
-            return;
-        }
-
-        localOptions.push(value);
-        input.value = '';
-        this.generateVariations();
-        this.cdr.detectChanges();
-    }
-
-    openConfirmRemove(champ: any, option: string, event: MouseEvent): void {
+    confirmRemoveOption(champ: Parametre, option: string, event: Event): void {
         event.stopPropagation();
-        console.log('Opening confirm delete for:', option, 'in champ:', champ.nom);
-
         this.champToRemoveFrom = champ;
         this.optionToRemove = option;
         this.showConfirmModal = true;
         this.cdr.detectChanges();
     }
 
-    cancelRemove(): void {
+    onConfirmDelete(): void {
+        if (this.champToRemoveFrom && this.optionToRemove) {
+            this.removeVariantOption(this.champToRemoveFrom, this.optionToRemove);
+        }
+        this.cancelDelete();
+    }
+
+    cancelDelete(): void {
         this.showConfirmModal = false;
         this.champToRemoveFrom = null;
-        this.optionToRemove = '';
+        this.optionToRemove = null;
         this.cdr.detectChanges();
-    }
-
-    confirmRemoveOption(): void {
-        if (this.champToRemoveFrom && this.optionToRemove) {
-            console.log('Confirming delete of:', this.optionToRemove);
-            const optionsKey = `_options_${this.champToRemoveFrom.nom}`;
-            const localOptions = this.newPiece.details![0].attributs[optionsKey];
-
-            this.newPiece.details![0].attributs[optionsKey] = localOptions.filter((o: string) => o !== this.optionToRemove);
-
-            if (this.newPiece.details![0].attributs[this.champToRemoveFrom.nom] === this.optionToRemove) {
-                this.newPiece.details![0].attributs[this.champToRemoveFrom.nom] = '';
-            }
-            this.generateVariations();
-            this.cdr.detectChanges();
-        }
-        this.cancelRemove();
-    }
-
-    hasVisibleFields(isVariant: boolean): boolean {
-        if (!this.parametres?.champsPersonnalises) return false;
-        return this.parametres.champsPersonnalises.some(c => c.actif && c.variante === isVariant);
-    }
-
-    getVariantLabel(detail: any): string {
-        const attributes = detail.attributs || {};
-
-        const labelParts: string[] = [];
-        for (const [key, value] of Object.entries(attributes)) {
-            if (key.startsWith('_')) continue;
-            if (value === null || value === undefined || String(value).trim() === '') continue;
-
-            labelParts.push(`${key}: ${value}`);
-        }
-
-        const label = labelParts.join(' | ');
-        return label || 'Standard';
-    }
-
-    generateVariations(): void {
-        if (!this.parametres?.champsPersonnalises || !this.newPiece.details || !this.newPiece.details.length) return;
-
-        const templateDetail = this.newPiece.details[0];
-        const variantChamps = this.parametres.champsPersonnalises.filter(c => c.variante && c.actif);
-
-        if (variantChamps.length === 0) return;
-
-        const baseAttributs: { [key: string]: any } = {};
-        Object.entries(templateDetail.attributs).forEach(([key, value]) => {
-            const isVariant = variantChamps.some(c => c.nom === key);
-            if (!isVariant || key.startsWith('_')) {
-                baseAttributs[key] = value;
-            }
-        });
-
-        const variantOptions: { champ: string, options: string[] }[] = [];
-        variantChamps.forEach(champ => {
-            const options = this.getLocalOptions(champ);
-            if (options.length > 0) {
-                variantOptions.push({ champ: champ.nom, options });
-            }
-        });
-
-        if (variantOptions.length === 0) {
-            this.newPiece.details = [this.newPiece.details[0]];
-            return;
-        }
-
-        let combinations: { [key: string]: any }[] = [{ ...baseAttributs }];
-
-        variantOptions.forEach(variant => {
-            const nextCombinations: { [key: string]: any }[] = [];
-            combinations.forEach(combo => {
-                variant.options.forEach(opt => {
-                    nextCombinations.push({ ...combo, [variant.champ]: opt });
-                });
-            });
-            combinations = nextCombinations;
-        });
-
-        const existingDetails = [...this.newPiece.details];
-
-        this.newPiece.details = combinations.map((combo, index) => {
-            // Find an exact match first
-            let exactMatchIndex = existingDetails.findIndex(d => {
-                const targetAttrs = d.attributs || {};
-                return variantOptions.every(v => String(targetAttrs[v.champ]) === String(combo[v.champ]));
-            });
-
-            if (exactMatchIndex > -1) {
-                const existing = existingDetails.splice(exactMatchIndex, 1)[0];
-                return {
-                    id: existing.id,
-                    codeBarre: existing.codeBarre,
-                    prixVente: existing.prixVente,
-                    tauxTVA: existing.tauxTVA,
-                    attributs: { ...combo, ...this.extractOptions(existing.attributs) }
-                };
-            }
-
-            // Find a partial match just to inherit prices/taxes, NOT IDs or Barcodes to prevent swapping issues
-            let partialMatchIndex = existingDetails.findIndex(d => {
-                const targetAttrs = d.attributs || {};
-                let matchScore = 0;
-                variantOptions.forEach(v => {
-                    const existingVal = targetAttrs[v.champ];
-                    if (String(existingVal) === String(combo[v.champ])) matchScore++;
-                });
-                return matchScore > 0; // if it shares at least one trait we can use its price
-            });
-
-            let inheritedPrice = templateDetail.prixVente || 0;
-            let inheritedTax = templateDetail.tauxTVA || 0;
-
-            if (partialMatchIndex > -1) {
-                inheritedPrice = existingDetails[partialMatchIndex].prixVente || 0;
-                inheritedTax = existingDetails[partialMatchIndex].tauxTVA || 0;
-            }
-
-            return {
-                attributs: { ...combo, ...this.extractOptions(templateDetail.attributs) },
-                codeBarre: '',
-                prixVente: inheritedPrice,
-                tauxTVA: inheritedTax
-            };
-        });
-
-        Object.entries(baseAttributs).forEach(([key, value]) => {
-            if (key.startsWith('_')) {
-                this.newPiece.details![0].attributs[key] = value;
-            }
-        });
-    }
-
-    private extractOptions(attributes: any): any {
-        const ops: any = {};
-        Object.keys(attributes || {}).forEach(k => {
-            if (k.startsWith('_options_')) ops[k] = attributes[k];
-        });
-        return ops;
-    }
-
-    syncComplementaryAttributes(): void {
-        if (!this.newPiece.details || this.newPiece.details.length <= 1) return;
-        const template = this.newPiece.details[0].attributs;
-
-        const variantChamps = this.parametres?.champsPersonnalises?.filter(c => c.variante && c.actif).map(c => c.nom) || [];
-
-        const updates: any = {};
-        Object.keys(template).forEach(k => {
-            if (!k.startsWith('_') && !variantChamps.includes(k)) {
-                updates[k] = template[k];
-            }
-        });
-
-        for (let i = 1; i < this.newPiece.details.length; i++) {
-            this.newPiece.details[i].attributs = {
-                ...this.newPiece.details[i].attributs,
-                ...updates
-            };
-        }
-        this.cdr.detectChanges();
-    }
-
-    compareById(item1: any, item2: any): boolean {
-        return item1 && item2 ? item1.id === item2.id : item1 === item2;
-    }
-
-
-
-    copyVenteToAll(): void {
-        if (!this.newPiece.details || this.newPiece.details.length <= 1) return;
-        const value = this.newPiece.details[0].prixVente || 0;
-        this.newPiece.details.forEach((d, i) => { if (i > 0) d.prixVente = value; });
-        this.cdr.detectChanges();
-    }
-
-    copyTaxToAll(): void {
-        if (!this.newPiece.details || this.newPiece.details.length <= 1) return;
-        const value = this.newPiece.details[0].tauxTVA || 0;
-        this.newPiece.details.forEach((d, i) => { if (i > 0) d.tauxTVA = value; });
-        this.cdr.detectChanges();
-    }
-
-    copyBarcodesToAll(): void {
-        if (!this.newPiece.details || this.newPiece.details.length <= 1) return;
-        const base = this.newPiece.details[0].codeBarre || '';
-        if (!base) return;
-
-        this.newPiece.details.forEach((d, i) => {
-            if (i > 0 && !d.id) {
-                d.codeBarre = base + i;
-            }
-        });
-        this.cdr.detectChanges();
-    }
-
-    generateVariantSKU(index: number): void {
-        if (!this.newPiece.details || !this.newPiece.details[index]) return;
-        if (this.newPiece.details[index].id) return; // Do not overwrite saved barcodes
-
-        const prefix = "300";
-        const randomPart = Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
-        const barcode = prefix + randomPart + index;
-        this.newPiece.details[index].codeBarre = barcode.substring(0, 13);
-        this.cdr.detectChanges();
-    }
-
-    removeVariant(index: number): void {
-        if (this.newPiece.details && this.newPiece.details[index]) {
-            // Au lieu de supprimer la ligne, on vide les champs pour éviter les erreurs de suppression en BD
-            this.newPiece.details[index].codeBarre = '';
-            this.newPiece.details[index].prixVente = 0;
-            this.newPiece.details[index].tauxTVA = 0;
-            this.cdr.detectChanges();
-        }
     }
 }

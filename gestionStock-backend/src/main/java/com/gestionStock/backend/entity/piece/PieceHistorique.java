@@ -2,6 +2,7 @@ package com.gestionStock.backend.entity.piece;
 
 import java.time.LocalDateTime;
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import lombok.*;
 
 import com.gestionStock.backend.entity.user.User;
@@ -18,6 +19,7 @@ public class PieceHistorique {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
+    @JsonBackReference("piece_historiques")
     @ManyToOne
     @JoinColumn(name = "piece_id")
     private PieceDetachee piece;

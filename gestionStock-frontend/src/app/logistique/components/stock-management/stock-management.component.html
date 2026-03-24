@@ -123,23 +123,37 @@
                     [class.low-stock-row]="stock.quantite < (stock.piece?.seuilMinimum || 0)">
                     <td class="checkbox-cell" (click)="$event.stopPropagation()"><input type="checkbox"></td>
                     <td *ngIf="isColumnVisible('designation')" class="designation-col">
-                        <div class="piece-info-cell">
-                            <span class="piece-name">{{ stock.piece?.designation || 'N/A' }}</span>
-                            <div *ngIf="stock.detailPiece?.attributs" class="piece-details-chip">
-                                <span *ngFor="let entry of stock.detailPiece.attributs | keyvalue" class="detail-item">
-                                    <span class="detail-key">{{ entry.key }}:</span> {{ entry.value }}
-                                </span>
+                        <div class="piece-name-with-img">
+                            <div class="piece-img-wrapper">
+                                <img [src]="getImageUrl(stock.piece?.imageUrl)" alt="Pièce"
+                                    class="piece-table-img">
+                            </div>
+                            <div class="piece-info-cell">
+                                <span class="piece-name">{{ stock.piece?.designation || 'N/A' }}</span>
+                                <div class="piece-details-tags">
+                                    <span class="piece-tag tag-category"
+                                        *ngIf="stock.piece?.categorie">{{ stock.piece!.categorie!.nom }}</span>
+                                    <span class="piece-tag tag-unit"
+                                        *ngIf="stock.piece?.unite">{{ stock.piece!.unite!.nom }}</span>
+                                    <ng-container *ngFor="let vp of stock.piece?.details">
+                                        <span class="piece-tag tag-attribute" *ngIf="vp.valeur && vp.valeur.trim() !== ''">
+                                            <span class="detail-key">{{ vp.parametre?.nom }}:</span> {{ vp.valeur }}
+                                        </span>
+                                    </ng-container>
+                                </div>
                             </div>
                         </div>
                     </td>
-                    <td *ngIf="isColumnVisible('reference')"><span class="code-badge">{{ stock.piece?.reference || 'N/A'
-                            }}</span></td>
+                    <td *ngIf="isColumnVisible('reference')">
+                        <span class="piece-tag tag-ref">{{ stock.piece?.reference || 'N/A' }}</span>
+                    </td>
                     <td *ngIf="isColumnVisible('quantite')">{{ stock.quantite }}</td>
                     <td *ngIf="isColumnVisible('type')">
                         <div class="status-cell">
-                            <span class="status-pill" [class]="'status-pill--' + getStockTypeClass(stock.type)">
+                            <span class="status-pill" [class]="'status-pill--' + getStockTypeClass(stock.type || '')">
                                 <span class="status-pill__dot"></span>
-                                <span class="status-pill__label">{{ (stock.type || '').split('_').join(' ') }}</span>
+                                <span class="status-pill__label">{{ (stock.type || 'INCONNU').split('_').join(' ')
+                                    }}</span>
                             </span>
                         </div>
                     </td>

@@ -7,19 +7,25 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
+import com.gestionStock.backend.entity.piece.PieceDetachee;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Entity
-@Table(uniqueConstraints = @UniqueConstraint(columnNames = { "stock_id", "mouvement_id" }))
 @Getter
 @Setter
-@ToString(exclude = { "stock", "mouvementStock" })
+@ToString(exclude = { "piece", "mouvementStock" })
 @EqualsAndHashCode(of = { "id" })
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class LigneMouvement {
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
@@ -29,9 +35,14 @@ public class LigneMouvement {
 	@JoinColumn(name = "mouvement_id", nullable = false)
 	private MouvementStock mouvementStock;
 
-	@ManyToOne
-	@JoinColumn(name = "stock_id", nullable = false)
-	private Stock stock;
+	@ManyToOne(cascade = { CascadeType.MERGE })
+	@JoinColumn(name = "piece_id", nullable = true)
+	private PieceDetachee piece;
+
+	@ManyToOne(cascade = { CascadeType.MERGE })
+	@JoinColumn(name = "detail_piece_id")
+	private com.gestionStock.backend.entity.piece.DetailPiece detailPiece;
+
 	private Integer quantite;
 	private Double prixHTVA;
 	private Double tauxTVA;

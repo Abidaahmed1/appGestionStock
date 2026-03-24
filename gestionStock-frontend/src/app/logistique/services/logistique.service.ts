@@ -34,12 +34,13 @@ export class LogistiqueService {
     }
 
 
-    getAllStocks(): Observable<Stock[]> {
-        return this.http.get<Stock[]>(`${this.baseUrl}/stocks`);
+    getAllStocks(): Observable<any[]> {
+        return this.http.get<any[]>(`${this.baseUrl}/pieces`);
     }
 
-    getStocksByType(type: TypeStock): Observable<Stock[]> {
-        return this.http.get<Stock[]>(`${this.baseUrl}/stocks/type/${type}`);
+    // Deprecated: stocks are now pieces
+    getStocksByType(type: any): Observable<any[]> {
+        return this.http.get<any[]>(`${this.baseUrl}/pieces`);
     }
 
 
@@ -47,8 +48,8 @@ export class LogistiqueService {
         return this.http.get<Stock[]>(`${this.baseUrl}/stocks/piece/${pieceId}`);
     }
 
-    getLowStockItems(): Observable<Stock[]> {
-        return this.http.get<Stock[]>(`${this.baseUrl}/stocks/low-stock`);
+    getLowStockItems(): Observable<any[]> {
+        return this.http.get<any[]>(`${this.baseUrl}/pieces/low-stock`);
     }
 
     createStock(stock: Stock): Observable<Stock> {
@@ -59,9 +60,8 @@ export class LogistiqueService {
         return this.http.put<Stock>(`${this.baseUrl}/stocks/${id}`, stock);
     }
 
-    updateStockQuantity(id: number, quantity: number): Observable<Stock> {
-        const params = new HttpParams().set('quantity', quantity.toString());
-        return this.http.patch<Stock>(`${this.baseUrl}/stocks/${id}/quantity`, null, { params });
+    updateStockQuantity(id: number, quantity: number): Observable<any> {
+        return this.http.patch<any>(`${this.baseUrl}/pieces/${id}/quantity?quantity=${quantity}`, {});
     }
 
     deleteStock(id: number): Observable<void> {

@@ -367,8 +367,8 @@
                     <div class="associated-card-info">
                         <code class="associated-card-code">{{ piece.reference }}</code>
                         <h4 class="associated-card-name">{{ piece.designation }}</h4>
-                        <div class="associated-card-price" *ngIf="piece.details && piece.details.length > 0">
-                            <span class="price-val">{{ (piece.details[0].prixVente || 0) | number:'1.2-2' }}</span>
+                        <div class="associated-card-price">
+                            <span class="price-val">{{ (piece.prixVente || 0) | number:'1.2-2' }}</span>
                             <span class="price-curr">{{ entreprise?.devise?.symbole || 'DT' }}</span>
                             <span class="price-unit" *ngIf="piece.unite">/ {{ piece.unite.nom }}</span>
                         </div>

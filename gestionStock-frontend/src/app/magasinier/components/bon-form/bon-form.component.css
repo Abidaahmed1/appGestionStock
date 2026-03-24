@@ -445,6 +445,55 @@
     align-items: center;
 }
 
+.search-input-wrapper.has-selection .dropdown-arrow {
+    display: none;
+}
+
+.selected-piece-display {
+    width: 100%;
+    border: 1px solid transparent;
+    background: #f8fafc;
+    padding: 6px 8px;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    cursor: pointer;
+    min-height: 34px;
+}
+
+.selected-piece-display:hover {
+    background: #f1f5f9;
+}
+
+.selected-piece-display.readonly-display {
+    background-color: transparent;
+    cursor: default;
+    padding: 2px 0;
+}
+
+.piece-root-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #1e293b;
+}
+
+.piece-variants {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.variant-chip {
+    background: #e0f2fe;
+    color: #0369a1;
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
 .dropdown-arrow {
     position: absolute;
     right: 8px;

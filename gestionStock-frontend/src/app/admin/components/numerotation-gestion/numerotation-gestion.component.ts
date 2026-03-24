@@ -42,7 +42,7 @@ export class NumerotationGestionComponent implements OnInit {
 
   loadData(): void {
     this.loading = true;
-    this.parametreService.getCurrentParametre().subscribe({
+    this.parametreService.getMasterParametre().subscribe({
       next: (param) => {
         this.parametre = param;
         this.configs = param.numerotationConfigs || [];
@@ -51,7 +51,10 @@ export class NumerotationGestionComponent implements OnInit {
       },
       error: (err) => {
         console.error('Error loading numbering configs', err);
+        // Si aucun paramètre n'existe, on ne peut pas configurer la numérotation via cette route
+        // Il faudrait d'abord créer au moins un attribut
         this.loading = false;
+        this.showNotification('Veuillez d\'abord configurer les attributs des pièces.', 'alert');
       }
     });
   }

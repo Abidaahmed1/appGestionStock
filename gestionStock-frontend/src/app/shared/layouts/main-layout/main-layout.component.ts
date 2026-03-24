@@ -62,7 +62,7 @@ export class MainLayoutComponent implements OnInit {
         const menu: any[] = [];
         const roles = this.roles();
         const isAdmin = this.hasRole('ROLE_ADMINISTRATEUR');
-        
+
         // 0. Dashboard - For everyone
         menu.push({
             title: null,
@@ -79,6 +79,7 @@ export class MainLayoutComponent implements OnInit {
                 icon: 'logistique',
                 items: [
                     { label: 'Fournisseurs', link: '/logistique/fournisseurs', icon: 'users' },
+                    { label: 'Catalogue', link: '/magasinier/catalogue', icon: 'grid' },
                     { label: 'Commandes', link: '/logistique/commandes', icon: 'shopping-bag' },
                     { label: 'Suivi des prix', link: '/logistique/tracking', icon: 'trending-up' }
                 ]
@@ -88,13 +89,12 @@ export class MainLayoutComponent implements OnInit {
         // 2. Catalogue & Stocks - Magasinier + Admin
         if (this.hasRole('ROLE_MAGASINIER') || isAdmin) {
             menu.push({
-                title: 'CATALOGUE & STOCKS',
+                title: 'CATALOGUE',
                 icon: 'catalogue',
                 items: [
                     { label: 'Catalogue Général', link: '/magasinier/catalogue', icon: 'grid' },
                     { label: 'Produits finis', link: '/magasinier/produits', icon: 'package' },
                     { label: 'Pièces détachées', link: '/magasinier/pieces', icon: 'puzzle' },
-                    { label: 'Gestion Stocks', link: '/magasinier/stocks', icon: 'rotate-ccw' },
                     { label: 'Gestion Bons', link: '/magasinier/bons', icon: 'file-text' }
                 ]
             });
@@ -109,12 +109,12 @@ export class MainLayoutComponent implements OnInit {
                     { label: 'Archives Bons', link: '/logistique/bons-history', icon: 'history' }
                 ]
             });
-            
+
             // If it's JUST an auditor, they might need these links here
             if (this.hasRole('ROLE_AUDITEUR') && !isAdmin && !this.hasRole('ROLE_RESPONSABLE_LOGISTIQUE')) {
-                 const auditItems = menu[menu.length-1].items;
-                 auditItems.push({ label: 'Commandes', link: '/logistique/commandes', icon: 'shopping-bag' });
-                 auditItems.push({ label: 'Catalogue Général', link: '/magasinier/catalogue', icon: 'grid' });
+                const auditItems = menu[menu.length - 1].items;
+                auditItems.push({ label: 'Commandes', link: '/logistique/commandes', icon: 'shopping-bag' });
+                auditItems.push({ label: 'Catalogue Général', link: '/magasinier/catalogue', icon: 'grid' });
             }
         }
 
@@ -134,7 +134,7 @@ export class MainLayoutComponent implements OnInit {
     }
 
     private loadEntreprise() {
-        // Souscription aux changements d'entreprise en temps réel
+        // Souscription aux changements d'entreprise en temps rÃ©el
         this.entrepriseService.currentEntreprise$.subscribe(data => {
             if (data) {
                 this.entreprise.set(data);
@@ -148,9 +148,11 @@ export class MainLayoutComponent implements OnInit {
     }
 
     hasRole(role: string): boolean {
-        const normalize = (r: string) => r.toUpperCase().replace('ROLE_', '').replace(/\s+/g, '_');
+        const userRoles = this.roles();
+        if (!userRoles || userRoles.length === 0) return false;
+        const normalize = (r: string) => (r || '').toUpperCase().replace('ROLE_', '').replace(/\s+/g, '_');
         const targetRole = normalize(role);
-        return this.roles().some(r => normalize(r) === targetRole);
+        return userRoles.some(r => normalize(r) === targetRole);
     }
 
     getDisplayRole(): string {

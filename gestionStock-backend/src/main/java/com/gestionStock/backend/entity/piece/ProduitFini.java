@@ -8,17 +8,18 @@ import lombok.*;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 
 import com.gestionStock.backend.entity.entreprise.Entreprise;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Entity
 @Getter
 @Setter
-@EqualsAndHashCode(of = {"id", "code", "entreprise"})
+@EqualsAndHashCode(of = { "id", "code", "entreprise" })
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class ProduitFini {
-	public ProduitFini() {
-	}
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
@@ -29,19 +30,23 @@ public class ProduitFini {
 	private Entreprise entreprise;
 
 	@NotBlank(message = "Le code produit est obligatoire")
-	@Pattern(regexp = "^PF-.*", message = "Le code du produit fini doit commencer par PF-")
-	//@Column(unique = true, nullable = false)
-	@Column( nullable = false)
+	@Column(nullable = false)
 	private String code;
 
 	@NotBlank(message = "La désignation est obligatoire")
 	private String designation;
 	@Column(nullable = false)
-	private boolean estArchivee = false;
+	@Builder.Default
+	private Boolean estArchivee = false;
 
 	private String imageUrl;
 
 	@JsonIgnoreProperties({ "produitsAssocies", "stock", "details" })
 	@ManyToMany(cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+	@Builder.Default
 	private Set<PieceDetachee> pieces = new HashSet<>();
+
+	public Boolean isEstArchivee() {
+		return this.estArchivee;
+	}
 }

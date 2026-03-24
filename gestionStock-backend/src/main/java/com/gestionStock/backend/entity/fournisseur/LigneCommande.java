@@ -37,7 +37,9 @@ public class LigneCommande {
 	@Min(value = 1, message = "La quantité doit être au moins de 1")
 	private Integer qteCmd;
 
+	@Min(value = 0, message = "Le taux de taxe ne peut pas être négatif")
 	private Double taxe = 19.0;
+	@Min(value = 0, message = "Le taux de remise ne peut pas être négatif")
 	private Double remise = 0.0;
 	@ManyToOne
 	@JoinColumn(name = "piece_id", nullable = false)

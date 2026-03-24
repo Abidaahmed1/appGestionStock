@@ -171,16 +171,16 @@ export class ProduitListComponent implements OnInit {
         this.magasinierService.uploadProduitImage(id, formData).subscribe({
             next: (updatedProduit) => {
                 this.lastUpdateTimestamp = Date.now();
-                
+
                 // On met à jour l'objet local SANS recharger toute la liste
                 if (index !== -1) {
                     this.produits[index] = { ...updatedProduit };
                 }
-                
+
                 if (this.selectedProduit?.id === id) {
                     this.selectedProduit = updatedProduit;
                 }
-                
+
                 this.notify(successMessage, 'success');
                 this.cdr.detectChanges();
             },
@@ -267,14 +267,14 @@ export class ProduitListComponent implements OnInit {
                 this.cdr.detectChanges();
             }
         }
-        
+
         // Fermeture instantanée pour libérer l'utilisateur
         this.closeCreateModal();
 
         // --- PHASE 2 : EXÉCUTION RÉELLE (PARALLÈLE POUR UPDATE) ---
         if (this.selectedProduit && this.selectedProduit.id) {
             const prodId = this.selectedProduit.id;
-            
+
             // On lance l'upload de l'image SANS attendre la mise à jour des données
             if (this.selectedFile) {
                 this.doUpload(this.selectedFile, prodId, 'Image mise à jour');
@@ -409,9 +409,10 @@ export class ProduitListComponent implements OnInit {
                 const matchesBasic = (p.designation || '').toLowerCase().includes(term) ||
                     (p.code || '').toLowerCase().includes(term);
                 const matchesPiece = p.pieces?.some(piece =>
-                    piece.designation.toLowerCase().includes(term) ||
-                    piece.reference.toLowerCase().includes(term) ||
-                    (piece.details?.some(d => (d.codeBarre || '').toLowerCase().includes(term)) ?? false)
+                    (piece.designation || '').toLowerCase().includes(term) ||
+                    (piece.reference || '').toLowerCase().includes(term) ||
+                    (piece.codeBarre || '').toLowerCase().includes(term) ||
+                    (piece.variations?.some(v => (v.codeBarre || '').toLowerCase().includes(term)) ?? false)
                 );
                 return matchesBasic || matchesPiece;
             }
@@ -419,9 +420,10 @@ export class ProduitListComponent implements OnInit {
             if (this.searchCategory === 'designation') return (p.designation || '').toLowerCase().includes(term);
             if (this.searchCategory === 'piece') {
                 return p.pieces?.some(piece =>
-                    piece.designation.toLowerCase().includes(term) ||
-                    piece.reference.toLowerCase().includes(term) ||
-                    (piece.details?.some(d => (d.codeBarre || '').toLowerCase().includes(term)) ?? false)
+                    (piece.designation || '').toLowerCase().includes(term) ||
+                    (piece.reference || '').toLowerCase().includes(term) ||
+                    (piece.codeBarre || '').toLowerCase().includes(term) ||
+                    (piece.variations?.some(v => (v.codeBarre || '').toLowerCase().includes(term)) ?? false)
                 );
             }
             return true;
@@ -444,7 +446,8 @@ export class ProduitListComponent implements OnInit {
             pieces = pieces.filter(p =>
                 (p.designation || '').toLowerCase().includes(term) ||
                 (p.reference || '').toLowerCase().includes(term) ||
-                p.details?.some(d => (d.codeBarre || '').toLowerCase().includes(term))
+                (p.codeBarre || '').toLowerCase().includes(term) ||
+                (p.variations?.some(v => (v.codeBarre || '').toLowerCase().includes(term)) ?? false)
             );
         }
 

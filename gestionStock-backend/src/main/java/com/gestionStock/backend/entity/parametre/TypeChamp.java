@@ -11,7 +11,8 @@ public enum TypeChamp {
     SELECT("Liste déroulante"),
     EMAIL("Email"),
     URL("URL"),
-    TEXTAREA("Zone de texte");
+    TEXTAREA("Zone de texte"),
+    LISTE("Liste de valeurs");
 
     private final String label;
 

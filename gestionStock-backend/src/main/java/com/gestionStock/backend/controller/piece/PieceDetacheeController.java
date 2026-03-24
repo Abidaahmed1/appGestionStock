@@ -24,7 +24,23 @@ public class PieceDetacheeController {
     @GetMapping
     @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR', 'ADMINISTRATEUR')")
     public List<PieceDetachee> getAll() {
-        return pieceService.findByActive();
+        List<PieceDetachee> pieces = pieceService.findByActive();
+        for (PieceDetachee p : pieces) {
+            // Force initialize collections for frontend visibility
+            if (p.getDetails() != null) {
+                p.getDetails().size();
+            }
+            if (p.getProduitsAssocies() != null) {
+                p.getProduitsAssocies().size();
+            }
+        }
+        return pieces;
+    }
+
+    @GetMapping("/low-stock")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR', 'ADMINISTRATEUR')")
+    public List<PieceDetachee> getLowStock() {
+        return pieceService.findLowStockPieces();
     }
 
     @PostMapping("/upload-image-front/{id}")
@@ -56,6 +72,13 @@ public class PieceDetacheeController {
     public ResponseEntity<PieceDetachee> create(@Valid @RequestBody PieceDetachee piece) {
         PieceDetachee saved = pieceService.addPiece(piece);
         return ResponseEntity.ok(saved);
+    }
+
+    @PatchMapping("/{id}/quantity")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR', 'RESPONSABLE_LOGISTIQUE')")
+    public ResponseEntity<PieceDetachee> updateQuantity(@PathVariable Long id,
+            @RequestParam("quantity") Integer quantity) {
+        return ResponseEntity.ok(pieceService.updateQuantity(id, quantity));
     }
 
     @PutMapping("/{id}")

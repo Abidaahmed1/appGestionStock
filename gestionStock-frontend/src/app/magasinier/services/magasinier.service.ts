@@ -30,6 +30,10 @@ export class MagasinierService {
     deletePiece(id: number): Observable<void> {
         return this.http.delete<void>(`${this.baseUrl}/pieces/${id}`);
     }
+ 
+    updatePieceQuantity(id: number, quantity: number): Observable<PieceDetachee> {
+        return this.http.patch<PieceDetachee>(`${this.baseUrl}/pieces/${id}/quantity?quantity=${quantity}`, {});
+    }
 
     getProduits(): Observable<ProduitFini[]> {
         return this.http.get<ProduitFini[]>(`${this.baseUrl}/produits`);
@@ -72,9 +76,7 @@ export class MagasinierService {
         return this.http.post<Categorie>(`${this.baseUrl}/categories`, categorie);
     }
 
-    getParametresByEntreprise(entrepriseId: number): Observable<Parametre> {
-        return this.http.get<Parametre>(`${this.baseUrl}/parametres/entreprise/${entrepriseId}`);
-    }
+
 
     getAllParametres(): Observable<Parametre[]> {
         return this.http.get<Parametre[]>(`${this.baseUrl}/parametres`);

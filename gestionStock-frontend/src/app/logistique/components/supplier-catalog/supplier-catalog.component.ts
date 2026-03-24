@@ -199,20 +199,18 @@ export class SupplierCatalogComponent implements OnInit, OnChanges, OnDestroy {
     // get filteredPieces() { ... }
 
     getVariantLabel(detail: any): string {
-        if (!detail || !detail.attributs) return '';
-        const attributes = detail.attributs || {};
-        return Object.entries(attributes)
-            .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && String(value).trim() !== '')
-            .map(([_, value]) => value)
+        if (!detail || !detail.valeursParametres) return '';
+        return (detail.valeursParametres || [])
+            .filter((vp: any) => vp.parametre?.variante && vp.valeur)
+            .map((vp: any) => vp.valeur)
             .join(' - ');
     }
 
     getVariantAttributes(detail: any): string[] {
-        if (!detail || !detail.attributs) return [];
-        const attributes = detail.attributs || {};
-        return Object.entries(attributes)
-            .filter(([key, value]) => !key.startsWith('_') && value !== null && value !== '' && String(value).trim() !== '')
-            .map(([key, value]) => `${key}: ${value}`);
+        if (!detail || !detail.valeursParametres) return [];
+        return (detail.valeursParametres || [])
+            .filter((vp: any) => vp.valeur)
+            .map((vp: any) => `${vp.parametre?.nom || 'Attribut'}: ${vp.valeur}`);
     }
 
     getPieceDisplayCode(p: any): string {

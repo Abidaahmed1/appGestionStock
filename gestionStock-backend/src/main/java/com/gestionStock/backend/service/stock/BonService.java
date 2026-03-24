@@ -128,22 +128,13 @@ public class BonService {
     }
 
     public Bon save(Bon bon) {
+        if (bon.getArchived() == null) {
+            bon.setArchived(false);
+        }
         boolean isNew = bon.getId() == null || bon.getId().equals(0L);
 
         if (isNew) {
             bon.setId(null);
-            if (bon.getNumeroBon() == null || bon.getNumeroBon().isEmpty() || "0".equals(bon.getNumeroBon())
-                    || "AUTO".equalsIgnoreCase(bon.getNumeroBon())) {
-                synchronized (NUMERO_BON_LOCK) {
-                    bon.setNumeroBon(numerotationService.generateNextNumber(getNumerotationModule(bon.getTypeBon())));
-                }
-            } else {
-                numerotationService.validateReference(getNumerotationModule(bon.getTypeBon()), bon.getNumeroBon());
-                if (bonRepo.existsByNumeroBon(bon.getNumeroBon())) {
-                    throw new IllegalStateException("Un bon avec ce numéro (" + bon.getNumeroBon() + ") existe déjà");
-                }
-            }
-
             if (bon.getDate() == null) {
                 bon.setDate(LocalDate.now());
             }
@@ -179,11 +170,16 @@ public class BonService {
             } catch (Exception e) {
                 System.err.println("Could not set creator/entreprise for Bon: " + e.getMessage());
             }
+
+            // Fallback for entreprise if still null
+            if (bon.getEntreprise() == null) {
+                bon.setEntreprise(userService.getCurrentUserEntreprise());
+            }
         } else {
             Bon existing = getById(bon.getId());
             if (bon.getNumeroBon() != null && !existing.getNumeroBon().equals(bon.getNumeroBon())) {
                 numerotationService.validateReference(getNumerotationModule(bon.getTypeBon()), bon.getNumeroBon());
-                if (bonRepo.existsByNumeroBon(bon.getNumeroBon())) {
+                if (bonRepo.existsByNumeroBonAndEntreprise(bon.getNumeroBon(), existing.getEntreprise())) {
                     throw new IllegalStateException("Un autre bon utilise déjà ce numéro (" + bon.getNumeroBon() + ")");
                 }
             }
@@ -196,38 +192,54 @@ public class BonService {
                 for (com.gestionStock.backend.entity.Stock.LigneMouvement ligne : mvt.getLigneMouvement()) {
                     ligne.setMouvementStock(mvt);
 
-                    // Resolve stock: replace the detached/partial Stock with a managed entity
-                    if (ligne.getStock() != null && ligne.getStock().getId() != null) {
-                        com.gestionStock.backend.entity.Stock.Stock managedStock = mouvementService
-                                .resolveStock(ligne.getStock());
-                        if (managedStock != null) {
-                            ligne.setStock(managedStock);
+                    // Resolve piece: replace the detached/partial Piece with a managed entity
+                    if (ligne.getPiece() != null) {
+                        com.gestionStock.backend.entity.piece.PieceDetachee managedPiece = mouvementService
+                                .resolvePiece(ligne.getPiece());
+                        if (managedPiece != null) {
+                            ligne.setPiece(managedPiece);
                         }
                     }
                 }
+
+                // CRITICAL: Update stock quantities BEFORE the save loop.
+                // This ensures all lines point to PERSISTED Stock entities so that bonRepo.save
+                // won't complain about transient Stock objects.
+                mouvementService.updateStockForMouvement(mvt);
             }
         }
 
         Bon savedBon = null;
         int maxAttempts = 3;
         for (int i = 0; i < maxAttempts; i++) {
+            if (isNew) {
+                if (bon.getNumeroBon() == null || bon.getNumeroBon().isEmpty() || "0".equals(bon.getNumeroBon())
+                        || "AUTO".equalsIgnoreCase(bon.getNumeroBon()) || i > 0) {
+                    synchronized (NUMERO_BON_LOCK) {
+                        bon.setNumeroBon(
+                                numerotationService.generateNextNumber(getNumerotationModule(bon.getTypeBon())));
+                    }
+                } else if (i == 0) {
+                    numerotationService.validateReference(getNumerotationModule(bon.getTypeBon()), bon.getNumeroBon());
+                    if (bonRepo.existsByNumeroBonAndEntreprise(bon.getNumeroBon(), bon.getEntreprise())) {
+                        throw new IllegalStateException(
+                                "Un bon avec ce numéro (" + bon.getNumeroBon() + ") existe déjà");
+                    }
+                }
+            }
+
             try {
                 savedBon = bonRepo.save(bon);
                 break;
             } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                System.err.println("[ANTIGRAVITY] Save attempt " + (i + 1) + " failed: " + e.getMessage());
                 if (i == maxAttempts - 1)
                     throw e;
-                // Force a new number generation for next attempt
-                if (isNew) {
-                    bon.setNumeroBon(null);
-                } else {
-                    throw e;
-                }
-            }
-        }
 
-        if (savedBon != null && savedBon.getMouvement() != null) {
-            mouvementService.updateStockForMouvement(savedBon.getMouvement());
+                // If number was fixed but still violated, it might be due to a race condition
+                // in numbering table
+                // or parallel request from same user. We retry.
+            }
         }
 
         return savedBon;
@@ -237,7 +249,7 @@ public class BonService {
         Bon existing = getById(id);
 
         if (!existing.getNumeroBon().equals(bon.getNumeroBon()) &&
-                bonRepo.existsByNumeroBon(bon.getNumeroBon())) {
+                bonRepo.existsByNumeroBonAndEntreprise(bon.getNumeroBon(), existing.getEntreprise())) {
             throw new IllegalStateException("Un autre bon utilise déjà ce numéro");
         }
 

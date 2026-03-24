@@ -33,6 +33,8 @@ export class StockManagementComponent implements OnInit {
     filterMinQty: number | null = null;
     filterMaxQty: number | null = null;
 
+    private imageCache = new Map<string, string>();
+
     columns = [
         { key: 'designation', label: 'Pièce', visible: true, canToggle: false },
         { key: 'reference', label: 'Référence', visible: false, canToggle: true },
@@ -92,15 +94,28 @@ export class StockManagementComponent implements OnInit {
     }
 
     loadStocks(): void {
-        this.logistiqueService.getAllStocks().subscribe({
+        this.magasinierService.getPieces().subscribe({
             next: (data) => {
-                this.stocks = data || [];
+                // Map pieces to Stock compatible structures for the view
+                this.stocks = data.map(p => ({
+                    id: p.id,
+                    piece: p,
+                    quantite: p.quantite || 0,
+                    type: this.calculateStockStatus(p)
+                })) as any[];
                 this.cdr.detectChanges();
             },
             error: () => {
                 this.notify('Erreur lors du chargement des stocks', 'error');
             }
         });
+    }
+
+    private calculateStockStatus(p: any): string {
+        const qty = p.quantite || 0;
+        if (qty <= 0) return 'RUPTURE_STOCK';
+        if (qty < (p.seuilMinimum || 0)) return 'EN_REAPPROVISIONNEMENT';
+        return 'DISPONIBLE';
     }
 
 
@@ -144,14 +159,14 @@ export class StockManagementComponent implements OnInit {
     }
 
     deleteStock(id: number): void {
-        this.logistiqueService.deleteStock(id).subscribe({
+        this.magasinierService.deletePiece(id).subscribe({
             next: () => {
-                this.notify('Stock supprimé', 'success');
+                this.notify('Article archivé', 'success');
                 this.loadStocks();
                 this.cancelDelete();
             },
-            error: () => {
-                this.notify('Erreur lors de la suppression', 'error');
+            error: (err) => {
+                this.notify(err.error?.message || 'Erreur lors de la suppression', 'error');
             }
         });
     }
@@ -237,5 +252,25 @@ export class StockManagementComponent implements OnInit {
         if (!this.columns) return true;
         const col = this.columns.find(c => c.key === key);
         return col ? col.visible : true;
+    }
+
+    getImageUrl(url: string | null | undefined): string {
+        if (!url) return 'assets/images/default-piece.svg';
+        if (this.imageCache.has(url)) return this.imageCache.get(url)!;
+
+        let result = url;
+        if (url.startsWith('/api/images') || url.startsWith('/uploads')) {
+            result = `http://localhost:8081${url}`;
+        } else if (url.includes('/remote.php/dav/files/')) {
+            const parts = url.split('/');
+            const filename = parts[parts.length - 1];
+            result = `http://localhost:8081/api/images/${filename}`;
+        } else if (!url.startsWith('http') && !url.startsWith('assets/')) {
+            // Handle case where it's just a filename
+            result = `http://localhost:8081/api/images/${url}`;
+        }
+
+        this.imageCache.set(url, result);
+        return result;
     }
 }

@@ -61,8 +61,8 @@
                             <div class="search-dropdown">
                                 <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchTermChange($event)"
                                     (focus)="showResults = true" (blur)="toggleResults(false)"
-                                    placeholder="Choisir un article..."
-                                    class="odoo-input-line" [class.input-error]="validationErrors.piece">
+                                    placeholder="Choisir un article..." class="odoo-input-line"
+                                    [class.input-error]="validationErrors.piece">
                                 <div class="results-list" *ngIf="showResults && filteredPiecesList.length > 0">
                                     <div class="result-item" *ngFor="let p of filteredPiecesList"
                                         (mousedown)="selectPiece(p)">
@@ -71,7 +71,8 @@
                                             <span class="name">{{ p.designation }}</span>
                                         </div>
                                         <div class="variant-mini-chips" *ngIf="p.details?.length">
-                                            <span class="mini-chip" *ngFor="let attr of getVariantAttributes(p.details[0])">
+                                            <span class="mini-chip"
+                                                *ngFor="let attr of getVariantAttributes(p.details[0])">
                                                 {{ attr }}
                                             </span>
                                         </div>
@@ -153,7 +154,8 @@
                                                     {{ item.piece?.details![0].codeBarre || item.piece?.reference }}
                                                 </span>
                                                 <div class="variant-mini-chips" *ngIf="item.piece?.details?.length">
-                                                    <span class="mini-chip" *ngFor="let attr of getVariantAttributes(item.piece.details[0])">
+                                                    <span class="mini-chip"
+                                                        *ngFor="let attr of getVariantAttributes(item.piece.details[0])">
                                                         {{ attr }}
                                                     </span>
                                                 </div>
@@ -229,7 +231,8 @@
                                                     {{ item.piece?.details![0].codeBarre || item.piece?.reference }}
                                                 </span>
                                                 <div class="variant-mini-chips" *ngIf="item.piece?.details?.length">
-                                                    <span class="mini-chip" *ngFor="let attr of getVariantAttributes(item.piece.details[0])">
+                                                    <span class="mini-chip"
+                                                        *ngFor="let attr of getVariantAttributes(item.piece.details[0])">
                                                         {{ attr }}
                                                     </span>
                                                 </div>

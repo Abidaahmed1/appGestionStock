@@ -6,12 +6,15 @@ import { MagasinierService } from '../../services/magasinier.service';
 import { FormsModule } from '@angular/forms';
 import { EntrepriseService } from '../../../admin/services/entreprise.service';
 import { Entreprise } from '../../../admin/models/entreprise.model';
-import { ItemDetailViewComponent } from '../item-detail-view/item-detail-view.component';
+import { Router } from '@angular/router';
+import { LogistiqueService } from '../../../logistique/services/logistique.service';
+import { StatutCommande, BonCommandeFournisseur } from '../../../logistique/models/logistique.models';
+import { KeycloakService } from 'keycloak-angular';
 
 @Component({
     selector: 'app-catalogue-layout',
     standalone: true,
-    imports: [CommonModule, FormsModule, ItemDetailViewComponent],
+    imports: [CommonModule, FormsModule],
     templateUrl: './catalogue-layout.component.html',
     styleUrls: ['./catalogue-layout.component.css']
 })
@@ -35,6 +38,7 @@ export class CatalogueLayoutComponent implements OnInit {
     categories: string[] = [];
     filterPieceSearch: string = '';
     entreprise: Entreprise | null = null;
+    userRoles: string[] = [];
 
     // Composition Modal
     showCompositionModal = false;
@@ -42,17 +46,27 @@ export class CatalogueLayoutComponent implements OnInit {
     compositionSearchTerm: string = '';
     filteredCompositionList: PieceDetachee[] = [];
 
-    showDetailModal = false;
-    selectedItemForDetail: any = null;
+    // Usage Modal
+    showUsageModal = false;
+    selectedPieceForUsage: PieceDetachee | null = null;
+    usageSearchTerm: string = '';
+    filteredUsageList: ProduitFini[] = [];
+
+
+
 
     constructor(
         private magasinierService: MagasinierService,
         private entrepriseService: EntrepriseService,
+        private logistiqueService: LogistiqueService,
+        private router: Router,
+        private keycloak: KeycloakService,
         @Inject(PLATFORM_ID) private platformId: Object
     ) { }
 
     ngOnInit(): void {
         if (isPlatformBrowser(this.platformId)) {
+            this.userRoles = this.keycloak.getUserRoles() || [];
             this.loadData();
             this.loadEntreprise();
         }
@@ -117,15 +131,25 @@ export class CatalogueLayoutComponent implements OnInit {
             this.filteredPieces = this.pieces.filter(piece => {
                 let matchesSearch = true;
                 if (term) {
+                    const searchInPiece = (p: PieceDetachee): boolean => {
+                        return (p.designation || '').toLowerCase().includes(term) ||
+                            (p.reference || '').toLowerCase().includes(term) ||
+                            (p.codeBarre || '').toLowerCase().includes(term);
+                    };
+
                     if (this.searchCategory === 'all') {
-                        matchesSearch = piece.designation.toLowerCase().includes(term) ||
-                            piece.reference.toLowerCase().includes(term) ||
-                            (piece.details?.some(d => d.codeBarre?.toLowerCase().includes(term)) ?? false);
+                        matchesSearch = searchInPiece(piece) ||
+                            (piece.variations?.some(v => searchInPiece(v)) ?? false);
                     } else if (this.searchCategory === 'designation') {
-                        matchesSearch = piece.designation.toLowerCase().includes(term);
+                        matchesSearch = (piece.designation || '').toLowerCase().includes(term) ||
+                            (piece.variations?.some(v => (v.designation || '').toLowerCase().includes(term)) ?? false);
                     } else if (this.searchCategory === 'code') {
-                        matchesSearch = piece.reference.toLowerCase().includes(term) ||
-                            (piece.details?.some(d => d.codeBarre?.toLowerCase().includes(term)) ?? false);
+                        matchesSearch = (piece.reference || '').toLowerCase().includes(term) ||
+                            (piece.codeBarre || '').toLowerCase().includes(term) ||
+                            (piece.variations?.some(v =>
+                                (v.reference || '').toLowerCase().includes(term) ||
+                                (v.codeBarre || '').toLowerCase().includes(term)
+                            ) ?? false);
                     }
                 }
 
@@ -206,22 +230,11 @@ export class CatalogueLayoutComponent implements OnInit {
     }
 
     getTotalStock(piece: PieceDetachee): number {
-        if (piece.stocks && Array.isArray(piece.stocks)) {
-            return piece.stocks.reduce((sum: number, s: any) => sum + (s.quantite || 0), 0);
-        }
-        if (piece.details && piece.details.length > 0) {
-            return piece.details.reduce((sum: number, dp: any) => sum + (dp.stock?.quantite || 0), 0);
-        }
-        return 0;
+        return piece.quantite || 0;
     }
 
     getStockStatus(piece: PieceDetachee): string {
         if (!piece) return 'INCONNU';
-
-        // If we have explicit stock entries with types
-        if (piece.stocks && piece.stocks.length > 0) {
-            return (piece.stocks[0].type || 'INCONNU').replace(/_/g, ' ');
-        }
 
         // Otherwise calculate based on total stock and thresholds
         const total = this.getTotalStock(piece);
@@ -260,19 +273,80 @@ export class CatalogueLayoutComponent implements OnInit {
         );
     }
 
-    showDetail(item: any): void {
-        this.selectedItemForDetail = item;
-        this.showDetailModal = true;
+    // ==================== USAGE MODAL ====================
+    showPieceUsage(piece: PieceDetachee): void {
+        console.log('Showing usage for piece:', piece);
+        this.selectedPieceForUsage = piece;
+        this.usageSearchTerm = '';
+        this.showUsageModal = true;
+        this.applyUsageFilter();
     }
 
-    closeDetailModal(): void {
-        this.showDetailModal = false;
-        this.selectedItemForDetail = null;
-        this.loadData();
+    closeUsageModal(): void {
+        this.showUsageModal = false;
+        this.selectedPieceForUsage = null;
+        this.filteredUsageList = [];
     }
+
+    applyUsageFilter(): void {
+        const produits = this.selectedPieceForUsage?.produitsAssocies || [];
+        if (!this.usageSearchTerm) {
+            this.filteredUsageList = produits;
+            return;
+        }
+
+        const term = this.usageSearchTerm.toLowerCase();
+        this.filteredUsageList = produits.filter(prod =>
+            prod.designation.toLowerCase().includes(term) ||
+            prod.code.toLowerCase().includes(term)
+        );
+    }
+
+
 
     isPiece(item: any): boolean {
         return !!item && 'seuilMinimum' in item;
+    }
+
+    getVariantAttributes(piece: PieceDetachee): string[] {
+        if (!piece || !piece.details) return [];
+        return piece.details
+            .filter((d: any) => d.parametre && d.valeur)
+            .map((d: any) => `${d.parametre.nom} : ${d.valeur}`);
+    }
+
+    hasRole(role: string): boolean {
+        if (!this.userRoles || this.userRoles.length === 0) return false;
+        const normalize = (r: string) => (r || '').toUpperCase().replace('ROLE_', '').replace(/\s+/g, '_');
+        const targetRole = normalize(role);
+        return this.userRoles.some(r => normalize(r) === targetRole);
+    }
+
+    canOrder(): boolean {
+        return this.hasRole('RESPONSABLE_LOGISTIQUE');
+    }
+
+    orderPiece(piece: PieceDetachee): void {
+        const draft: BonCommandeFournisseur = {
+            numeroCmd: 'AUTO',
+            dateCmd: new Date().toISOString().substring(0, 16),
+            statut: StatutCommande.EN_ATTENTE,
+            lignes: [
+                {
+                    piece: piece,
+                    detailPiece: piece.details?.[0], // Re-using detail if available
+                    qteCmd: piece.seuilMaximum ? (piece.seuilMaximum - (piece.quantite || 0)) : 10,
+                    prixAchat: piece.prixVente || 0, // Placeholder
+                    taxe: 19,
+                    remise: 0
+                }
+            ]
+        };
+
+        if (draft.lignes![0].qteCmd <= 0) draft.lignes![0].qteCmd = 10;
+
+        this.logistiqueService.commandeDraft = draft;
+        this.router.navigate(['/logistique/commandes/nouvelle']);
     }
 
 }

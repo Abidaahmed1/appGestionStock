@@ -1,0 +1,31 @@
+<div class="confirm-modal-overlay" *ngIf="show">
+  <div class="confirm-modal-content">
+
+    <div class="confirm-header-row">
+      <div class="warning-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <!-- Orange background triangle -->
+          <path d="M 50 8 L 94 88 A 6 6 0 0 1 88 94 L 12 94 A 6 6 0 0 1 6 88 Z" fill="#f59e0b" />
+          <path d="M 50 16 L 86 86 A 4 4 0 0 1 82 90 L 18 90 A 4 4 0 0 1 14 86 Z" fill="#fbbf24" />
+          <rect x="46" y="32" width="8" height="32" rx="4" fill="#ffffff" />
+          <circle cx="50" cy="76" r="5" fill="#ffffff" />
+          <path d="M 46 2 L 54 2 L 50 6 Z" fill="#fbbf24" />
+          <path d="M 40 6 L 44 2 L 46 8 Z" fill="#fbbf24" />
+        </svg>
+      </div>
+      <h2 class="confirm-title">{{ title }}</h2>
+    </div>
+
+    <div class="confirm-body">
+      <p class="confirm-message">{{ message }}</p>
+    </div>
+
+    <div class="confirm-divider"></div>
+
+    <div class="confirm-actions">
+      <button class="btn-stay" (click)="onConfirm()">{{ confirmText }}</button>
+      <button class="btn-quit" (click)="onCancel()">{{ cancelText }}</button>
+    </div>
+
+  </div>
+</div>

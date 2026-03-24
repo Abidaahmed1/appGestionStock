@@ -183,12 +183,23 @@
                         <tr *ngFor="let ligne of commande.lignes; let i = index">
                             <td>
                                 <div class="searchable-dropdown" (click)="onDropdownClick($event)">
-                                    <div class="search-input-wrapper">
-                                        <input type="text" [ngModel]="getPieceDisplayValue(i, ligne)"
-                                            (ngModelChange)="onPieceSearchChange($event)"
-                                            (click)="toggleDropdown(i, $event)" placeholder="Ajouter un produit..."
-                                            class="table-input" [disabled]="!isEditable">
-                                        <span class="dropdown-arrow">▼</span>
+                                    <div class="search-input-wrapper" [class.has-selection]="ligne.piece && openDropdownIndex !== i">
+                                        <ng-container *ngIf="ligne.piece && openDropdownIndex !== i; else searchInput">
+                                            <div class="selected-piece-display" (click)="toggleDropdown(i, $event)" [class.disabled]="!isEditable">
+                                                <span class="piece-root-name">{{ getPieceRootName(ligne) }}</span>
+                                                <div class="piece-variants" *ngIf="getPieceVariantArray(ligne).length > 0">
+                                                    <span class="variant-chip" *ngFor="let attr of getPieceVariantArray(ligne)">{{ attr }}</span>
+                                                </div>
+                                            </div>
+                                            <span class="dropdown-arrow">▼</span>
+                                        </ng-container>
+                                        <ng-template #searchInput>
+                                            <input type="text" [ngModel]="openDropdownIndex === i ? pieceSearchText : getPieceDisplayValue(i, ligne)"
+                                                (ngModelChange)="onPieceSearchChange($event)"
+                                                (click)="toggleDropdown(i, $event)" placeholder="Ajouter un produit..."
+                                                class="table-input" [disabled]="!isEditable">
+                                            <span class="dropdown-arrow">▼</span>
+                                        </ng-template>
                                     </div>
 
                                     <div class="dropdown-results" *ngIf="openDropdownIndex === i">
@@ -217,24 +228,22 @@
                             <td>
                                 <div class="prix-cell">
                                     <input type="number" [(ngModel)]="ligne.prixAchat" class="table-input text-right"
-                                        [class.input-error]="formSubmitted && (ligne.prixAchat || 0) === 0 && ligne.piece"
                                         min="0" step="1" placeholder="0.000" [disabled]="!isEditable">
-                                    <span class="prix-zero-badge"
-                                        *ngIf="formSubmitted && (ligne.prixAchat || 0) === 0 && ligne.piece"
-                                        title="Prix manquant">!</span>
                                 </div>
                             </td>
                             <td>
                                 <div class="tax-input-wrapper">
                                     <input type="number" [(ngModel)]="ligne.remise"
-                                        class="table-input text-right width-40" [disabled]="!isEditable">
+                                        class="table-input text-right width-40" min="0" [disabled]="!isEditable"
+                                        [class.input-error]="errors['ligne_' + i + '_remise']">
                                     <span class="tax-percent">%</span>
                                 </div>
                             </td>
                             <td>
                                 <div class="tax-input-wrapper">
                                     <input type="number" [(ngModel)]="ligne.taxe"
-                                        class="table-input text-right width-40" [disabled]="!isEditable">
+                                        class="table-input text-right width-40" min="0" [disabled]="!isEditable"
+                                        [class.input-error]="errors['ligne_' + i + '_taxe']">
                                     <span class="tax-percent">%</span>
                                 </div>
                             </td>

@@ -67,4 +67,22 @@ export class EntrepriseService {
     refreshCurrentEntreprise(): void {
         this.getCurrentEntreprise().subscribe();
     }
+
+    getImageUrl(path: string | null | undefined): string {
+        if (!path) return '';
+        if (path.startsWith('data:') || path.startsWith('http')) return path;
+        
+        // Base URL for API images 
+        const baseUrl = 'http://localhost:8081';
+        
+        let finalUrl = path;
+        if (path.startsWith('/api/images') || path.startsWith('/uploads')) {
+            finalUrl = `${baseUrl}${path}`;
+        } else if (path.includes('/remote.php/dav/files/')) {
+            const parts = path.split('/');
+            const filename = parts[parts.length - 1];
+            finalUrl = `${baseUrl}/api/images/${filename}`;
+        }
+        return finalUrl;
+    }
 }
