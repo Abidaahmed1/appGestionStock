@@ -10,11 +10,13 @@ import { authGuard } from './auth/auth.guard';
 import { StockManagementComponent } from './logistique/components/stock-management/stock-management.component';
 import { BonListComponent } from './magasinier/components/bon-list/bon-list.component';
 import { FournisseurListComponent } from './logistique/components/fournisseur-list/fournisseur-list.component';
+import { canDeactivateGuard } from './shared/guards/can-deactivate.guard';
 
 import { CommandeFournisseurListComponent } from './logistique/components/commande-fournisseur-list/commande-fournisseur-list.component';
 import { PriceTrackingComponent } from './logistique/components/price-tracking/price-tracking.component';
 import { SupplierCatalogComponent } from './logistique/components/supplier-catalog/supplier-catalog.component';
 import { FournisseurDetailsComponent } from './logistique/components/fournisseur-details/fournisseur-details.component';
+import { DocumentViewerComponent } from './shared/components/document-viewer/document-viewer.component';
 
 export const routes: Routes = [
     {
@@ -67,7 +69,7 @@ export const routes: Routes = [
                 path: 'magasinier/bons/nouveau',
                 loadComponent: () => import('./magasinier/components/bon-form/bon-form.component').then(m => m.BonFormComponent),
                 canActivate: [authGuard],
-                data: { roles: ['MAGASINIER', 'ADMINISTRATEUR', 'AUDITEUR'] }
+                data: { roles: ['MAGASINIER', 'ADMINISTRATEUR'] }
             },
             {
                 path: 'magasinier/bons/:id',
@@ -120,6 +122,12 @@ export const routes: Routes = [
             },
 
             {
+                path: 'auditeur/gestion-audit',
+                loadComponent: () => import('./auditeur/components/audit-hub/audit-hub.component').then(m => m.AuditHubComponent),
+                canActivate: [authGuard],
+                data: { roles: ['AUDITEUR', 'ADMINISTRATEUR'] }
+            },
+            {
                 path: 'logistique/bons-history',
                 loadComponent: () => import('./auditeur/bon-history/bon-history.component').then(m => m.BonHistoryComponent),
                 canActivate: [authGuard],
@@ -153,6 +161,13 @@ export const routes: Routes = [
                 path: 'admin/numerotation',
                 loadComponent: () => import('./admin/components/numerotation-gestion/numerotation-gestion.component').then(m => m.NumerotationGestionComponent),
                 canActivate: [authGuard],
+                canDeactivate: [canDeactivateGuard],
+                data: { roles: ['ADMINISTRATEUR'] }
+            },
+            {
+                path: 'admin/document-settings',
+                loadComponent: () => import('./admin/components/document-configuration/document-configuration.component').then(m => m.DocumentConfigurationComponent),
+                canActivate: [authGuard],
                 data: { roles: ['ADMINISTRATEUR'] }
             },
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
@@ -163,6 +178,11 @@ export const routes: Routes = [
             {
                 path: 'settings',
                 component: SettingsComponent,
+                canActivate: [authGuard]
+            },
+            {
+                path: 'document/preview/:id',
+                component: DocumentViewerComponent,
                 canActivate: [authGuard]
             }
         ]

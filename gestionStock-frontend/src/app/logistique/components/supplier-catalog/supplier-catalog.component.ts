@@ -6,10 +6,11 @@ import { LogistiqueService } from '../../services/logistique.service';
 import { PieceFournisseur, Fournisseur } from '../../models/logistique.models';
 import { PieceDetachee } from '../../../magasinier/models/magasinier.models';
 import { MagasinierService } from '../../../magasinier/services/magasinier.service';
-import { forkJoin, Subject } from 'rxjs';
+import { forkJoin, Subject, Observable, of } from 'rxjs';
 import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 import { EntrepriseService } from '../../../admin/services/entreprise.service';
 import { Entreprise } from '../../../admin/models/entreprise.model';
+import { DocumentConfigService, DocumentType } from '../../../admin/services/document-config.service';
 
 @Component({
     selector: 'app-supplier-catalog',
@@ -41,6 +42,7 @@ export class SupplierCatalogComponent implements OnInit, OnChanges, OnDestroy {
     entreprise: Entreprise | null = null;
 
     editingIndex: number | null = null;
+    visibleVarianteIds: number[] = [];
 
     newEntry: any = {
         piece: null,
@@ -60,6 +62,11 @@ export class SupplierCatalogComponent implements OnInit, OnChanges, OnDestroy {
     private cdr = inject(ChangeDetectorRef);
     private route = inject(ActivatedRoute);
     private router = inject(Router);
+    private docConfigService = inject(DocumentConfigService);
+
+    get currencySymbol(): string {
+        return this.entrepriseService.getDeviseSymbol(this.entreprise);
+    }
 
     constructor() {
         this.searchSubject.pipe(
@@ -73,6 +80,7 @@ export class SupplierCatalogComponent implements OnInit, OnChanges, OnDestroy {
 
     ngOnInit() {
         if (isPlatformBrowser(this.platformId)) {
+            this.loadDisplaySettings();
             if (!this.isEmbedded) {
                 const id = this.route.snapshot.params['id'];
                 if (id) {
@@ -191,6 +199,16 @@ export class SupplierCatalogComponent implements OnInit, OnChanges, OnDestroy {
                         }
                     }
                 });
+            }
+        });
+    }
+
+    loadDisplaySettings() {
+        // On prend la config BON_ENTREE par défaut pour le catalogue
+        this.docConfigService.getSettingByType(DocumentType.BON_ENTREE).subscribe({
+            next: (setting) => {
+                this.visibleVarianteIds = setting.visibleVarianteIds || [];
+                this.cdr.detectChanges();
             }
         });
     }
@@ -363,19 +381,19 @@ export class SupplierCatalogComponent implements OnInit, OnChanges, OnDestroy {
         this.hasChanges = true;
     }
 
-    saveAll(providedSupplier?: Fournisseur) {
+    saveAll(providedSupplier?: Fournisseur): Observable<any> | null {
         const targetSupplier = providedSupplier || this.supplier;
-        if (!targetSupplier || !targetSupplier.id) return;
+        if (!targetSupplier || !targetSupplier.id) return null;
 
         for (let i = 0; i < this.pendingItems.length; i++) {
             const item = this.pendingItems[i];
             if (!item.prixAchat || item.prixAchat <= 0) {
                 this.notify(`Ligne "${item.piece?.designation}" : le prix doit être supérieur à 0`, 'error');
-                return;
+                return null;
             }
             if (item.dateDebutValidite && item.dateFinValidite && item.dateDebutValidite > item.dateFinValidite) {
                 this.notify(`Ligne "${item.piece?.designation}" : la date de début dépasse la date de fin`, 'error');
-                return;
+                return null;
             }
         }
 
@@ -394,45 +412,43 @@ export class SupplierCatalogComponent implements OnInit, OnChanges, OnDestroy {
                     tauxRemise: Number(item.tauxRemise || 0),
                     nbJoursLivraison: Math.round(Number(item.nbJoursLivraison || 0)),
                     estPrincipale: !!item.estPrincipale,
-                    piece: {
-                        id: item.piece.id,
-                        reference: item.piece.reference || '',
-                        designation: item.piece.designation || '',
-                        archivee: !!item.piece.archivee,
-                        seuilMinimum: item.piece.seuilMinimum || 0,
-                        seuilMaximum: item.piece.seuilMaximum || 0
-                    },
-                    fournisseur: {
-                        id: targetSupplier.id,
-                        code: targetSupplier.code || '',
-                        nom: targetSupplier.nom || '',
-                        email: targetSupplier.email || '',
-                        tel: targetSupplier.tel || '',
-                        adresse: targetSupplier.adresse || '',
-                        archivee: !!targetSupplier.archivee
-                    },
-                    dateDebutValidite: item.dateDebutValidite && item.dateDebutValidite.trim() ? item.dateDebutValidite + 'T00:00:00' : null,
-                    dateFinValidite: item.dateFinValidite && item.dateFinValidite.trim() ? item.dateFinValidite + 'T23:59:59' : null
+                    piece: { id: item.piece.id },
+                    fournisseur: { id: targetSupplier.id },
+                    dateDebutValidite: item.dateDebutValidite && item.dateDebutValidite.trim() ? item.dateDebutValidite.substring(0, 10) + 'T00:00:00' : null,
+                    dateFinValidite: item.dateFinValidite && item.dateFinValidite.trim() ? item.dateFinValidite.substring(0, 10) + 'T23:59:59' : null
                 };
                 operations.push(this.logistiqueService.savePieceFournisseur(payload));
             }
         }
 
         if (operations.length === 0) {
-            return;
+            if (!this.isEmbedded) {
+                this.router.navigate(['/logistique/fournisseurs']);
+            }
+            return null;
         }
 
-        forkJoin(operations).subscribe({
-            next: () => {
-                this.notify('Catalogue enregistré avec succès', 'success');
-                this.editingIndex = null;
-                this.loadCatalog();
-            },
-            error: (err) => {
-                console.error('Erreur lors de l\'enregistrement:', err);
-                this.notify('Erreur lors de l\'enregistrement du catalogue', 'error');
-            }
-        });
+        const obs = forkJoin(operations);
+
+        if (!this.isEmbedded) {
+            obs.subscribe({
+                next: () => {
+                    const msg = 'Catalogue enregistré avec succès';
+                    this.notify(msg, 'success');
+                    this.editingIndex = null;
+                    this.loadCatalog();
+                    this.router.navigate(['/logistique/fournisseurs'], {
+                        state: { message: msg }
+                    });
+                },
+                error: (err) => {
+                    console.error('Erreur lors de l\'enregistrement:', err);
+                    this.notify('Erreur lors de l\'enregistrement du catalogue', 'error');
+                }
+            });
+        }
+
+        return obs;
     }
 
     resetNewEntry() {
@@ -467,6 +483,24 @@ export class SupplierCatalogComponent implements OnInit, OnChanges, OnDestroy {
                 }
             }, 5000);
         }
+    }
+
+    getPieceVariantArray(piece: any): string[] {
+        if (!piece) return [];
+        const details = piece.allDetails || piece.details || [];
+        
+        return details
+            .filter((d: any) => {
+                const hasValue = d.valeur && d.valeur.trim() !== '' && d.valeur !== '-';
+                if (!hasValue) return false;
+                
+                // Si on a des IDs visibles configurés, on filtre dessus
+                if (this.visibleVarianteIds && this.visibleVarianteIds.length > 0) {
+                    return d.parametre && d.parametre.id && this.visibleVarianteIds.includes(d.parametre.id!);
+                }
+                return true;
+            })
+            .map((d: any) => `${d.parametre.nom}: ${d.valeur}`);
     }
 
     goBack() {

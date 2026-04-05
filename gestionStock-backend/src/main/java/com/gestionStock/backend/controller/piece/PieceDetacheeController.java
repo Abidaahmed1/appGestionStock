@@ -26,7 +26,6 @@ public class PieceDetacheeController {
     public List<PieceDetachee> getAll() {
         List<PieceDetachee> pieces = pieceService.findByActive();
         for (PieceDetachee p : pieces) {
-            // Force initialize collections for frontend visibility
             if (p.getDetails() != null) {
                 p.getDetails().size();
             }

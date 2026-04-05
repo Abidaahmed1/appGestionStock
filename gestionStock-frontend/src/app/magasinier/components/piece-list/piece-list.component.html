@@ -23,8 +23,9 @@
         <div class="piece-form-interface-container" *ngIf="showCreateModal">
             <app-piece-form [showModal]="showCreateModal" [selectedPiece]="selectedPiece" [categories]="categories"
                 [produitsFinis]="produitsFinis" [parametres]="parametres" [unites]="unites" [errorMessage]="formError"
-                [devise]="entreprise?.devise" (save)="handleSavePiece($event)" (cancel)="closeCreateModal()"
-                (quickAddCategory)="handleQuickAddCategory($event)" (quickAddProduct)="handleQuickAddProduct($event)">
+                [devise]="entreprise?.devise" [isSaving]="isSavingPiece" (save)="handleSavePiece($event)"
+                (cancel)="closeCreateModal()" (quickAddCategory)="handleQuickAddCategory($event)"
+                (quickAddProduct)="handleQuickAddProduct($event)">
             </app-piece-form>
         </div>
 
@@ -32,54 +33,7 @@
             <div class="header-top-row">
                 <h1>Pièces détachées</h1>
                 <div class="view-mode-toggles">
-                    <div class="layout-toggle-container" *ngIf="viewMode === 'table'">
-                        <button class="btn-layout-toggle" [class.active]="showLayoutMenu"
-                            (click)="showLayoutMenu = !showLayoutMenu; $event.stopPropagation()"
-                            title="Options d'affichage">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="8" y1="6" x2="21" y2="6"></line>
-                                <line x1="8" y1="12" x2="21" y2="12"></line>
-                                <line x1="8" y1="18" x2="21" y2="18"></line>
-                                <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                                <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                                <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                            </svg>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="6 9 12 15 18 9"></polyline>
-                            </svg>
-                        </button>
-                        <div class="layout-dropdown" *ngIf="showLayoutMenu">
-                            <div class="layout-option" [class.active]="tableLayout === 'expanded'"
-                                (click)="toggleGroupMode('expanded')">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="8" y1="6" x2="21" y2="6"></line>
-                                    <line x1="8" y1="12" x2="21" y2="12"></line>
-                                    <line x1="8" y1="18" x2="21" y2="18"></line>
-                                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                                </svg>
-                                Toutes les Pièces
-                            </div>
-                            <div class="layout-option" [class.active]="tableLayout === 'collapsed'"
-                                (click)="toggleGroupMode('collapsed')">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="3" y1="9" x2="21" y2="9"></line>
-                                    <line x1="3" y1="15" x2="21" y2="15"></line>
-                                </svg>
-                                Pièces groupées
-                            </div>
-                        </div>
-                    </div>
-                    <div class="divider-v" *ngIf="viewMode === 'table'"></div>
-
-                    <button class="btn-view-toggle" [class.active]="viewMode === 'table'" (click)="viewMode = 'table'"
-                        title="Vue Liste">
+                    <button class="btn-view-toggle" [class.active]="viewMode === 'table'" (click)="viewMode = 'table'">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2">
                             <line x1="8" y1="6" x2="21" y2="6" />
@@ -90,8 +44,7 @@
                             <line x1="3" y1="18" x2="3.01" y2="18" />
                         </svg>
                     </button>
-                    <button class="btn-view-toggle" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'"
-                        title="Vue Cartes">
+                    <button class="btn-view-toggle" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2">
                             <rect x="3" y="3" width="7" height="7" />
@@ -115,15 +68,6 @@
                 </div>
 
                 <div class="actions-right-group">
-                    <button class="btn-bulk-delete-icon" *ngIf="selectedIds.size > 0" (click)="deleteSelectedPieces()"
-                        title="Supprimer la sÃ©lection">
-                        <span class="badge-count">{{ selectedIds.size }}</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path
-                                d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" />
-                        </svg>
-                    </button>
                     <button class="btn-filter-modern" (click)="showAdvancedFilters = !showAdvancedFilters"
                         [class.active]="showAdvancedFilters">
                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -167,16 +111,27 @@
                         </div>
                     </div>
                     <div class="filter-group">
-                        <label class="filter-label">Prix Min ({{ entreprise?.devise?.code || 'DT' }})</label>
+                        <label class="filter-label">Prix Min ({{ currencySymbol }})</label>
                         <input type="number" [(ngModel)]="filterMinPrice" (ngModelChange)="applyFilters()"
                             placeholder="0" class="premium-input">
                     </div>
                     <div class="filter-group">
-                        <label class="filter-label">Prix Max ({{ entreprise?.devise?.code || 'DT' }})</label>
+                        <label class="filter-label">Prix Max ({{ currencySymbol }})</label>
                         <input type="number" [(ngModel)]="filterMaxPrice" (ngModelChange)="applyFilters()"
                             placeholder="1000" class="premium-input">
                     </div>
-                    <div class="filter-group reset-group">
+                    <div class="filter-group">
+                        <label class="filter-label">Trier par</label>
+                        <select [(ngModel)]="sortOption" (ngModelChange)="applyFilters()" class="premium-input">
+                            <option value="designation_asc">Nom (A-Z)</option>
+                            <option value="designation_desc">Nom (Z-A)</option>
+                            <option value="price_asc">Prix croissant</option>
+                            <option value="price_desc">Prix décroissant</option>
+                            <option value="stock_asc">Stock croissant</option>
+                            <option value="stock_desc">Stock décroissant</option>
+                        </select>
+                    </div>
+                    <div class="filter-actions-premium" style="margin-bottom: 0px;">
                         <button class="btn-reset-filters" (click)="resetFilters()">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
@@ -305,757 +260,761 @@
                 </div>
 
                 <div class="view-content" *ngIf="!activePiece && !activeGroup">
-                    <div class="table-card-premium" *ngIf="viewMode === 'table'">
-                        <table class="modern-table">
-                            <thead>
-                                <tr>
-                                    <th class="col-check">
-                                        <div class="check-box-wrapper"><input type="checkbox"
-                                                [checked]="isAllSelected()" (change)="toggleAllSelection()"></div>
-                                    </th>
-                                    <th class="col-nom">PIÈCE</th>
-                                    <th class="col-stock">QUANTITÉ</th>
-                                    <th class="col-status">TYPE</th>
-                                    <th class="col-level">SEUIL MIN</th>
-                                    <th class="col-actions">ACTIONS</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <ng-template #pieceRowTemplate let-piece="piece">
-                                    <td class="col-check" (click)="$event.stopPropagation()">
-                                        <div class="check-box-wrapper"><input type="checkbox"
-                                                [checked]="piece.id ? selectedIds.has(piece.id) : false"
-                                                (change)="togglePieceSelection(piece.id, $event)"></div>
-                                    </td>
-                                    <td class="col-nom">
-                                        <div class="item-identity">
-                                            <div class="item-icon-box teal-scheme">
-                                                <img [src]="getImageUrl(piece.imageUrl)" class="item-thumb-img" alt="">
-                                            </div>
-                                            <div class="item-info">
-                                                <span class="item-title-text">{{ piece.designation }}</span>
-                                                <div class="piece-details-tags">
-                                                    <span class="piece-tag tag-category" *ngIf="piece.categorie">{{
-                                                        piece.categorie.nom }}</span>
-                                                    <span class="piece-tag tag-unit" *ngIf="piece.unite">{{
-                                                        piece.unite.nom }}</span>
-                                                    <span class="piece-tag tag-ref" *ngIf="piece.reference">{{
-                                                        piece.reference }}</span>
-                                                    <span class="piece-tag tag-attribute"
-                                                        *ngFor="let attr of getVariantAttributes(piece)">{{ attr
-                                                        }}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="col-stock">
-                                        <span class="stock-amount">{{ getTotalStock(piece) | number:'1.0-2' }}</span>
-                                    </td>
-                                    <td class="col-status">
-                                        <div class="status-cell">
-                                            <span class="status-pill rupture" *ngIf="getTotalStock(piece) <= 0">RUPTURE
-                                                STOCK</span>
-                                            <span class="status-pill low"
-                                                *ngIf="getTotalStock(piece) > 0 && getTotalStock(piece) < (piece.seuilMinimum || 0)">STOCK
-                                                FAIBLE</span>
-                                            <span class="status-pill ok"
-                                                *ngIf="getTotalStock(piece) >= (piece.seuilMinimum || 0)">DISPONIBLE</span>
-                                        </div>
-                                    </td>
-                                    <td class="col-level">{{ piece.seuilMinimum || 0 | number:'1.0-2' }}</td>
-                                    <td class="col-actions" *ngIf="canManage()">
-                                        <div style="display: flex; gap: 8px; justify-content: center;">
-                                            <button class="btn-action-edit"
-                                                (click)="openEditModal(piece); $event.stopPropagation()"
-                                                title="Modifier">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
-                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path
-                                                        d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7">
-                                                    </path>
-                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z">
-                                                    </path>
-                                                </svg>
-                                            </button>
-                                            <button class="btn-action-delete"
-                                                (click)="confirmDelete(piece); $event.stopPropagation()"
-                                                title="Supprimer">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
-                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                    <path
-                                                        d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </ng-template>
+                    <div class="horizontal-cards-container" *ngIf="viewMode === 'table'">
+                        <div class="piece-list-row-card" *ngFor="let piece of filteredPiecesList"
+                            (click)="selectPiece(piece)"
+                            [class.selected]="piece.id ? selectedIds.has(piece.id) : false">
 
-                                <ng-container *ngIf="tableLayout === 'expanded'">
-                                    <tr *ngFor="let piece of filteredPiecesList" (click)="selectPiece(piece)"
-                                        class="row-clickable">
-                                        <ng-container
-                                            *ngTemplateOutlet="pieceRowTemplate; context: { piece: piece }"></ng-container>
-                                    </tr>
-                                </ng-container>
+                            <!-- SECTION 1 - Panneau gauche -->
+                            <div class="pl-sec-1">
+                                <div class="pl-img-container">
+                                    <img *ngIf="piece.imageUrl" [src]="getImageUrl(piece.imageUrl)" alt="Img">
+                                    <div class="pl-img-placeholder" *ngIf="!piece.imageUrl"></div>
+                                </div>
+                            </div>
 
-                                <!-- COLLAPSED VIEW -->
-                                <ng-container *ngIf="tableLayout === 'collapsed'">
-                                    <ng-container *ngFor="let group of groupedPiecesList">
-                                        <!-- Unified grouping logic (includes groups with 1 or many pieces) -->
-                                        <ng-container>
-                                            <tr class="row-group-header" (click)="toggleGroup(group, $event)">
-                                                <td [attr.colspan]="canManage() ? 6 : 5">
-                                                    <div class="group-header-content">
-                                                        <span class="group-designation">{{ group.main.designation
-                                                            }}</span>
-                                                        <div class="variant-badge">
-                                                            Variantes: {{ group.variations.length + 1 }}
-                                                            <svg [class.rotate-180]="group.expanded"
-                                                                xmlns="http://www.w3.org/2000/svg" width="16"
-                                                                height="16" viewBox="0 0 24 24" fill="none"
-                                                                stroke="currentColor" stroke-width="2">
-                                                                <polyline points="6 9 12 15 18 9"></polyline>
-                                                            </svg>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            <ng-container *ngIf="group.expanded">
-                                                <tr *ngFor="let piece of [group.main].concat(group.variations)"
-                                                    (click)="selectPiece(piece)" class="row-clickable sub-row">
-                                                    <ng-container
-                                                        *ngTemplateOutlet="pieceRowTemplate; context: { piece: piece }"></ng-container>
-                                                </tr>
-                                            </ng-container>
-                                        </ng-container>
-                                    </ng-container>
-                                </ng-container>
-                            </tbody>
-                        </table>
+                            <!-- SECTION 2 - Détails de la pièce -->
+                            <div class="pl-sec-2">
+                                <h3 class="pl-title">{{ piece.designation }}</h3>
+                                <p class="pl-ref">{{ piece.reference || 'Aucune référence' }}</p>
+                                <div class="pl-badges">
+                                    <span class="pl-badge-cat" *ngIf="piece.categorie">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                            <path
+                                                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                                            </path>
+                                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                        </svg>
+                                        {{ piece.categorie.nom }}
+                                    </span>
+                                    <span class="pl-badge-type" *ngIf="piece.unite">{{ piece.unite.nom }}</span>
+                                    <span class="pl-badge-type piece-tag tag-attribute"
+                                        *ngFor="let attr of getVariantAttributes(piece)">
+                                        {{ attr.includes(' : ') ? attr.split(' : ')[1] : attr }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- SECTION 3 - Métriques (Stock actuel) -->
+                            <div class="pl-sec-metric">
+                                <span class="pl-metric-label">STOCK ACTUEL</span>
+                                <span class="pl-metric-val">{{ getTotalStock(piece) | number:'1.0-2' }}</span>
+                            </div>
+
+                            <!-- SECTION 4 - Métriques (Seuil minimum) -->
+                            <div class="pl-sec-metric with-separator">
+                                <span class="pl-metric-label">SEUIL MINIMUM</span>
+                                <span class="pl-metric-val">{{ piece.seuilMinimum || 0 | number:'1.0-2' }}</span>
+                            </div>
+
+                            <!-- SECTION 5 - Statut -->
+                            <div class="pl-sec-5">
+                                <div class="pl-status-box"
+                                    [ngClass]="getTotalStock(piece) <= 0 ? 'rupture' : (getTotalStock(piece) < (piece.seuilMinimum || 0) ? 'warning' : 'ok')">
+                                    <div class="pl-status-dot"></div>
+                                    <div class="pl-status-text">
+                                        <span class="pl-status-main">{{ getTotalStock(piece) <= 0 ? 'Rupture' :
+                                                (getTotalStock(piece) < (piece.seuilMinimum || 0) ? 'En réserve'
+                                                : 'En stock' ) }}</span>
+                                                <span class="pl-status-sub">{{ getTotalStock(piece) <= 0
+                                                        ? 'Action requise' : (getTotalStock(piece) < (piece.seuilMinimum
+                                                        || 0) ? 'Niveau faible' : 'Disponible' ) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SECTION 6 - Actions -->
+                            <div class="pl-sec-6" *ngIf="canManage()">
+                                <button class="pl-btn-action edit" title="Modifier"
+                                    (click)="openEditModal(piece); $event.stopPropagation()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <path d="M12 20h9"></path>
+                                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                                    </svg>
+                                </button>
+                                <button class="pl-btn-action copy" title="Dupliquer"
+                                    (click)="openDuplicateModal(piece); $event.stopPropagation()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                    </svg>
+                                </button>
+                                <button class="pl-btn-action delete" title="Supprimer"
+                                    (click)="confirmDelete(piece); $event.stopPropagation()">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <polyline points="3 6 5 6 21 6"></polyline>
+                                        <path
+                                            d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                        </path>
+                                    </svg>
+                                </button>
+                            </div>
+
+                        </div>
                     </div>
 
                     <!-- Grid View (Cards) -->
                     <div class="piece-grid-container" *ngIf="viewMode === 'grid'">
                         <div class="piece-card" *ngFor="let piece of filteredPiecesList" (click)="selectPiece(piece)"
                             [class.selected]="piece.id ? selectedIds.has(piece.id) : false">
-                            <div class="piece-card-header">
-                                <div class="card-status-badge" *ngIf="getTotalStock(piece) < (piece.seuilMinimum || 0)"
-                                    [class.out]="getTotalStock(piece) <= 0">
-                                    {{ getTotalStock(piece) <= 0 ? 'Rupture' : 'Stock faible' }} </div>
-                                </div>
-                                <div class="piece-card-image">
-                                    <img [src]="getImageUrl(piece.imageUrl)" [alt]="piece.designation">
-                                </div>
-                                <div class="piece-card-content">
-                                    <div class="piece-category">{{ piece.categorie?.nom || 'Sans Catégorie' }}</div>
-                                    <h3 class="piece-title">{{ piece.designation }}</h3>
-                                    <code class="piece-reference">{{ piece.reference }}</code>
-                                    <div class="piece-stats">
-                                        <div class="stat-item">
-                                            <span class="stat-label">Stock dispo</span>
-                                            <span class="stat-value"
-                                                [class.critical]="getTotalStock(piece) < (piece.seuilMinimum || 0)">{{
-                                                getTotalStock(piece) | number:'1.2-2' }}</span>
-                                        </div>
-                                        <div class="stat-item">
-                                            <span class="stat-label">Seuil</span>
-                                            <span class="stat-value">{{ piece.seuilMinimum || 0 | number:'1.2-2'
-                                                }}</span>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div class="piece-card-image">
+                                <img [src]="getImageUrl(piece.imageUrl)" [alt]="piece.designation">
                             </div>
-                        </div>
-
-                        <!-- Empty State -->
-                        <div class="table-empty-state" *ngIf="filteredPiecesList.length === 0">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24"
-                                fill="none" stroke="#cbd5e1" stroke-width="1.5">
-                                <path
-                                    d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z">
-                                </path>
-                            </svg>
-                            <h3>Aucune pièce ne correspond à votre recherche</h3>
-                            <p>Essayez de modifier vos filtres ou d'ajouter une nouvelle pièce.</p>
-                        </div>
-
-                        <!-- Footer Pagination -->
-                        <div class="view-footer-premium">
-                            <div class="record-info">{{ filteredPiecesList.length }} pièces au total</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="detail-pane" *ngIf="activePiece || activeGroup">
-                    <div class="detail-full-wrapper" *ngIf="(activePiece || activeGroup) && !showCreateModal">
-
-                        <div class="group-detail-view" *ngIf="activeGroup && !activePiece">
-                            <header class="detail-top-toolbar">
-                                <div class="toolbar-left">
-                                    <div class="title-with-subtitle">
-                                        <h2>{{ activeGroup.main.designation }}</h2>
-                                        <div class="subtitle">
-                                            {{ activeGroup.variations.length + 1 }} variante(s)
+                            <div class="piece-card-content">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                    <div>
+                                        <h3 class="piece-title" style="margin-bottom: 2px;">{{ piece.designation }}</h3>
+                                        <code class="piece-reference">{{ piece.reference || 'Aucune Réf.' }}</code>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <div class="pl-status-box"
+                                            [ngClass]="getTotalStock(piece) <= 0 ? 'rupture' : (getTotalStock(piece) < (piece.seuilMinimum || 0) ? 'warning' : 'ok')"
+                                            style="width: auto; padding: 4px 8px; gap: 6px;">
+                                            <div class="pl-status-dot"></div>
+                                            <div class="pl-status-text">
+                                                <span class="pl-status-main" style="font-size: 0.7rem;">{{
+                                                    getTotalStock(piece) <= 0 ? 'Rupture' : (getTotalStock(piece) <
+                                                        (piece.seuilMinimum || 0) ? 'En réserve' : 'En Stock' )
+                                                        }}</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                </div>
-                                <div class="toolbar-right">
-                                    <div class="action-buttons" *ngIf="canManage()">
-                                        <button class="btn-action-edit" style="gap: 6px;"
-                                            (click)="openEditModal(activeGroup.main)" title="Modifier Modele">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7">
-                                                </path>
-                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z">
-                                                </path>
-                                            </svg>
-                                            Modifier le modèle
-                                        </button>
-                                        <div class="divider-v"></div>
-                                        <button class="btn-tool-close" (click)="closeDetail()" title="Fermer">x</button>
-                                    </div>
-                                </div>
-                            </header>
-
-                            <div class="group-detail-body">
-                                <div class="group-attributes-summary">
-                                    <div class="attr-row">
-                                        <span class="attr-name">Unité</span>
-                                        <span class="attr-val">{{ activeGroup.main.unite?.nom || '--' }}</span>
-                                    </div>
-                                    <div class="attr-row" *ngFor="let attr of getGroupAttributes(activeGroup)">
-                                        <span class="attr-name">{{ attr.key }}</span>
-                                        <div class="attr-tags">
-                                            <span class="attr-tag" *ngFor="let val of attr.values">{{ val }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <table class="variant-detail-table">
-                                    <thead>
-                                        <tr>
-                                            <th>DÉTAILS DE LA VARIANTE</th>
-                                            <th>RÉFÉRENCE</th>
-                                            <th>PRIX DE VENTE</th>
-                                            <th>STOCK DISPONIBLE</th>
-                                            <th>SEUIL <span class="hide-mobile">MINIMUM</span></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr *ngFor="let variant of [activeGroup.main].concat(activeGroup.variations)">
-                                            <td>
-                                                <div class="vd-identity">
-                                                    <div class="vd-img"><img [src]="getImageUrl(variant.imageUrl)"
-                                                            alt=""></div>
-                                                    <div class="vd-text">
-                                                        <span class="vd-name" (click)="selectPiece(variant)">
-                                                            {{ variant.designation }}
-                                                            <span class="attr-chips"
-                                                                *ngFor="let a of getVariantAttributes(variant)">- {{
-                                                                a.split(' : ')[1] }}</span>
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td><span class="variant-reference-tag">{{ variant.reference }}</span></td>
-                                            <td><span class="currency">{{ entreprise?.devise?.code || 'DT' }}</span> {{
-                                                variant.prixVente || 0 | number:'1.3-3' }}</td>
-                                            <td>{{ variant.quantite || 0 | number:'1.2-2' }}</td>
-                                            <td>{{ variant.seuilMinimum || 0 | number:'1.2-2' }}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <div class="single-piece-view" *ngIf="activePiece">
-                            <header class="detail-top-toolbar">
-                                <div class="toolbar-left">
-                                    <div class="title-with-subtitle">
-                                        <h2>{{ activePiece.designation }}</h2>
-                                        <div class="subtitle">
+                                        <button class="pl-btn-action edit"
+                                            (click)="openEditModal(piece); $event.stopPropagation()"
+                                            title="Modifier la pièce"
+                                            style="width: 28px; height: 28px; border-radius: 8px;" *ngIf="canManage()">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <circle cx="12" cy="12" r="10" />
-                                                <line x1="12" y1="16" x2="12" y2="12" />
-                                                <line x1="12" y1="8" x2="12.01" y2="8" />
-                                            </svg>
-                                            Détails de la pièce détachée
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="toolbar-right">
-                                    <div class="action-buttons" *ngIf="canManage()">
-                                        <button class="btn-tool-minimal" (click)="openEditModal(activePiece)"
-                                            title="Modifier">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                stroke-width="2.5">
                                                 <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
                                             </svg>
                                         </button>
-                                        <button class="btn-tool-minimal btn-tool-danger"
-                                            (click)="confirmDelete(activePiece)" title="Supprimer">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <path
-                                                    d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" />
-                                            </svg>
-                                        </button>
-                                        <div class="divider-v"></div>
-                                        <button class="btn-tool-close" (click)="closeDetail()" title="Fermer">x</button>
-                                    </div>
-                                </div>
-                            </header>
-
-                            <nav class="detail-secondary-nav">
-                                <button class="nav-tab" [class.active]="activeTab === 'overview'"
-                                    (click)="switchTab('overview')">Vue d'ensemble</button>
-                                <button class="nav-tab" [class.active]="activeTab === 'details'"
-                                    (click)="switchTab('details')">Détails de la pièce</button>
-                                <button class="nav-tab" [class.active]="activeTab === 'associated'"
-                                    (click)="switchTab('associated')">Produits Finis</button>
-                                <button class="nav-tab" [class.active]="activeTab === 'history'"
-                                    (click)="switchTab('history')">Historique</button>
-                            </nav>
-
-                            <div class="detail-scroll-pane">
-                                <div class="detail-grid-container" *ngIf="activeTab === 'overview'">
-                                    <div class="detail-main-info">
-                                        <div class="overview-cards-grid">
-                                            <div class="overview-info-card">
-                                                <div class="card-icon-box">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                        stroke-width="2">
-                                                        <path
-                                                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                                                    </svg>
-                                                </div>
-                                                <div class="card-text-box">
-                                                    <span class="card-label">Référence</span>
-                                                    <span class="card-value">{{ activePiece.reference }}</span>
-                                                </div>
-                                            </div>
-                                            <div class="overview-info-card">
-                                                <div class="card-icon-box">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                        stroke-width="2">
-                                                        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-                                                        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-                                                    </svg>
-                                                </div>
-                                                <div class="card-text-box">
-                                                    <span class="card-label">Catégorie</span>
-                                                    <span class="card-value">{{ activePiece.categorie?.nom || '--'
-                                                        }}</span>
-                                                </div>
-                                            </div>
-                                            <div class="overview-info-card">
-                                                <div class="card-icon-box">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                        stroke-width="2">
-                                                        <circle cx="12" cy="12" r="10" />
-                                                        <path d="M12 8v8" />
-                                                        <path d="M8 12h8" />
-                                                    </svg>
-                                                </div>
-                                                <div class="card-text-box">
-                                                    <span class="card-label">Unité</span>
-                                                    <span class="card-value">{{ activePiece.unite?.nom || '--' }}</span>
-                                                </div>
-                                            </div>
-                                            <div class="overview-info-card stock-highlight-card">
-                                                <div class="card-icon-box">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                        stroke-width="2">
-                                                        <path d="M21 10H3" />
-                                                        <path d="M21 6H3" />
-                                                        <path d="M21 14H3" />
-                                                        <path d="M21 18H3" />
-                                                    </svg>
-                                                </div>
-                                                <div class="card-text-box">
-                                                    <span class="card-label">Stock Total</span>
-                                                    <div class="stock-total-display">
-                                                        <span class="card-value highlight">{{ getTotalStock(activePiece)
-                                                            |
-                                                            number:'1.2-2' }}</span>
-                                                        <span class="stock-badge"
-                                                            [class.badge-danger]="getTotalStock(activePiece) <= 0"
-                                                            [class.badge-warning]="getTotalStock(activePiece) > 0 && getTotalStock(activePiece) < (activePiece.seuilMinimum || 0)"
-                                                            [class.badge-success]="getTotalStock(activePiece) >= (activePiece.seuilMinimum || 0)">
-                                                            {{ getTotalStock(activePiece) <= 0 ? 'Rupture' :
-                                                                (getTotalStock(activePiece) < (activePiece.seuilMinimum
-                                                                || 0) ? 'Faible' : 'Sain' ) }} </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-
-                                        <div class="description-premium-card" *ngIf="activePiece.description">
-                                            <div class="desc-header">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                    stroke-width="2">
-                                                    <path
-                                                        d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                                    <polyline points="14 2 14 8 20 8" />
-                                                    <line x1="16" y1="13" x2="8" y2="13" />
-                                                    <line x1="16" y1="17" x2="8" y2="17" />
-                                                    <polyline points="10 9 9 9 8 9" />
-                                                </svg>
-                                                DESCRIPTION
-                                            </div>
-                                            <div class="desc-content">
-                                                {{ activePiece.description }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="detail-side-visual">
-                                        <div class="visual-card-premium">
-                                            <div class="image-wrapper">
-                                                <img [src]="getImageUrl(activePiece.imageUrl)"
-                                                    [alt]="activePiece.designation">
-                                            </div>
-                                            <div class="image-overlay-info" *ngIf="activePiece.imageUrl">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
-                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                    stroke-width="2">
-                                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                                    <polyline points="17 8 12 3 7 8" />
-                                                    <line x1="12" y1="3" x2="12" y2="15" />
-                                                </svg>
-                                                Image haute résolution
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
 
-                                <div class="detail-variants-content"
-                                    *ngIf="activeTab === 'overview' && activePiece.variations && activePiece.variations.length > 0"
-                                    style="margin-top: 24px;">
-                                    <h3
-                                        style="font-size: 1.1rem; color: #1e293b; margin-bottom: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                <div class="pl-badges">
+                                    <span class="pl-badge-cat" *ngIf="piece.categorie">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12"
                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                                             <path
                                                 d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
                                             </path>
-                                            <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
-                                            <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
-                                            <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
                                             <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                                            <line x1="12" y1="22.08" x2="12" y2="12"></line>
                                         </svg>
-                                        Variantes de cette pièce
-                                    </h3>
-                                    <div class="variants-premium-grid">
-                                        <div class="variant-premium-card"
-                                            *ngFor="let variant of activePiece.variations">
-                                            <div class="variant-card-main">
-                                                <div class="variant-info-section">
-                                                    <div class="variant-identity">
-                                                        <div class="variant-icon-badge">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16"
-                                                                height="16" viewBox="0 0 24 24" fill="none"
-                                                                stroke="currentColor" stroke-width="2.5">
-                                                                <path
-                                                                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                                                                <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
-                                                                <polyline points="7.5 19.79 7.5 14.6 3 12" />
-                                                                <polyline points="21 12 16.5 14.6 16.5 19.79" />
-                                                                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                                                                <line x1="12" y1="22.08" x2="12" y2="12" />
-                                                            </svg>
-                                                        </div>
-                                                        <div class="variant-text-group">
-                                                            <div class="variant-reference-tag"
-                                                                *ngIf="variant.reference">
-                                                                REF: {{ variant.reference }}
-                                                            </div>
-                                                            <div class="variant-attr-chips">
-                                                                <span class="attr-chip"
-                                                                    *ngFor="let attr of getVariantAttributes(variant)">
-                                                                    <span class="attr-dot"></span>
-                                                                    {{ attr }}
-                                                                </span>
-                                                            </div>
-                                                            <div class="variant-barcode-pill" *ngIf="variant.codeBarre">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="12"
-                                                                    height="12" viewBox="0 0 24 24" fill="none"
-                                                                    stroke="currentColor" stroke-width="2.5">
-                                                                    <path
-                                                                        d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14M21 5v14" />
-                                                                </svg>
-                                                                {{ variant.codeBarre }}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="variant-financials-mini">
-                                                        <div class="financial-item">
-                                                            <span class="f-label">Prix Vente</span>
-                                                            <span class="f-value">{{ (variant.prixVente ||
-                                                                activePiece.prixVente) |
-                                                                number:'1.2-2' }} <small>{{ entreprise?.devise?.code ||
-                                                                    'DT'
-                                                                    }}</small></span>
-                                                        </div>
-                                                        <div class="financial-item">
-                                                            <span class="f-label">TVA</span>
-                                                            <span class="f-value">{{ (variant.tauxTVA ||
-                                                                activePiece.tauxTVA) || 0
-                                                                }}%</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div class="variant-stock-section">
-                                                    <div class="stock-status-display">
-                                                        <div class="stock-gauge-wrapper">
-                                                            <div class="stock-gauge-bg">
-                                                                <div class="stock-gauge-fill"
-                                                                    [style.width.%]="getStockPercentage(variant)"
-                                                                    [class.gauge-low]="(variant.quantite || 0) < (variant.seuilMinimum || 0)"
-                                                                    [class.gauge-empty]="(variant.quantite || 0) <= 0">
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div class="stock-numeric-info">
-                                                            <div class="qty-info">
-                                                                <span class="qty-amount"
-                                                                    [class.danger]="(variant.quantite || 0) <= 0"
-                                                                    [class.warning]="(variant.quantite || 0) > 0 && (variant.quantite || 0) < (variant.seuilMinimum || 0)">
-                                                                    {{ variant.quantite || 0 | number:'1.2-2' }}
-                                                                </span>
-                                                                <span class="qty-unit">{{ variant.unite?.abbreviation ||
-                                                                    activePiece.unite?.abbreviation || 'unit' }}</span>
-                                                            </div>
-                                                            <div class="stock-condition-pill"
-                                                                [class.pill-ok]="(variant.quantite || 0) >= (variant.seuilMinimum || 0)"
-                                                                [class.pill-low]="(variant.quantite || 0) > 0 && (variant.quantite || 0) < (variant.seuilMinimum || 0)"
-                                                                [class.pill-empty]="(variant.quantite || 0) <= 0">
-                                                                {{ (variant.quantite || 0) <= 0 ? 'Rupture' :
-                                                                    ((variant.quantite || 0) < (variant.seuilMinimum ||
-                                                                    0) ? 'Faible' : 'Sain' ) }} </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        {{ piece.categorie.nom }}
+                                    </span>
+                                    <span class="pl-badge-type" *ngIf="piece.unite">{{ piece.unite.nom }}</span>
+                                    <span class="pl-badge-type piece-tag tag-attribute"
+                                        *ngFor="let attr of getVariantAttributes(piece)">
+                                        {{ attr.includes(' : ') ? attr.split(' : ')[1] : attr }}
+                                    </span>
+                                </div>
+                                <div class="piece-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Stock dispo</span>
+                                        <span class="stat-value"
+                                            [class.critical]="getTotalStock(piece) < (piece.seuilMinimum || 0)">{{
+                                            getTotalStock(piece) | number:'1.2-2' }}</span>
                                     </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Seuil</span>
+                                        <span class="stat-value">{{ piece.seuilMinimum || 0 | number:'1.2-2'
+                                            }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                                    <div class="detail-tech-content" *ngIf="activeTab === 'details'">
-                                        <!-- Header Section with Info Cards -->
-                                        <div class="tech-info-grid">
-                                            <div class="tech-card pricing-card">
-                                                <div class="tech-card-header">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
-                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                        stroke-width="2">
-                                                        <circle cx="12" cy="12" r="10" />
-                                                        <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
-                                                    </svg>
-                                                    Tarification
+                    <!-- Empty State -->
+                    <div class="table-empty-state" *ngIf="filteredPiecesList.length === 0">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none"
+                            stroke="#cbd5e1" stroke-width="1.5">
+                            <path
+                                d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z">
+                            </path>
+                        </svg>
+                        <h3>Aucune pièce ne correspond à votre recherche</h3>
+                        <p>Essayez de modifier vos filtres ou d'ajouter une nouvelle pièce.</p>
+                    </div>
+
+                    <!-- Footer Pagination -->
+                    <div class="view-footer-premium">
+                        <div class="record-info">{{ filteredPiecesList.length }} pièces au total</div>
+                    </div>
+                </div>
+            </div>
+            <div class="detail-pane" *ngIf="activePiece || activeGroup">
+                <div class="detail-full-wrapper" *ngIf="(activePiece || activeGroup) && !showCreateModal">
+
+                    <div class="group-detail-view" *ngIf="activeGroup && !activePiece">
+                        <header class="detail-top-toolbar">
+                            <div class="toolbar-left">
+                                <div class="title-with-subtitle">
+                                    <h2>{{ activeGroup.main.designation }}</h2>
+                                    <div class="subtitle">
+                                        {{ activeGroup.variations.length + 1 }} variante(s)
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="toolbar-right">
+                                <div class="action-buttons" *ngIf="canManage()">
+                                    <button class="btn-action-edit" style="gap: 6px;"
+                                        (click)="openEditModal(activeGroup.main)" title="Modifier Modele">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7">
+                                            </path>
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z">
+                                            </path>
+                                        </svg>
+                                        Modifier le modèle
+                                    </button>
+                                    <div class="divider-v"></div>
+                                    <button class="btn-tool-close" (click)="closeDetail()" title="Fermer">x</button>
+                                </div>
+                            </div>
+                        </header>
+
+                        <div class="group-detail-body">
+                            <div class="group-attributes-summary">
+                                <div class="attr-row">
+                                    <span class="attr-name">Unité</span>
+                                    <span class="attr-val">{{ activeGroup.main.unite?.nom || '--' }}</span>
+                                </div>
+                                <div class="attr-row" *ngFor="let attr of getGroupAttributes(activeGroup)">
+                                    <span class="attr-name">{{ attr.key }}</span>
+                                    <div class="attr-tags">
+                                        <span class="attr-tag" *ngFor="let val of attr.values">{{ val }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <table class="variant-detail-table">
+                                <thead>
+                                    <tr>
+                                        <th>DÉTAILS DE LA VARIANTE</th>
+                                        <th>RÉFÉRENCE</th>
+                                        <th>PRIX DE VENTE</th>
+                                        <th>STOCK DISPONIBLE</th>
+                                        <th>SEUIL <span class="hide-mobile">MINIMUM</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let variant of [activeGroup.main].concat(activeGroup.variations)">
+                                        <td>
+                                            <div class="vd-identity">
+                                                <div class="vd-img"><img [src]="getImageUrl(variant.imageUrl)" alt="">
                                                 </div>
-                                                <div class="tech-card-body">
-                                                    <div class="tech-field">
-                                                        <span class="tech-label">Prix de vente (HT)</span>
-                                                        <span class="tech-value highlight-price">
-                                                            {{ activePiece.prixVente || 0 | number:'1.3-3' }}
-                                                            <small>{{ entreprise?.devise?.code || 'DT' }}</small>
-                                                        </span>
-                                                    </div>
-                                                    <div class="tech-field">
-                                                        <span class="tech-label">Taux TVA (%)</span>
-                                                        <span class="tech-value">{{ activePiece.tauxTVA || 0 }}%</span>
-                                                    </div>
+                                                <div class="vd-text">
+                                                    <span class="vd-name" (click)="selectPiece(variant)">
+                                                        {{ variant.designation }}
+                                                        <span class="attr-chips"
+                                                            *ngFor="let a of getVariantAttributes(variant)">- {{
+                                                            a.split(' : ')[1] }}</span>
+                                                    </span>
                                                 </div>
                                             </div>
+                                        </td>
+                                        <td><span class="variant-reference-tag">{{ variant.reference }}</span></td>
+                                        <td><span class="currency">{{ currencySymbol }}</span> {{
+                                            variant.prixVente || 0 | number:'1.3-3' }}</td>
+                                        <td>{{ variant.quantite || 0 | number:'1.2-2' }}</td>
+                                        <td>{{ variant.seuilMinimum || 0 | number:'1.2-2' }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
 
-                                            <div class="tech-card ident-card" *ngIf="activePiece.codeBarre">
-                                                <div class="tech-card-header">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
-                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                        stroke-width="2">
-                                                        <path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14M21 5v14" />
-                                                    </svg>
-                                                    Identification
-                                                </div>
-                                                <div class="tech-card-body">
-                                                    <div class="tech-field">
-                                                        <span class="tech-label">Code Barre</span>
-                                                        <span class="tech-value barcode-style">{{ activePiece.codeBarre
-                                                            }}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                    <div class="single-piece-view" *ngIf="activePiece">
+                        <header class="detail-top-toolbar">
+                            <div class="toolbar-left">
+                                <div class="title-with-subtitle">
+                                    <h2>{{ activePiece.designation }}</h2>
+                                    <div class="subtitle">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="10" />
+                                            <line x1="12" y1="16" x2="12" y2="12" />
+                                            <line x1="12" y1="8" x2="12.01" y2="8" />
+                                        </svg>
+                                        Détails de la pièce détachée
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="toolbar-right">
+                                <div class="action-buttons" *ngIf="canManage()">
+                                    <button class="btn-tool-minimal" (click)="openEditModal(activePiece)"
+                                        title="Modifier">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                        </svg>
+                                    </button>
+                                    <button class="btn-tool-minimal" (click)="openDuplicateModal(activePiece)"
+                                        title="Dupliquer">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1">
+                                            </path>
+                                        </svg>
+                                    </button>
+                                    <button class="btn-tool-minimal btn-tool-danger"
+                                        (click)="confirmDelete(activePiece)" title="Supprimer">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path
+                                                d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" />
+                                        </svg>
+                                    </button>
+                                    <div class="divider-v"></div>
+                                    <button class="btn-tool-close" (click)="closeDetail()" title="Fermer">x</button>
+                                </div>
+                            </div>
+                        </header>
 
-                                        <!-- Attributes Section -->
-                                        <div class="tech-attributes-section"
-                                            *ngIf="activePiece.details && activePiece.details.length > 0">
-                                            <h4 class="tech-sub-title">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                        <nav class="detail-secondary-nav">
+                            <button class="nav-tab" [class.active]="activeTab === 'overview'"
+                                (click)="switchTab('overview')">Vue d'ensemble</button>
+                            <button class="nav-tab" [class.active]="activeTab === 'details'"
+                                (click)="switchTab('details')">Détails de la pièce</button>
+                            <button class="nav-tab" [class.active]="activeTab === 'associated'"
+                                (click)="switchTab('associated')">Produits Finis</button>
+                            <button class="nav-tab" [class.active]="activeTab === 'history'"
+                                (click)="switchTab('history')">Historique</button>
+                        </nav>
+
+                        <div class="detail-scroll-pane">
+                            <div class="detail-grid-container" *ngIf="activeTab === 'overview'">
+                                <div class="detail-main-info">
+                                    <div class="overview-cards-grid">
+                                        <div class="overview-info-card">
+                                            <div class="card-icon-box">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                                     stroke-width="2">
                                                     <path
-                                                        d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                                        d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                                                 </svg>
-                                                Caractéristiques Techniques
-                                            </h4>
-                                            <div class="attributes-grid">
-                                                <div class="attr-item" *ngFor="let detail of activePiece.details">
-                                                    <div class="attr-icon">
-                                                        {{ detail.parametre.nom[0] }}
-                                                    </div>
-                                                    <div class="attr-info">
-                                                        <span class="attr-label">{{ detail.parametre.nom }}</span>
-                                                        <span class="attr-val">{{ detail.valeur || '--' }}</span>
-                                                    </div>
-                                                </div>
+                                            </div>
+                                            <div class="card-text-box">
+                                                <span class="card-label">Référence</span>
+                                                <span class="card-value">{{ activePiece.reference }}</span>
                                             </div>
                                         </div>
-
-                                        <!-- Empty State if no details -->
-                                        <div class="empty-tech-state"
-                                            *ngIf="!activePiece.codeBarre && (!activePiece.details || activePiece.details.length === 0)">
-                                            <p>Aucune donnée technique supplémentaire disponible pour cette pièce.
-                                            </p>
+                                        <div class="overview-info-card">
+                                            <div class="card-icon-box">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+                                                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                                                </svg>
+                                            </div>
+                                            <div class="card-text-box">
+                                                <span class="card-label">Catégorie</span>
+                                                <span class="card-value">{{ activePiece.categorie?.nom || '--'
+                                                    }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="overview-info-card">
+                                            <div class="card-icon-box">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <circle cx="12" cy="12" r="10" />
+                                                    <path d="M12 8v8" />
+                                                    <path d="M8 12h8" />
+                                                </svg>
+                                            </div>
+                                            <div class="card-text-box">
+                                                <span class="card-label">Unité</span>
+                                                <span class="card-value">{{ activePiece.unite?.nom || '--' }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="overview-info-card stock-highlight-card">
+                                            <div class="card-icon-box">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <path d="M21 10H3" />
+                                                    <path d="M21 6H3" />
+                                                    <path d="M21 14H3" />
+                                                    <path d="M21 18H3" />
+                                                </svg>
+                                            </div>
+                                            <div class="card-text-box">
+                                                <span class="card-label">Stock Total</span>
+                                                <div class="stock-total-display">
+                                                    <span class="card-value highlight">{{ getTotalStock(activePiece)
+                                                        |
+                                                        number:'1.2-2' }}</span>
+                                                    <span class="stock-badge"
+                                                        [class.badge-danger]="getTotalStock(activePiece) <= 0"
+                                                        [class.badge-warning]="getTotalStock(activePiece) > 0 && getTotalStock(activePiece) < (activePiece.seuilMinimum || 0)"
+                                                        [class.badge-success]="getTotalStock(activePiece) >= (activePiece.seuilMinimum || 0)">
+                                                        {{ getTotalStock(activePiece) <= 0 ? 'Rupture' :
+                                                            (getTotalStock(activePiece) < (activePiece.seuilMinimum ||
+                                                            0) ? 'En réserve' : 'Sain' ) }} </span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div class="detail-associated-content" *ngIf="activeTab === 'associated'"
-                                        style="padding: 24px; padding-top: 5px;">
-                                        <div class="technical-details-card"
-                                            style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                                            <h3
-                                                style="font-size: 0.95rem; color: #64748b; margin-bottom: 0; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; justify-content: space-between;">
-                                                <div style="display: flex; align-items: center; gap: 8px;">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                        stroke-width="2">
-                                                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z">
-                                                        </path>
-                                                        <line x1="3" y1="6" x2="21" y2="6"></line>
-                                                        <path d="M16 10a4 4 0 0 1-8 0"></path>
-                                                    </svg>
-                                                    Produits Fini Associés
-                                                </div>
-                                            </h3>
 
-                                            <div class="assoc-grid-detail" style="margin-top: 24px;">
-                                                <div class="product-item-mini"
-                                                    *ngFor="let prod of activePiece.produitsAssocies">
-                                                    <div class="prod-thumb">
-                                                        <img [src]="getImageUrl(prod.imageUrl)" alt="">
-                                                    </div>
-                                                    <div class="prod-details">
-                                                        <span class="p-name">{{ prod.designation }}</span>
-                                                        <span class="p-code">{{ prod.code }}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="empty-assoc" *ngIf="!activePiece.produitsAssocies?.length"
-                                                style="padding: 10px; color: #94a3b8; font-size: 0.85rem; margin-top: 16px;">
-                                                Aucun produit fini associé à cette pièce.
-                                            </div>
+                                    <div class="description-premium-card" *ngIf="activePiece.description">
+                                        <div class="desc-header">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                                <polyline points="14 2 14 8 20 8" />
+                                                <line x1="16" y1="13" x2="8" y2="13" />
+                                                <line x1="16" y1="17" x2="8" y2="17" />
+                                                <polyline points="10 9 9 9 8 9" />
+                                            </svg>
+                                            DESCRIPTION
+                                        </div>
+                                        <div class="desc-content">
+                                            {{ activePiece.description }}
                                         </div>
                                     </div>
+                                </div>
+                                <div class="detail-side-visual">
+                                    <div class="visual-card-premium">
+                                        <div class="image-wrapper">
+                                            <img [src]="getImageUrl(activePiece.imageUrl)"
+                                                [alt]="activePiece.designation">
+                                        </div>
+                                        <div class="image-overlay-info" *ngIf="activePiece.imageUrl">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                                <polyline points="17 8 12 3 7 8" />
+                                                <line x1="12" y1="3" x2="12" y2="15" />
+                                            </svg>
+                                            Image haute résolution
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-                                    <div class="detail-history-content" *ngIf="activeTab === 'history'">
-                                        <div class="timeline-container">
-                                            <div class="timeline-item" *ngFor="let entry of activePiece.historiques">
-                                                <div class="timeline-marker">
-                                                    <div class="marker-dot"
-                                                        [class.dot-create]="entry.action === 'Création'"
-                                                        [class.dot-modify]="entry.action === 'Modification'"
-                                                        [class.dot-stock]="entry.action === 'Mise à jour stock'"></div>
-                                                    <div class="marker-line"></div>
-                                                </div>
-                                                <div class="timeline-content">
-                                                    <div class="timeline-header">
-                                                        <span class="event-action"
-                                                            [class.badge-create]="entry.action === 'Création'"
-                                                            [class.badge-modify]="entry.action === 'Modification'"
-                                                            [class.badge-stock]="entry.action === 'Mise à jour stock'">
-                                                            {{ entry.action }}
-                                                        </span>
-                                                        <span class="event-date">{{ entry.date | date:'dd MMM yyyy
-                                                            HH:mm' }}</span>
+                            <div class="detail-variants-content"
+                                *ngIf="activeTab === 'overview' && activePiece.variations && activePiece.variations.length > 0"
+                                style="margin-top: 24px;">
+                                <h3
+                                    style="font-size: 1.1rem; color: #1e293b; margin-bottom: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <path
+                                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+                                        </path>
+                                        <polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
+                                        <polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
+                                        <polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
+                                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                    </svg>
+                                    Variantes de cette pièce
+                                </h3>
+                                <div class="variants-premium-grid">
+                                    <div class="variant-premium-card" *ngFor="let variant of activePiece.variations">
+                                        <div class="variant-card-main">
+                                            <div class="variant-info-section">
+                                                <div class="variant-identity">
+                                                    <div class="variant-icon-badge">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                            viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                            stroke-width="2.5">
+                                                            <path
+                                                                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                                            <polyline points="7.5 4.21 12 6.81 16.5 4.21" />
+                                                            <polyline points="7.5 19.79 7.5 14.6 3 12" />
+                                                            <polyline points="21 12 16.5 14.6 16.5 19.79" />
+                                                            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                                                            <line x1="12" y1="22.08" x2="12" y2="12" />
+                                                        </svg>
                                                     </div>
-                                                    <div class="timeline-body">
-                                                        <p class="event-details">{{ entry.details }}</p>
-                                                        <div class="event-user" *ngIf="entry.utilisateur">
-                                                            <div class="user-avatar-mini">
-                                                                {{ entry.utilisateur.firstName[0] }}{{
-                                                                entry.utilisateur.lastName[0]
-                                                                }}
-                                                            </div>
-                                                            <span class="user-name-label">
-                                                                {{ entry.utilisateur.firstName }} {{
-                                                                entry.utilisateur.lastName }}
+                                                    <div class="variant-text-group">
+                                                        <div class="variant-reference-tag" *ngIf="variant.reference">
+                                                            REF: {{ variant.reference }}
+                                                        </div>
+                                                        <div class="variant-attr-chips">
+                                                            <span class="attr-chip"
+                                                                *ngFor="let attr of getVariantAttributes(variant)">
+                                                                <span class="attr-dot"></span>
+                                                                {{ attr }}
                                                             </span>
+                                                        </div>
+                                                        <div class="variant-barcode-pill" *ngIf="variant.codeBarre">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                                                height="12" viewBox="0 0 24 24" fill="none"
+                                                                stroke="currentColor" stroke-width="2.5">
+                                                                <path
+                                                                    d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14M21 5v14" />
+                                                            </svg>
+                                                            {{ variant.codeBarre }}
                                                         </div>
                                                     </div>
                                                 </div>
+
+                                                <div class="variant-financials-mini">
+                                                    <div class="financial-item">
+                                                        <span class="f-label">Prix Vente</span>
+                                                        <span class="f-value">{{ (variant.prixVente ||
+                                                            activePiece.prixVente) |
+                                                            number:'1.2-2' }} <small>{{ currencySymbol }}</small></span>
+                                                    </div>
+                                                    <div class="financial-item">
+                                                        <span class="f-label">TVA</span>
+                                                        <span class="f-value">{{ (variant.tauxTVA ||
+                                                            activePiece.tauxTVA) || 0
+                                                            }}%</span>
+                                                    </div>
+                                                </div>
                                             </div>
 
-                                            <div class="empty-timeline" *ngIf="!activePiece.historiques?.length">
-                                                <div class="empty-state-card">
-                                                    <div class="empty-icon-wrapper">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"
-                                                            viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                            stroke-width="1.5">
-                                                            <circle cx="12" cy="12" r="10" />
-                                                            <polyline points="12 6 12 12 16 14" />
-                                                        </svg>
+                                            <div class="variant-stock-section">
+                                                <div class="stock-status-display">
+                                                    <div class="stock-gauge-wrapper">
+                                                        <div class="stock-gauge-bg">
+                                                            <div class="stock-gauge-fill"
+                                                                [style.width.%]="getStockPercentage(variant)"
+                                                                [class.gauge-low]="(variant.quantite || 0) < (variant.seuilMinimum || 0)"
+                                                                [class.gauge-empty]="(variant.quantite || 0) <= 0">
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <h3>Aucun historique</h3>
-                                                    <p>Les modifications apportées à cette pièce apparaîtront ici.
-                                                    </p>
+                                                    <div class="stock-numeric-info">
+                                                        <div class="qty-info">
+                                                            <span class="qty-amount"
+                                                                [class.danger]="(variant.quantite || 0) <= 0"
+                                                                [class.warning]="(variant.quantite || 0) > 0 && (variant.quantite || 0) < (variant.seuilMinimum || 0)">
+                                                                {{ variant.quantite || 0 | number:'1.2-2' }}
+                                                            </span>
+                                                            <span class="qty-unit">{{ variant.unite?.abbreviation ||
+                                                                activePiece.unite?.abbreviation || 'unit' }}</span>
+                                                        </div>
+                                                        <div class="stock-condition-pill"
+                                                            [class.pill-ok]="(variant.quantite || 0) >= (variant.seuilMinimum || 0)"
+                                                            [class.pill-low]="(variant.quantite || 0) > 0 && (variant.quantite || 0) < (variant.seuilMinimum || 0)"
+                                                            [class.pill-empty]="(variant.quantite || 0) <= 0">
+                                                            {{ (variant.quantite || 0) <= 0 ? 'Rupture' :
+                                                                ((variant.quantite || 0) < (variant.seuilMinimum || 0)
+                                                                ? 'Faible' : 'Sain' ) }} </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
+
+                                <div class="detail-tech-content" *ngIf="activeTab === 'details'">
+                                    <!-- Header Section with Info Cards -->
+                                    <div class="tech-info-grid">
+                                        <div class="tech-card pricing-card">
+                                            <div class="tech-card-header">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <circle cx="12" cy="12" r="10" />
+                                                    <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
+                                                </svg>
+                                                Tarification
+                                            </div>
+                                            <div class="tech-card-body">
+                                                <div class="tech-field">
+                                                    <span class="tech-label">Prix de vente (HT)</span>
+                                                    <span class="tech-value highlight-price">
+                                                        {{ activePiece.prixVente || 0 | number:'1.3-3' }}
+                                                        <small>{{ entreprise?.devise?.code || 'DT' }}</small>
+                                                    </span>
+                                                </div>
+                                                <div class="tech-field">
+                                                    <span class="tech-label">Taux TVA (%)</span>
+                                                    <span class="tech-value">{{ activePiece.tauxTVA || 0 }}%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="tech-card ident-card" *ngIf="activePiece.codeBarre">
+                                            <div class="tech-card-header">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2">
+                                                    <path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14M21 5v14" />
+                                                </svg>
+                                                Identification
+                                            </div>
+                                            <div class="tech-card-body">
+                                                <div class="tech-field">
+                                                    <span class="tech-label">Code Barre</span>
+                                                    <span class="tech-value barcode-style">{{ activePiece.codeBarre
+                                                        }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Attributes Section -->
+                                    <div class="tech-attributes-section"
+                                        *ngIf="activePiece.details && activePiece.details.length > 0">
+                                        <h4 class="tech-sub-title">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path
+                                                    d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                            </svg>
+                                            Caractéristiques Techniques
+                                        </h4>
+                                        <div class="attributes-grid">
+                                            <div class="attr-item" *ngFor="let detail of activePiece.details">
+                                                <div class="attr-icon">
+                                                    {{ detail.parametre.nom[0] }}
+                                                </div>
+                                                <div class="attr-info">
+                                                    <span class="attr-label">{{ detail.parametre.nom }}</span>
+                                                    <span class="attr-val">{{ detail.valeur || '--' }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Empty State if no details -->
+                                    <div class="empty-tech-state"
+                                        *ngIf="!activePiece.codeBarre && (!activePiece.details || activePiece.details.length === 0)">
+                                        <p>Aucune donnée technique supplémentaire disponible pour cette pièce.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="detail-associated-content" *ngIf="activeTab === 'associated'"
+                                    style="padding: 24px; padding-top: 5px;">
+                                    <div class="associated-products-container">
+                                        <div class="assoc-header">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z">
+                                                </path>
+                                                <line x1="3" y1="6" x2="21" y2="6"></line>
+                                                <path d="M16 10a4 4 0 0 1-8 0"></path>
+                                            </svg>
+                                            Produits Fini Associés
+                                        </div>
+
+                                        <div class="assoc-grid-detail">
+                                            <div class="product-item-mini"
+                                                *ngFor="let prod of activePiece.produitsAssocies">
+                                                <div class="prod-thumb">
+                                                    <img [src]="getImageUrl(prod.imageUrl)" alt="">
+                                                </div>
+                                                <div class="prod-details">
+                                                    <span class="p-name">{{ prod.designation }}</span>
+                                                    <span class="p-code">{{ prod.code }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="empty-assoc" *ngIf="!activePiece.produitsAssocies?.length">
+                                            Aucun produit fini associé à cette pièce.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="detail-history-content" *ngIf="activeTab === 'history'">
+                                    <div class="timeline-container">
+                                        <div class="timeline-item" *ngFor="let entry of activePiece.historiques">
+                                            <div class="timeline-marker">
+                                                <div class="marker-dot" [class.dot-create]="entry.action === 'Création'"
+                                                    [class.dot-modify]="entry.action === 'Modification'"
+                                                    [class.dot-stock]="entry.action === 'Mise à jour stock'"></div>
+                                                <div class="marker-line"></div>
+                                            </div>
+                                            <div class="timeline-content">
+                                                <div class="timeline-header">
+                                                    <span class="event-action"
+                                                        [class.badge-create]="entry.action === 'Création'"
+                                                        [class.badge-modify]="entry.action === 'Modification'"
+                                                        [class.badge-stock]="entry.action === 'Mise à jour stock'">
+                                                        {{ entry.action }}
+                                                    </span>
+                                                    <span class="event-date">{{ entry.date | date:'dd MMM yyyy
+                                                        HH:mm' }}</span>
+                                                </div>
+                                                <div class="timeline-body">
+                                                    <p class="event-details">{{ entry.details }}</p>
+                                                    <div class="event-user" *ngIf="entry.utilisateur">
+                                                        <div class="user-avatar-mini">
+                                                            {{ entry.utilisateur.firstName[0] }}{{
+                                                            entry.utilisateur.lastName[0]
+                                                            }}
+                                                        </div>
+                                                        <span class="user-name-label">
+                                                            {{ entry.utilisateur.firstName }} {{
+                                                            entry.utilisateur.lastName }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="empty-timeline" *ngIf="!activePiece.historiques?.length">
+                                            <div class="empty-state-card">
+                                                <div class="empty-icon-wrapper">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"
+                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                        stroke-width="1.5">
+                                                        <circle cx="12" cy="12" r="10" />
+                                                        <polyline points="12 6 12 12 16 14" />
+                                                    </svg>
+                                                </div>
+                                                <h3>Aucun historique</h3>
+                                                <p>Les modifications apportées à cette pièce apparaîtront ici.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div> <!-- End of .single-piece-view -->
-                    </div> <!-- End of .detail-full-wrapper -->
-                </div> <!-- End of .detail-pane -->
-            </div> <!-- End of .master-detail-container -->
+                        </div>
+                    </div> <!-- End of .single-piece-view -->
+                </div> <!-- End of .detail-full-wrapper -->
+            </div> <!-- End of .detail-pane -->
+        </div> <!-- End of .master-detail-container -->
 
 
-            <div class="modal-overlay delete-modal" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
-                <div class="modal-content small confirm-danger" (click)="$event.stopPropagation()">
-                    <div class="confirm-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2">
-                            <path
-                                d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" />
-                        </svg>
-                    </div>
-                    <h2>Confirmer la suppression</h2>
-                    <p *ngIf="!isBulkDelete">Voulez-vous vraiment supprimer la pièce <strong>{{
-                            itemToDelete?.designation
-                            }}</strong> ?</p>
-                    <p *ngIf="isBulkDelete">Voulez-vous vraiment supprimer les <strong>{{ selectedIds.size }}</strong>
-                        pièces sélectionnées ?</p>
-                    <div class="confirm-actions">
-                        <button class="btn-cancel" (click)="cancelDelete()">Annuler</button>
-                        <button class="btn-confirm-delete"
-                            (click)="isBulkDelete ? startBulkDelete() : (itemToDelete?.id && deletePiece(itemToDelete!.id!))">
-                            <span *ngIf="!loading">Oui, Supprimer</span>
-                            <span *ngIf="loading">Suppression...</span>
-                        </button>
-                    </div>
+        <div class="modal-overlay delete-modal" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
+            <div class="modal-content small confirm-danger" (click)="$event.stopPropagation()">
+                <div class="confirm-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path
+                            d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" />
+                    </svg>
+                </div>
+                <h2>Confirmer la suppression</h2>
+                <p *ngIf="!isBulkDelete">Voulez-vous vraiment supprimer la pièce <strong>{{
+                        itemToDelete?.designation
+                        }}</strong> ?</p>
+                <p *ngIf="isBulkDelete">Voulez-vous vraiment supprimer les <strong>{{ selectedIds.size }}</strong>
+                    pièces sélectionnées ?</p>
+                <div class="confirm-actions">
+                    <button class="btn-cancel" (click)="cancelDelete()">Annuler</button>
+                    <button class="btn-confirm-delete"
+                        (click)="isBulkDelete ? startBulkDelete() : (itemToDelete?.id && deletePiece(itemToDelete!.id!))">
+                        <span *ngIf="!loading">Oui, Supprimer</span>
+                        <span *ngIf="loading">Suppression...</span>
+                    </button>
                 </div>
             </div>
-        </div> <!-- premium-stock-container -->
+        </div>
+    </div> <!-- premium-stock-container -->

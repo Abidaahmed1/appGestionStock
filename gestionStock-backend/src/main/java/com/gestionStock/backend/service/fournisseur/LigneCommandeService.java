@@ -3,7 +3,7 @@ package com.gestionStock.backend.service.fournisseur;
 import com.gestionStock.backend.entity.fournisseur.LigneCommande;
 import com.gestionStock.backend.repository.fournisseur.LigneCommandeRepository;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 

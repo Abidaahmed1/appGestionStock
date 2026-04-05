@@ -7,6 +7,7 @@ import { BonCommandeFournisseur, Fournisseur, LigneCommande, StatutCommande, Pie
 import { MagasinierService } from '../../../magasinier/services/magasinier.service';
 import { EntrepriseService } from '../../../admin/services/entreprise.service';
 import { Entreprise } from '../../../admin/models/entreprise.model';
+import { DocumentConfigService, DocumentDisplaySetting, DocumentType } from '../../../admin/services/document-config.service';
 
 @Component({
   selector: 'app-commande-fournisseur-form',
@@ -23,6 +24,9 @@ export class CommandeFournisseurFormComponent implements OnInit {
   private platformId = inject(PLATFORM_ID);
   private cdr = inject(ChangeDetectorRef);
   private entrepriseService = inject(EntrepriseService);
+  private docConfigService = inject(DocumentConfigService);
+
+  docSetting: DocumentDisplaySetting | null = null;
 
   commande: BonCommandeFournisseur = {
     numeroCmd: '',
@@ -60,6 +64,13 @@ export class CommandeFournisseurFormComponent implements OnInit {
   isAutoNumeroCmd = true;
   parametres: any = null;
 
+  get currencySymbol(): string {
+    if (this.entreprise?.devise?.code) {
+      return this.entreprise.devise.code;
+    }
+    return this.entrepriseService.getDeviseSymbol(this.entreprise);
+  }
+
   isPrintView = false;
   private afterPrintListener: (() => void) | null = null;
 
@@ -69,6 +80,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
       this.loadPieces();
       this.loadEntreprise();
       this.loadParametres();
+      this.loadDocSetting();
 
       if (this.logistiqueService.commandeDraft) {
         this.commande = this.logistiqueService.commandeDraft;
@@ -174,7 +186,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
 
   initNewCommande(): BonCommandeFournisseur {
     return {
-      numeroCmd: 'AUTO',
+      numeroCmd: this.isAutoNumeroCmd ? 'AUTO' : '',
       dateCmd: new Date().toISOString().substring(0, 16),
       statut: StatutCommande.EN_ATTENTE,
       lignes: []
@@ -207,17 +219,14 @@ export class CommandeFournisseurFormComponent implements OnInit {
 
   explodePieces(pieces: any[]): any[] {
     return pieces.map(p => {
-      let variantLabel = '';
-      if (p.details && Array.isArray(p.details)) {
-        variantLabel = p.details
-          .filter((d: any) => d.parametre && d.valeur)
-          .map((d: any) => `${d.parametre.nom} ${d.valeur}`)
-          .join(' ');
-      }
+      const rootDesignation = p.designation;
+      const visibleVariants = this.getFilteredVariantsForPiece(p);
+      const variantLabel = visibleVariants.join(' ');
 
       return {
         ...p,
-        designation: variantLabel ? `${p.designation} - ${variantLabel}` : p.designation,
+        aggregatedDesignation: rootDesignation,
+        designation: variantLabel ? `${rootDesignation} - ${variantLabel}` : rootDesignation,
         originalPiece: p
       };
     });
@@ -249,7 +258,6 @@ export class CommandeFournisseurFormComponent implements OnInit {
         this.commande = data;
         this.isAutoNumeroCmd = this.commande.numeroCmd === 'AUTO';
         this.isEditMode = true;
-        // Format dates for datetime-local and date inputs
         if (this.commande.dateCmd) {
           this.commande.dateCmd = this.commande.dateCmd.substring(0, 16);
         }
@@ -276,7 +284,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
               this.goBackToCommandList();
             };
             window.addEventListener('afterprint', this.afterPrintListener);
-          }, 800);
+          }, 1200);
         }
       },
       error: () => {
@@ -284,6 +292,44 @@ export class CommandeFournisseurFormComponent implements OnInit {
         this.router.navigate(['/logistique/commandes']);
       }
     });
+  }
+
+  loadDocSetting() {
+    this.docConfigService.getSettingByType(DocumentType.COMMANDE_FOURNISSEUR).subscribe({
+      next: (setting) => {
+        this.docSetting = setting;
+        if (this.pieces.length > 0) {
+          const rawPieces = this.pieces.map(p => p.originalPiece || p);
+          this.pieces = this.explodePieces(rawPieces);
+        }
+        this.cdr.detectChanges();
+      },
+      error: (err) => console.error('Erreur chargement doc settings:', err)
+    });
+  }
+
+  getFilteredVariantsForPiece(piece: any): string[] {
+    if (!piece) return [];
+    const details = piece.allDetails || piece.details || [];
+
+    if (this.docSetting && this.docSetting.visibleVarianteIds && this.docSetting.visibleVarianteIds.length > 0) {
+      return details
+        .filter((d: any) => {
+          const hasValue = d.valeur && d.valeur.trim() !== '' && d.valeur !== '-';
+          return d.parametre && d.parametre.id && hasValue && this.docSetting!.visibleVarianteIds.includes(d.parametre.id!);
+        })
+        .map((d: any) => `${d.parametre.nom}: ${d.valeur}`);
+    }
+
+    return [];
+  }
+
+  getPieceDisplayValueByLigne(ligne: any): string {
+    const root = this.getPieceRootName(ligne);
+    if (root === '—') return '—';
+
+    const variants = this.getFilteredVariantsForPiece(ligne.piece);
+    return variants.length > 0 ? `${root} - ${variants.join(' ')}` : root;
   }
 
   loadPieceFournisseurs(fournisseurId: number) {
@@ -366,7 +412,6 @@ export class CommandeFournisseurFormComponent implements OnInit {
   onQuantityChange(index: number) {
     this.updateLinesFromCatalog();
     this.calculateExpectedArrival();
-    this.validate();
   }
 
   addLigne() {
@@ -396,7 +441,20 @@ export class CommandeFournisseurFormComponent implements OnInit {
 
   filterPieces() {
     if (!this.pieceSearchText) {
-      this.filteredPieces = this.pieces.slice(0, 10);
+      // Par défaut : pièces en rupture (<=0) ou en réserve (sous le seuil minimum)
+      this.filteredPieces = this.pieces.filter(p => {
+        const root = p.originalPiece || p;
+        const qty = root.quantite || 0;
+        const min = root.seuilMinimum || 1;
+        return qty <= min;
+      });
+
+      if (this.filteredPieces.length < 5) {
+        const others = this.pieces.filter(p => !this.filteredPieces.includes(p)).slice(0, 10 - this.filteredPieces.length);
+        this.filteredPieces = [...this.filteredPieces, ...others];
+      } else {
+        this.filteredPieces = this.filteredPieces.slice(0, 10);
+      }
     } else {
       const search = this.pieceSearchText.toLowerCase();
       this.filteredPieces = this.pieces.filter(p =>
@@ -421,7 +479,6 @@ export class CommandeFournisseurFormComponent implements OnInit {
     if (existingIndex !== -1) {
       this.commande.lignes[existingIndex].qteCmd += this.commande.lignes[index].qteCmd;
       this.commande.lignes.splice(index, 1);
-      this.validate();
       this.closeDropdown();
       return;
     }
@@ -429,7 +486,6 @@ export class CommandeFournisseurFormComponent implements OnInit {
     const ligne = this.commande.lignes[index];
     ligne.piece = piece.originalPiece || piece;
     ligne.detailPiece = piece.detailPiece || null;
-    // Store the exact string that was shown in the dropdown (e.g. "chemise [bleu - M]") for display in the input
     (ligne as any).transientDesignation = piece.designation;
 
     ligne.qteCmd = this.calculateRecommendedQuantity(piece, index);
@@ -438,7 +494,6 @@ export class CommandeFournisseurFormComponent implements OnInit {
       this.updateLinesFromCatalog();
     }
 
-    this.validate();
     this.calculateExpectedArrival();
     this.closeDropdown();
   }
@@ -568,13 +623,9 @@ export class CommandeFournisseurFormComponent implements OnInit {
   }
 
   getPieceVariantDescription(ligne: any): string {
-    if (!ligne || !ligne.piece || !ligne.piece.details || !Array.isArray(ligne.piece.details)) return '';
-
-    const detailParts = ligne.piece.details
-      .filter((d: any) => d.valeur && d.parametre)
-      .map((d: any) => `${d.parametre.nom} ${d.valeur}`);
-
-    return detailParts.join(' ');
+    if (!ligne || !ligne.piece) return '';
+    const variants = this.getFilteredVariantsForPiece(ligne.piece);
+    return variants.join(' ');
   }
 
   getPieceVariantArray(ligne: any): string[] {
@@ -655,18 +706,14 @@ export class CommandeFournisseurFormComponent implements OnInit {
     const orderDate = this.commande.dateCmd ? new Date(this.commande.dateCmd) : new Date();
 
     return this.allPieceFournisseurs.filter(pf => {
-      // Safety checks
       if (!pf || !pf.piece || !pf.fournisseur) return false;
 
-      // 1. Match Piece
       const pfPieceId = pf.piece.id || pf.piece;
       if (pfPieceId !== pieceId) return false;
 
-      // 2. Quantity Condition: qteCmd must be >= qteMinACommander
       const minQty = pf.qteMinACommander || 1;
       if (qteCmd < minQty) return false;
 
-      // 3. Date Validity
       const start = pf.dateDebutValidite ? new Date(pf.dateDebutValidite) : null;
       const end = pf.dateFinValidite ? new Date(pf.dateFinValidite) : null;
       const isValidDate = (!start || start <= orderDate) && (!end || end >= orderDate);
@@ -684,10 +731,17 @@ export class CommandeFournisseurFormComponent implements OnInit {
 
   validate(): boolean {
     this.errors = {};
-    this.formSubmitted = true;
 
     if (!this.commande.fournisseur?.id) {
       this.errors['fournisseur'] = 'Le fournisseur est obligatoire.';
+    }
+
+    if (!this.isAutoNumeroCmd) {
+        if (!this.commande.numeroCmd || this.commande.numeroCmd.trim() === '') {
+            this.errors['numeroCmd'] = 'Le numéro de commande est obligatoire en saisie manuelle.';
+        } else if (!/^[A-Z0-9\-\/]+$/i.test(this.commande.numeroCmd)) {
+            this.errors['numeroCmd'] = 'Format invalide : utilisez uniquement des lettres, chiffres, tirets (-) ou slash (/).';
+        }
     }
 
     if (this.commande.dateArrivee && this.commande.dateCmd) {
@@ -710,7 +764,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
           this.errors[`ligne_${i}_prix`] = `Ligne ${i + 1} : le prix ne peut pas être négatif.`;
         }
         if ((ligne.prixAchat || 0) === 0 && ligne.piece) {
-          const devise = this.entreprise?.devise?.symbole || 'DT';
+          const devise = this.currencySymbol;
           this.errors[`ligne_${i}_prix_zero`] = `Ligne ${i + 1} (${ligne.piece?.designation}) : le prix unitaire est à 0 ${devise}, veuillez le saisir.`;
         }
 
@@ -732,12 +786,12 @@ export class CommandeFournisseurFormComponent implements OnInit {
   save() {
     if (!this.isEditable) return;
 
+    this.formSubmitted = true;
     if (!this.validate()) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
-    // Extremely clean payload - only IDs and primitive values
     const payload: any = {
       id: this.commande.id,
       numeroCmd: (this.commande.numeroCmd && String(this.commande.numeroCmd).trim() !== '' && String(this.commande.numeroCmd) !== '0') ? this.commande.numeroCmd : null,
@@ -757,7 +811,6 @@ export class CommandeFournisseurFormComponent implements OnInit {
       }))
     };
 
-    // Ensure dateCmd has seconds if it's in YYYY-MM-DDTHH:mm format
     if (payload.dateCmd && payload.dateCmd.includes('T') && payload.dateCmd.split(':').length === 2) {
       payload.dateCmd = payload.dateCmd + ':00';
     } else if (payload.dateCmd && !payload.dateCmd.includes('T')) {
@@ -775,11 +828,9 @@ export class CommandeFournisseurFormComponent implements OnInit {
     const onError = (err: any) => {
       this.loading = false;
       if (err.status === 400) {
-        // If the error message is just a string (like "Failed to read request")
         if (typeof err.error === 'string' || (err.error && err.error.message && !err.error.errors)) {
           this.errors = { global: err.error.message || err.error || 'Erreur lors de la lecture de la requête par le serveur.' };
         } else {
-          // If it's a map of field errors
           this.errors = err.error || { global: 'Erreur de validation.' };
         }
       } else if (err.status === 409) {
@@ -825,7 +876,11 @@ export class CommandeFournisseurFormComponent implements OnInit {
 
   printCommande() {
     if (this.commande.statut === StatutCommande.ANNULEE) return;
-    window.print();
+    if (this.commande.id) {
+      this.router.navigate(['/document/preview', this.commande.id], { queryParams: { type: 'COMMANDE_FOURNISSEUR' } });
+    } else {
+      alert('Veuillez sauvegarder la commande avant de pouvoir l\'imprimer.');
+    }
   }
 
   cancel() {

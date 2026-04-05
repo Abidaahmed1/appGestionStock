@@ -113,7 +113,7 @@
                         <th>Description</th>
                         <th class="check-col">Actif</th>
                         <th>Valeurs / Options</th>
-                        <th class="actions-col"></th>
+                        <th class="actions-col">Actions</th>
                     </tr>
                 </thead>
                 <tbody *ngIf="!loading">
@@ -224,13 +224,13 @@
                     <tr *ngFor="let attr of defaultAttributes">
                         <td>
                             <span class="standard-badge">Système</span>
-                            <strong style="font-weight: 700; color: #1e293b;">{{ attr.nom }}</strong>
+                            <strong class="attr-name">{{ attr.nom }}</strong>
                         </td>
                         <td>
                             <span class="type-pill">{{ attr.type }}</span>
                         </td>
                         <td>
-                            <span style="color: #64748b; font-size: 0.9rem;">{{ attr.description }}</span>
+                            <span class="attr-desc">{{ attr.description }}</span>
                         </td>
                     </tr>
                 </tbody>

@@ -28,6 +28,7 @@ public class NotificationTarget {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
+    @com.fasterxml.jackson.annotation.JsonBackReference("notif_targets")
     @ManyToOne
     @JoinColumn(name = "notification_id")
     private Notification notification;

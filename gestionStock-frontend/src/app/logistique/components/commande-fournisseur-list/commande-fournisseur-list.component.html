@@ -88,12 +88,12 @@
                 <input type="date" [(ngModel)]="filterDateTo" class="filter-input">
             </div>
             <div class="filter-group">
-                <label>Montant TTC min ({{ entreprise?.devise?.symbole || 'DT' }})</label>
+                <label>Montant TTC min ({{ currencySymbol }})</label>
                 <input type="number" [(ngModel)]="filterMontantMin" class="filter-input" placeholder="Min" min="0"
                     step="0.001">
             </div>
             <div class="filter-group">
-                <label>Montant TTC max ({{ entreprise?.devise?.symbole || 'DT' }})</label>
+                <label>Montant TTC max ({{ currencySymbol }})</label>
                 <input type="number" [(ngModel)]="filterMontantMax" class="filter-input" placeholder="Max" min="0"
                     step="0.001">
             </div>
@@ -108,7 +108,7 @@
             <thead>
                 <tr>
                     <th class="checkbox-cell"><input type="checkbox"></th>
-                    <th class="ref-col">Référence</th>
+                    <th>Référence</th>
                     <th *ngIf="isColumnVisible('fournisseur')" class="fournisseur-col">Fournisseur & Code</th>
                     <th *ngIf="isColumnVisible('acheteur')" class="buyer-col">Acheteur</th>
                     <th *ngIf="isColumnVisible('echeance')">Date Échéance</th>
@@ -121,25 +121,26 @@
             <tbody>
                 <tr *ngFor="let cmd of filteredCommandes" (click)="viewDetails(cmd.id!)">
                     <td class="checkbox-cell" (click)="$event.stopPropagation()"><input type="checkbox"></td>
-                    <td class="ref-col font-bold">{{ cmd.numeroCmd }}</td>
+                    <td>{{ cmd.numeroCmd }}</td>
                     <td *ngIf="isColumnVisible('fournisseur')" class="fournisseur-col">
                         <div class="supplier-info">
                             <span class="supplier-name">{{ cmd.fournisseur?.nom }}</span>
-                            <span class="code-badge" *ngIf="cmd.fournisseur?.code">{{ cmd.fournisseur?.code }}</span>
+                            <span class="supplier-code-badge" *ngIf="cmd.fournisseur?.code">{{ cmd.fournisseur?.code
+                                }}</span>
                         </div>
                     </td>
                     <td *ngIf="isColumnVisible('acheteur')" class="buyer-col">
                         <div class="buyer-badge" *ngIf="cmd.createur">
-                            <span class="initial" [style.background-color]="'#3d7a7f'">{{
+                            <span class="initial" [style.background-color]="'var(--primary)'">{{
                                 getAcheteurInitials(cmd.createur) }}</span>
                             <span class="name">{{ cmd.createur.firstName }} {{ cmd.createur.lastName }}</span>
                         </div>
                     </td>
                     <td *ngIf="isColumnVisible('echeance')">{{ cmd.dateCmd | date:'dd/MM/yyyy' }}</td>
                     <td *ngIf="isColumnVisible('hors_taxes')" class="text-right">{{ getCommandeHT(cmd) | number:'1.3-3'
-                        }} {{ entreprise?.devise?.symbole || 'DT' }}</td>
+                        }} {{ currencySymbol }}</td>
                     <td *ngIf="isColumnVisible('total')" class="text-right">{{ getCommandeTTC(cmd) | number:'1.3-3' }}
-                        {{ entreprise?.devise?.symbole || 'DT' }}</td>
+                        {{ currencySymbol }}</td>
                     <td *ngIf="isColumnVisible('statut')" class="statut-td">
                         <div class="status-cell">
                             <span class="status-pill" [class]="'status-pill--' + getStatutClass(cmd.statut)">
@@ -179,21 +180,23 @@
                 </tr>
             </tbody>
             <tfoot>
-                <tr class="totals-row">
-                    <td class="checkbox-cell"></td>
-                    <td class="ref-col"></td>
-                    <td *ngIf="isColumnVisible('fournisseur')" class="fournisseur-col text-right"><span
-                            class="totals-label">TOTAUX :</span></td>
-                    <td *ngIf="isColumnVisible('acheteur')"></td>
-                    <td *ngIf="isColumnVisible('echeance')"></td>
-                    <td *ngIf="isColumnVisible('hors_taxes')" class="text-right footer-total">
-                        {{ getGrandTotalHT() | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT' }}
+                <tr class="totals-row no-print">
+                    <td colspan="5"></td>
+                    <td colspan="4">
+                        <div class="totals-wrapper">
+                            <div class="totals-label">Résultat de recherche</div>
+                            <div class="footer-total">
+                                <span class="label">Total HT</span>
+                                <span class="amount">{{ getGrandTotalHT() | number:'1.3-3' }} {{
+                                    currencySymbol }}</span>
+                            </div>
+                            <div class="footer-total footer-total--primary">
+                                <span class="label">Total TTC</span>
+                                <span class="amount">{{ getGrandTotalTTC() | number:'1.3-3' }} {{
+                                    currencySymbol }}</span>
+                            </div>
+                        </div>
                     </td>
-                    <td *ngIf="isColumnVisible('total')" class="text-right footer-total">
-                        {{ getGrandTotalTTC() | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT' }}
-                    </td>
-                    <td *ngIf="isColumnVisible('statut')"></td>
-                    <td *ngIf="isColumnVisible('statut')"></td>
                 </tr>
             </tfoot>
         </table>

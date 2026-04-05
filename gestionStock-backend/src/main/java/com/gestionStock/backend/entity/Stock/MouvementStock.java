@@ -32,11 +32,11 @@ public class MouvementStock {
 	private TypeMouvement typeMouvement;
 
 	@Builder.Default
-	@JsonManagedReference
+	@JsonManagedReference("mvt_ligne")
 	@OneToMany(mappedBy = "mouvementStock", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<LigneMouvement> ligneMouvement = new ArrayList<>();
 
-	@JsonIgnore
+	@JsonBackReference("bon_mvt")
 	@OneToOne
 	private Bon bon;
 }

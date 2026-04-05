@@ -55,21 +55,14 @@
                                 class="compact-input" [class.input-error]="validationErrors.email" required>
                         </div>
                         <small class="error-text" *ngIf="validationErrors.email">L'e-mail est obligatoire</small>
-                        <div class="compact-row">
-                            <div class="icon-label">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <path
-                                        d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                                </svg>
-                            </div>
-                            <input type="tel" [(ngModel)]="fournisseur.tel" placeholder="Téléphone"
-                                class="compact-input" pattern="[0-9]*" maxlength="8" minlength="8"
-                                [class.input-error]="validationErrors.tel || validationErrors.telLength">
+                        <div class="phone-mini-row" [class.input-error]="validationErrors.tel || validationErrors.telFormat">
+                            <app-phone-input [(phoneNumber)]="fournisseur.tel" [isEditing]="true"
+                                (isValid)="isPhoneValid = $event" class="w-full">
+                            </app-phone-input>
                         </div>
                         <small class="error-text" *ngIf="validationErrors.tel">Le téléphone est obligatoire</small>
-                        <small class="error-text" *ngIf="validationErrors.telLength">Le numéro doit contenir 8
-                            chiffres</small>
+                        <small class="error-text" *ngIf="validationErrors.telFormat">Format de numéro de téléphone
+                            invalide</small>
                     </div>
                 </div>
             </div>

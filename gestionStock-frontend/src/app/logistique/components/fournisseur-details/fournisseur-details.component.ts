@@ -6,13 +6,14 @@ import { LogistiqueService } from '../../services/logistique.service';
 import { MagasinierService } from '../../../magasinier/services/magasinier.service';
 import { Fournisseur } from '../../models/logistique.models';
 import { SupplierCatalogComponent } from '../supplier-catalog/supplier-catalog.component';
-import { forkJoin } from 'rxjs';
+import { PhoneInputComponent } from '../../../shared/components/phone-input/phone-input.component';
+import { forkJoin, of } from 'rxjs';
 import { ViewChild } from '@angular/core';
 
 @Component({
     selector: 'app-fournisseur-details',
     standalone: true,
-    imports: [CommonModule, FormsModule, SupplierCatalogComponent],
+    imports: [CommonModule, FormsModule, SupplierCatalogComponent, PhoneInputComponent],
     templateUrl: './fournisseur-details.component.html',
     styleUrl: './fournisseur-details.component.css'
 })
@@ -24,6 +25,7 @@ export class FournisseurDetailsComponent implements OnInit {
     validationErrors: any = {};
     hasOrderDraft = false;
     isAutoCode = true;
+    isPhoneValid = true;
     parametres: any = null;
 
 
@@ -66,6 +68,10 @@ export class FournisseurDetailsComponent implements OnInit {
                         this.fournisseur.code = this.isAutoCode ? 'AUTO' : '';
                     }
                     this.cdr.detectChanges();
+                } else {
+                    // Fallback if no parameters returned
+                    this.isAutoCode = true;
+                    this.fournisseur.code = 'AUTO';
                 }
             },
             error: (err) => console.error('Erreur chargement paramètres:', err)
@@ -80,7 +86,7 @@ export class FournisseurDetailsComponent implements OnInit {
 
     getPrefix(moduleName: string): string {
         const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
-        let prefix = config?.prefix || '';
+        let prefix = config?.prefix || (moduleName === 'FOURNISSEUR' ? 'FOUR-' : (moduleName + '-'));
         if (prefix) {
             const date = new Date();
             prefix = prefix
@@ -95,14 +101,14 @@ export class FournisseurDetailsComponent implements OnInit {
     getFormatExplanation(moduleName: string): string {
         const config = this.parametres?.numerotationConfigs?.find((c: any) => c.module === moduleName);
         const prefix = config?.prefix || '';
-        
+
         let parts = [];
         if (prefix.includes('%YYYY%')) parts.push("l'année sur 4 chiffres");
         else if (prefix.includes('%YY%')) parts.push("l'année sur 2 chiffres");
-        
+
         if (prefix.includes('%MM%')) parts.push("le mois sur 2 chiffres");
         if (prefix.includes('%DD%')) parts.push("le jour sur 2 chiffres");
-        
+
         if (parts.length > 0) {
             return `Astuce : La référence inclut ${parts.join(', ')} suivis d'un numéro de séquence.`;
         }
@@ -115,7 +121,8 @@ export class FournisseurDetailsComponent implements OnInit {
             nom: '',
             adresse: '',
             email: '',
-            tel: ''
+            tel: '',
+            archivee: false
         };
     }
 
@@ -137,18 +144,21 @@ export class FournisseurDetailsComponent implements OnInit {
             this.validationErrors.nom = true;
             hasErrors = true;
         }
-        if (!this.fournisseur.code) {
-            this.validationErrors.code = true;
-            hasErrors = true;
-        } else if (this.fournisseur.code !== 'AUTO' && this.fournisseur.code.length < 2) {
-            this.validationErrors.codePattern = true;
-            hasErrors = true;
+        const codePrefix = this.getPrefix('FOURNISSEUR') || 'FOUR-';
+        if (!this.isAutoCode) {
+            if (!this.fournisseur.code) {
+                this.validationErrors.code = true;
+                hasErrors = true;
+            } else if (!this.fournisseur.code.startsWith(codePrefix)) {
+                this.validationErrors.codePattern = true;
+                hasErrors = true;
+            }
         }
         if (!this.fournisseur.tel) {
             this.validationErrors.tel = true;
             hasErrors = true;
-        } else if (this.fournisseur.tel.length !== 8) {
-            this.validationErrors.telLength = true;
+        } else if (!this.isPhoneValid) {
+            this.validationErrors.telFormat = true;
             hasErrors = true;
         }
 
@@ -167,18 +177,36 @@ export class FournisseurDetailsComponent implements OnInit {
 
         if (hasErrors) {
             let errorMsg = 'Veuillez remplir les champs obligatoires.';
-            if (this.validationErrors.telLength) {
-                errorMsg = 'Le numéro de téléphone doit contenir exactement 8 chiffres.';
+            if (this.validationErrors.telFormat) {
+                errorMsg = 'Le format du numéro de téléphone est invalide.';
             } else if (this.validationErrors.codePattern) {
-                errorMsg = 'Le code du fournisseur est invalide.';
+                errorMsg = `Le code fournisseur doit commencer par "${codePrefix}".`;
             }
             this.notify(errorMsg, 'error');
             return;
         }
 
+        // Prepare payload: handle 'AUTO' keyword for the backend
+        const payload = {
+            ...this.fournisseur,
+            archivee: false // Force mandatory field for the backend
+        };
+
+        let prefix = this.getPrefix('FOURNISSEUR') || 'FOUR-';
+
+        // Transparent fix: if the prefix is FOURNISSEUR-, the backend fails (expected FOUR-)
+        if (prefix.startsWith('FOURNISSEUR-')) {
+            prefix = 'FOUR-';
+        }
+
+        if (this.isAutoCode && (payload.code === 'AUTO' || !payload.code)) {
+            // Signal automatic generation using the defined prefix
+            payload.code = prefix + 'AUTO';
+        }
+
         const obs = this.isEdit && this.fournisseur.id
-            ? this.logistiqueService.updateFournisseur(this.fournisseur.id, this.fournisseur)
-            : this.logistiqueService.createFournisseur(this.fournisseur);
+            ? this.logistiqueService.updateFournisseur(this.fournisseur.id, payload)
+            : this.logistiqueService.createFournisseur(payload);
 
         obs.subscribe({
             next: (savedFournisseur) => {
@@ -193,17 +221,26 @@ export class FournisseurDetailsComponent implements OnInit {
 
                 this.notify(successMsg, 'success');
 
-                if (this.catalog) {
-                    this.catalog.saveAll(savedFournisseur);
-                }
+                const catalogObs = this.catalog ? this.catalog.saveAll(savedFournisseur) : of([]);
 
-                if (wasNew) {
-                    this.router.navigate(['/logistique/fournisseurs', savedFournisseur.id], {
-                        replaceUrl: true,
-                        state: { message: successMsg }
+                if (catalogObs) {
+                    catalogObs.subscribe({
+                        next: () => {
+                            this.router.navigate(['/logistique/fournisseurs'], {
+                                replaceUrl: wasNew,
+                                state: { message: successMsg }
+                            });
+                        },
+                        error: (err) => {
+                            console.error('Erreur lors de l\'enregistrement du catalogue:', err);
+                            this.notify('Fournisseur enregistré, mais erreur lors de la mise à jour du catalogue.', 'error');
+                        }
                     });
                 } else {
-                    this.notify(successMsg, 'success');
+                    this.router.navigate(['/logistique/fournisseurs'], {
+                        replaceUrl: wasNew,
+                        state: { message: successMsg }
+                    });
                 }
             },
             error: (err) => {

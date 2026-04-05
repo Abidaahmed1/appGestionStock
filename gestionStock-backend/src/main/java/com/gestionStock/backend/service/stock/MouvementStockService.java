@@ -9,7 +9,7 @@ import com.gestionStock.backend.repository.piece.PieceDetacheeRepository;
 import com.gestionStock.backend.repository.stock.MouvementStockRepository;
 import com.gestionStock.backend.service.user.UserService;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,15 +21,18 @@ import java.util.List;
 @Transactional
 public class MouvementStockService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MouvementStockService.class);
     private final MouvementStockRepository mouvementRepo;
     private final com.gestionStock.backend.repository.stock.BonRepository bonRepo;
     private final PieceDetacheeRepository pieceRepo;
+    private final com.gestionStock.backend.repository.piece.PieceHistoriqueRepository pieceHistRepo;
     private final UserService userService;
+    private final com.gestionStock.backend.service.notification.NotificationService notificationService;
 
     public List<MouvementStock> getAll() {
         Entreprise entreprise = userService.getCurrentUserEntreprise();
         if (entreprise == null)
-            return java.util.List.of();
+            return java.util.Collections.emptyList();
         return mouvementRepo.findByBonEntreprise(entreprise);
     }
 
@@ -118,7 +121,7 @@ public class MouvementStockService {
                 ligne.setMouvementStock(mouvement);
                 Double prix = ligne.getPrixHTVA() != null ? ligne.getPrixHTVA() : 0.0;
                 Double taux = ligne.getTauxTVA() != null ? ligne.getTauxTVA() : 0.0;
-                
+
                 double ligneHTVA = prix * ligne.getQuantite();
                 double ligneTTC = ligneHTVA * (1 + taux / 100);
                 totalHTVA += ligneHTVA;
@@ -148,6 +151,20 @@ public class MouvementStockService {
         mouvementRepo.delete(mouvement);
     }
 
+    private boolean isMovementEntry(TypeMouvement type) {
+        if (type == null)
+            return false;
+        String name = type.name().toUpperCase();
+        return name.contains("ENTREE") || name.contains("RECEPTION");
+    }
+
+    private boolean isMovementExit(TypeMouvement type) {
+        if (type == null)
+            return false;
+        String name = type.name().toUpperCase();
+        return name.contains("SORTIE");
+    }
+
     public void rollbackStockQuantity(MouvementStock mouvement) {
         if (mouvement == null || mouvement.getLigneMouvement() == null) {
             return;
@@ -159,90 +176,122 @@ public class MouvementStockService {
     }
 
     private void reverseUpdateStockQuantity(LigneMouvement ligne, TypeMouvement typeMouvement) {
-        if (typeMouvement == null || ligne.getPiece() == null || ligne.getPiece().getId() == null) {
+        if (typeMouvement == null || ligne.getPiece() == null || ligne.getPiece().getId() == null)
             return;
-        }
 
-        PieceDetachee piece = pieceRepo.findById(ligne.getPiece().getId()).orElse(null);
-        if (piece == null) return;
+        // Inverser la logique : Si c'était une sortie, on rajoute. Si c'était une
+        // entrée, on retire.
+        int delta = isMovementExit(typeMouvement) ? ligne.getQuantite() : -ligne.getQuantite();
 
-        int currentQuantity = piece.getQuantite() != null ? piece.getQuantite() : 0;
-        int changeQuantity = ligne.getQuantite() != null ? ligne.getQuantite() : 0;
-
-        boolean isEntry = (typeMouvement == TypeMouvement.ENTREE_RECEPTION ||
-                typeMouvement == TypeMouvement.ENTREE_RETOUR);
-        boolean isExit = (typeMouvement == TypeMouvement.SORTIE_VENTE ||
-                typeMouvement == TypeMouvement.SORTIE_PERTE ||
-                typeMouvement == TypeMouvement.SORTIE_MAINTENANCE ||
-                typeMouvement == TypeMouvement.SORTIE_RETOUR);
-
-        if (isEntry) {
-            piece.setQuantite(currentQuantity - changeQuantity);
-        } else if (isExit || typeMouvement.name().startsWith("SORTIE")) {
-            piece.setQuantite(currentQuantity + changeQuantity);
-        }
-
-        if (piece.getQuantite() < 0) piece.setQuantite(0);
-        pieceRepo.save(piece);
+        System.err.println("[STOCK_SYNC] ROLLBACK ID=" + ligne.getPiece().getId() + " Delta=" + delta);
+        pieceRepo.applyQuantityDelta(ligne.getPiece().getId(), delta);
     }
 
     private void updateStockQuantity(LigneMouvement ligne, TypeMouvement typeMouvement) {
-        if (typeMouvement == null || ligne.getPiece() == null || ligne.getPiece().getId() == null) {
+        if (typeMouvement == null || ligne.getPiece() == null || ligne.getPiece().getId() == null)
             return;
-        }
 
+        int delta = isMovementEntry(typeMouvement) ? ligne.getQuantite() : -ligne.getQuantite();
+
+        System.err.println("[STOCK_SYNC] UPDATE ID=" + ligne.getPiece().getId() + " Delta=" + delta);
+        pieceRepo.applyQuantityDelta(ligne.getPiece().getId(), delta);
+
+        // Sync memory object for alerts/logs
         PieceDetachee piece = pieceRepo.findById(ligne.getPiece().getId()).orElse(null);
-        if (piece == null) return;
-
-        int currentQuantity = piece.getQuantite() != null ? piece.getQuantite() : 0;
-        int changeQuantity = ligne.getQuantite() != null ? ligne.getQuantite() : 0;
-
-        boolean isEntry = (typeMouvement == TypeMouvement.ENTREE_RECEPTION ||
-                typeMouvement == TypeMouvement.ENTREE_RETOUR);
-        boolean isExit = (typeMouvement == TypeMouvement.SORTIE_VENTE ||
-                typeMouvement == TypeMouvement.SORTIE_PERTE ||
-                typeMouvement == TypeMouvement.SORTIE_MAINTENANCE ||
-                typeMouvement == TypeMouvement.SORTIE_RETOUR);
-
-        if (isEntry) {
-            piece.setQuantite(currentQuantity + changeQuantity);
-        } else if (isExit || typeMouvement.name().startsWith("SORTIE")) {
-            int newQuantity = currentQuantity - changeQuantity;
-            if (newQuantity < 0) {
-                throw new IllegalStateException(
-                        "Stock insuffisant pour la pièce ID " + piece.getId() +
-                                " (disponible: " + currentQuantity + ", demandé: " + changeQuantity + ")");
-            }
-            piece.setQuantite(newQuantity);
+        if (piece != null) {
+            System.err.println("[STOCK_SYNC] NEW DB VALUE FOR " + piece.getReference() + ": " + piece.getQuantite());
+            checkStockAlerts(piece, piece.getQuantite() - delta);
         }
+    }
 
-        pieceRepo.save(piece);
-        ligne.setPiece(piece);
+    private void checkStockAlerts(PieceDetachee piece, int previousQty) {
+        int newQty = piece.getQuantite() != null ? piece.getQuantite() : 0;
+        int minSeuil = piece.getSeuilMinimum() != null ? piece.getSeuilMinimum() : 0;
+        System.err.println("[STOCK_SYNC] ALERT CHECK: Piece=" + piece.getReference() + " Qty=" + previousQty + " -> " + newQty + " (MinSeuil=" + minSeuil + ")");
+        
+        String detailsStr = formatDetails(piece.getDetails());
+
+        if (newQty <= 0 && previousQty > 0) {
+            System.err.println("[STOCK_SYNC] RUPTURE DETECTED!");
+            String titre = "Rupture de Stock";
+            String message = "Alerte ! la piéce '" + piece.getDesignation() + detailsStr + "' (" + piece.getReference()
+                    + ") est en rupture de stock totale !";
+            notificationService.createNotificationForRolesAndEntreprise(
+                    titre,
+                    message,
+                    com.gestionStock.backend.entity.notification.NotificationType.RUPTURE_STOCK,
+                    java.util.Arrays.asList(
+                            com.gestionStock.backend.entity.user.Role.ADMINISTRATEUR,
+                            com.gestionStock.backend.entity.user.Role.RESPONSABLE_LOGISTIQUE,
+                            com.gestionStock.backend.entity.user.Role.MAGASINIER,
+                            com.gestionStock.backend.entity.user.Role.AUDITEUR),
+                    piece.getId(),
+                    piece.getEntreprise());
+        } else if (newQty < minSeuil && previousQty >= minSeuil) {
+            String titre = "Stock Bas (En Réserve)";
+            String message = "Attention, la piéce '" + piece.getDesignation() + detailsStr
+                    + "' est passée sous son seuil minimum.\nQuantité actuelle: " + newQty;
+            notificationService.createNotificationForRolesAndEntreprise(
+                    titre,
+                    message,
+                    com.gestionStock.backend.entity.notification.NotificationType.WARNING,
+                    java.util.Arrays.asList(
+                            com.gestionStock.backend.entity.user.Role.ADMINISTRATEUR,
+                            com.gestionStock.backend.entity.user.Role.RESPONSABLE_LOGISTIQUE),
+                    piece.getId(),
+                    piece.getEntreprise());
+        }
+    }
+
+    private String formatDetails(java.util.List<com.gestionStock.backend.entity.piece.DetailPiece> details) {
+        if (details == null || details.isEmpty())
+            return "";
+        try {
+            String formatted = details.stream()
+                    .filter(d -> d != null && d.getParametre() != null && d.getValeur() != null
+                            && !d.getValeur().trim().isEmpty() && !d.getValeur().equals("-"))
+                    .map(d -> d.getParametre().getNom() + ": " + d.getValeur())
+                    .collect(java.util.stream.Collectors.joining(", "));
+            return formatted.isEmpty() ? "" : " [" + formatted + "]";
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     public PieceDetachee resolvePiece(PieceDetachee incoming) {
-        if (incoming == null) return null;
+        if (incoming == null)
+            return null;
 
         if (incoming.getId() != null) {
             PieceDetachee found = pieceRepo.findById(incoming.getId()).orElse(null);
-            if (found != null) return found;
+            if (found != null)
+                return found;
         }
 
         String ref = incoming.getReference();
         if (ref != null && !ref.trim().isEmpty() && incoming.getEntreprise() != null) {
             PieceDetachee found = pieceRepo.findByReferenceAndEntreprise(ref, incoming.getEntreprise()).orElse(null);
-            if (found != null) return found;
+            if (found != null)
+                return found;
         }
 
         return null;
     }
 
     public void updateStockForMouvement(MouvementStock mouvement) {
-        if (mouvement == null || mouvement.getLigneMouvement() == null)
+        if (mouvement == null)
             return;
 
-        for (LigneMouvement ligne : mouvement.getLigneMouvement()) {
-            updateStockQuantity(ligne, mouvement.getTypeMouvement());
+        System.err.println("[STOCK_SYNC] updateStockForMouvement for Mouvement ID: " + mouvement.getId());
+
+        if (mouvement.getLigneMouvement() != null) {
+            java.util.List<LigneMouvement> lines = new java.util.ArrayList<>(mouvement.getLigneMouvement());
+            System.err.println("[STOCK_SYNC] Total lines to process: " + lines.size());
+            for (LigneMouvement ligne : lines) {
+                updateStockQuantity(ligne, mouvement.getTypeMouvement());
+            }
+        } else {
+            System.err.println("[STOCK_SYNC] WARNING: No lines found for this movement!");
         }
     }
 }

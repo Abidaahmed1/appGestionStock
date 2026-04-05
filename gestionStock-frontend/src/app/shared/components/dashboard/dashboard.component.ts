@@ -1,4 +1,4 @@
-import { Component, OnInit, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, OnDestroy, Inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { DashboardService } from '../../../logistique/services/dashboard.service';
 import { DashboardDTO } from '../../../logistique/models/logistique.models';
@@ -7,6 +7,8 @@ import { MagasinierService } from "../../../magasinier/services/magasinier.servi
 import { FormsModule } from "@angular/forms";
 import { EntrepriseService } from '../../../admin/services/entreprise.service';
 import { Entreprise } from '../../../admin/models/entreprise.model';
+import { UserService } from '../../../shared/services/user.service';
+import { Subscription } from 'rxjs';
 import {
   ApexAxisChartSeries,
   ApexChart,
@@ -45,6 +47,7 @@ export class DashboardComponent implements OnInit {
   metrics?: DashboardDTO;
   loading = true;
   entreprise: Entreprise | null = null;
+  private themeSubscription?: Subscription;
   pieces: any[] = [];
   selectedPieceIds: (string | number)[] = [];
   searchTerm: string = '';
@@ -58,6 +61,10 @@ export class DashboardComponent implements OnInit {
     return `${this.selectedPieceIds.length} pièces sélectionnées`;
   }
 
+  get currencySymbol(): string {
+    return this.entrepriseService.getDeviseSymbol(this.entreprise);
+  }
+
   get filteredPieces() {
     if (!this.searchTerm) return this.pieces;
     const term = this.searchTerm.toLowerCase();
@@ -69,11 +76,17 @@ export class DashboardComponent implements OnInit {
 
   public stockChartOptions: Partial<ChartOptions> | any;
   public flowChartOptions: Partial<ChartOptions> | any;
+  public statusChartOptions: Partial<ChartOptions> | any;
+  public categoryChartOptions: Partial<ChartOptions> | any;
+  public topValeurChartOptions: Partial<ChartOptions> | any;
+
+  public totalStockValue: number = 0;
 
   constructor(
     private dashboardService: DashboardService,
     private pieceService: MagasinierService,
     private entrepriseService: EntrepriseService,
+    private userService: UserService,
     @Inject(PLATFORM_ID) private platformId: Object
   ) { }
 
@@ -82,36 +95,52 @@ export class DashboardComponent implements OnInit {
       this.loadPieces();
       this.loadMetrics();
       this.loadEntreprise();
+
+      // Listen for theme changes to update charts
+      this.themeSubscription = this.userService.userSettings$.subscribe(() => {
+        if (this.metrics) {
+          this.initCharts();
+        }
+      });
     }
+  }
+
+  ngOnDestroy(): void {
+    this.themeSubscription?.unsubscribe();
   }
 
   loadPieces() {
     this.pieceService.getPieces().subscribe({
-      next: (data) => this.pieces = data,
+      next: (data) => {
+        this.pieces = data;
+        if (this.metrics) {
+          this.initCharts();
+        }
+      },
       error: (err) => console.error('Error loading pieces', err)
     });
   }
 
   loadEntreprise() {
-      // Écoute de l'entreprise courante pour les mises à jour en direct
-      this.entrepriseService.currentEntreprise$.subscribe((data: Entreprise | null) => {
-          if (data) {
-              this.entreprise = data;
-          }
-      });
+    // Écoute de l'entreprise courante pour les mises à jour en direct
+    this.entrepriseService.currentEntreprise$.subscribe((data: Entreprise | null) => {
+      if (data) {
+        this.entreprise = data;
+      }
+    });
 
-      // Lancement du chargement initial s'il n'est pas déjà fait
-      this.entrepriseService.getCurrentEntreprise().subscribe({
-          error: () => {
-              this.entrepriseService.getAllEntreprises().subscribe({
-                  next: (list: Entreprise[]) => {
-                      if (list && list.length > 0) {
-                          this.entreprise = list[0];
-                      }
-                  }
-              });
+    // Lancement du chargement initial s'il n'est pas déjà fait
+    this.entrepriseService.getCurrentEntreprise().subscribe({
+      error: () => {
+        this.entrepriseService.getAllEntreprises().subscribe({
+          next: (list: Entreprise[]) => {
+            if (list && list.length > 0) {
+              this.entreprise = list[0];
+            }
           }
-      });
+        });
+      }
+    });
   }
 
   loadMetrics() {
@@ -147,7 +176,11 @@ export class DashboardComponent implements OnInit {
       chart: {
         type: "bar",
         height: 350,
-        fontFamily: 'Inter, sans-serif'
+        fontFamily: 'inherit',
+        background: 'transparent'
+      },
+      theme: {
+        mode: isPlatformBrowser(this.platformId) && document.body.classList.contains('dark-theme') ? 'dark' : 'light'
       },
       plotOptions: {
         bar: {
@@ -192,7 +225,7 @@ export class DashboardComponent implements OnInit {
           }
         }
       },
-      colors: ["#3d7a7f", "#e74c3c"]
+      colors: ["#0D9488", "#f43f5e"]
     };
 
     this.flowChartOptions = {
@@ -209,7 +242,11 @@ export class DashboardComponent implements OnInit {
       chart: {
         type: "area",
         height: 350,
-        fontFamily: 'Inter, sans-serif'
+        fontFamily: 'inherit',
+        background: 'transparent'
+      },
+      theme: {
+        mode: isPlatformBrowser(this.platformId) && document.body.classList.contains('dark-theme') ? 'dark' : 'light'
       },
       dataLabels: {
         enabled: false
@@ -227,7 +264,7 @@ export class DashboardComponent implements OnInit {
           format: "dd/MM/yy"
         }
       },
-      colors: ["#3d7a7f", "#ea580c"],
+      colors: ["#0D9488", "#F43F5E"],
       fill: {
         type: 'gradient',
         gradient: {
@@ -237,6 +274,197 @@ export class DashboardComponent implements OnInit {
           stops: [0, 90, 100]
         }
       }
+    };
+
+    const isBrowser = isPlatformBrowser(this.platformId);
+    const isDark = isBrowser && document.body.classList.contains('dark-theme');
+    const labelColor = isDark ? '#94a3b8' : '#64748b';
+
+    // 3. Status Donut Chart
+    const healthyStock = Math.max(0, this.metrics.totalArticles - this.metrics.lowStockArticles - this.metrics.outOfStockArticles);
+    this.statusChartOptions = {
+      series: [healthyStock, this.metrics.lowStockArticles, this.metrics.outOfStockArticles],
+      chart: {
+        type: "donut",
+        height: 350,
+        fontFamily: 'inherit',
+        background: 'transparent'
+      },
+      theme: {
+        mode: isDark ? 'dark' : 'light'
+      },
+      labels: ['Stock Sain', 'Sous Seuil', 'En Rupture'],
+      colors: ['#10b981', '#f59e0b', '#f43f5e'],
+      dataLabels: {
+        enabled: true,
+        formatter: function (val: any) {
+          return Math.round(val) + "%";
+        }
+      },
+      plotOptions: {
+        pie: {
+          donut: {
+            size: '70%',
+            labels: {
+              show: true,
+              name: {
+                show: true,
+                color: labelColor,
+                offsetY: -10
+              },
+              value: {
+                show: true,
+                color: isDark ? '#ffffff' : '#0f172a',
+                fontSize: '24px',
+                fontWeight: 800,
+                offsetY: 10,
+                formatter: (val: any) => val
+              },
+              total: {
+                show: true,
+                showAlways: true,
+                label: 'Total Articles',
+                color: labelColor,
+                formatter: (w: any) => {
+                  return w.globals.seriesTotals.reduce((a: any, b: any) => a + b, 0);
+                }
+              }
+            }
+          }
+        }
+      },
+      legend: { 
+        position: 'bottom',
+        labels: {
+          colors: labelColor
+        }
+      }
+    };
+
+    // 4. Category Distribution Donut Chart
+    const catMap = new Map<string, number>();
+    const piecesToCount = this.selectedPieceIds.length > 0 ? this.pieces.filter(p => this.selectedPieceIds.includes(p.id)) : this.pieces;
+
+    piecesToCount.forEach(p => {
+      const cat = p.categorie?.nom || 'Non catégorisé';
+      catMap.set(cat, (catMap.get(cat) || 0) + 1);
+    });
+
+    const categoriesList = Array.from(catMap.keys());
+    const countList = Array.from(catMap.values());
+
+    // Dynamic premium colors for categories
+    const catColors = ['#0D9488', '#32656A', '#ec4899', '#0ea5e9', '#14b8a6', '#f59e0b', '#f43f5e', '#84cc16', '#64748b'];
+
+    this.categoryChartOptions = {
+      series: countList.length > 0 ? countList : [1],
+      chart: {
+        type: "donut",
+        height: 350,
+        fontFamily: 'inherit',
+        background: 'transparent'
+      },
+      theme: {
+        mode: isDark ? 'dark' : 'light'
+      },
+      labels: categoriesList.length > 0 ? categoriesList : ['Aucune Donnée'],
+      colors: catColors,
+      dataLabels: {
+        enabled: false
+      },
+      plotOptions: {
+        pie: {
+          donut: {
+            size: '70%',
+            labels: {
+              show: true,
+              name: {
+                show: true,
+                color: labelColor,
+                offsetY: -10
+              },
+              value: {
+                show: true,
+                color: isDark ? '#ffffff' : '#0f172a',
+                fontSize: '24px',
+                fontWeight: 800,
+                offsetY: 10
+              },
+              total: {
+                show: true,
+                label: 'Articles',
+                color: labelColor,
+                formatter: (w: any) => {
+                  return w.globals.seriesTotals.reduce((a: any, b: any) => a + b, 0);
+                }
+              }
+            }
+          }
+        }
+      },
+      legend: { 
+        position: 'bottom',
+        labels: {
+          colors: labelColor
+        }
+      }
+    };
+
+    // 5. Market Value (Valorisation) & Top 5 Value Bar Chart
+    this.totalStockValue = this.pieces.reduce((sum, p) => sum + ((p.quantite || 0) * (p.prixVente || 0)), 0);
+
+    const sortedByValue = [...this.pieces]
+      .map(p => ({
+        nom: p.designation,
+        valeur: (p.quantite || 0) * (p.prixVente || 0)
+      }))
+      .filter(p => p.valeur > 0)
+      .sort((a, b) => b.valeur - a.valeur)
+      .slice(0, 5);
+
+    this.topValeurChartOptions = {
+      series: [{ name: "Valeur en Stock", data: sortedByValue.map(x => x.valeur) }],
+      chart: {
+        type: 'bar',
+        height: 350,
+        fontFamily: 'inherit',
+        background: 'transparent'
+      },
+      theme: {
+        mode: isPlatformBrowser(this.platformId) && document.body.classList.contains('dark-theme') ? 'dark' : 'light'
+      },
+      plotOptions: {
+        bar: {
+          horizontal: true,
+          borderRadius: 6,
+          barHeight: '40%'
+        }
+      },
+      dataLabels: {
+        enabled: true,
+        formatter: (val: number) => {
+          return val.toLocaleString() + ' ' + this.currencySymbol;
+        },
+        style: {
+          colors: ['#fff']
+        }
+      },
+      xaxis: {
+        categories: sortedByValue.map(x => x.nom),
+        labels: {
+          formatter: (val: number) => {
+            return val + ' ' + this.currencySymbol;
+          }
+        }
+      },
+      tooltip: {
+        y: {
+          formatter: (val: number) => {
+            return val.toLocaleString() + ' ' + this.currencySymbol;
+          }
+        }
+      },
+      colors: ['#0D9488'] // Teal accent for value
     };
   }
 
@@ -285,11 +513,11 @@ export class DashboardComponent implements OnInit {
     if (!url) return '';
     if (url.startsWith('data:image/') || url.startsWith('http')) return url;
     if (url.startsWith('/api/images') || url.startsWith('/uploads')) {
-        return `http://localhost:8081${url}`;
+      return `http://localhost:8081${url}`;
     }
     if (url.includes('/remote.php/dav/files/')) {
-        const parts = url.split('/');
-        return `http://localhost:8081/api/images/${parts[parts.length - 1]}`;
+      const parts = url.split('/');
+      return `http://localhost:8081/api/images/${parts[parts.length - 1]}`;
     }
     return url;
   }

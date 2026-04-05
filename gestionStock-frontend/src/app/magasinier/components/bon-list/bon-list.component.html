@@ -1,17 +1,18 @@
-<div class="commandes-container">
+<div class="commandes-container" (click)="showPieceDropdown = false; showOptionsMenu = false; showFournisseurDropdown = false">
     <div class="header">
         <div class="header-left">
-            <h1>Gestion des Bons</h1>
+            <h1 *ngIf="!hasRole('AUDITEUR')">Gestion des Bons</h1>
+            <h1 *ngIf="hasRole('AUDITEUR')">Historique des mouvements</h1>
             <div class="breadcrumb">
-                <span>Logistique</span> / <span>Gestion des Bons</span>
+                <span>Logistique</span> / <span>{{ hasRole('AUDITEUR') ? 'Historique des mouvements' : 'Gestion des Bons' }}</span>
             </div>
         </div>
         <div class="header-right">
-            <button class="btn-danger" style="margin-right: 12px;" *ngIf="selectedBonIds.size > 0"
+            <button class="btn-danger" style="margin-right: 12px;" *ngIf="selectedBonIds.size > 0 && canManage()"
                 (click)="confirmBulkDelete()">
                 Supprimer ({{ selectedBonIds.size }})
             </button>
-            <button class="btn-new" (click)="openCreateModal()">+ Nouveau Bon</button>
+            <button class="btn-new" (click)="openCreateModal()" *ngIf="canManage()">+ Nouveau Bon</button>
         </div>
     </div>
 
@@ -78,11 +79,59 @@
             </div>
             <div class="filter-group">
                 <label>Fournisseur</label>
-                <select [(ngModel)]="filterFournisseurId" class="filter-input">
-                    <option [ngValue]="null">Tous les fournisseurs</option>
-                    <option *ngFor="let f of fournisseurs" [ngValue]="f.id">{{ f.nom }} <span *ngIf="f.code">({{ f.code
-                            }})</span></option>
-                </select>
+                <div class="piece-dropdown-container">
+                    <div class="piece-dropdown-trigger" (click)="showFournisseurDropdown = !showFournisseurDropdown; $event.stopPropagation()">
+                        <span>{{ selectedFournisseurName }}</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="m6 9 6 6 6-6"></path>
+                        </svg>
+                    </div>
+                    <div class="piece-dropdown-menu" *ngIf="showFournisseurDropdown">
+                        <div class="piece-search-wrapper" (click)="$event.stopPropagation()">
+                            <input type="text" [(ngModel)]="searchTermFournisseur" placeholder="Rechercher un fournisseur..." class="piece-search-input" #fournisseurSearchInput>
+                        </div>
+                        <div class="piece-results-list">
+                            <div class="piece-item" (click)="selectFournisseur(null); showFournisseurDropdown = false" [class.selected]="filterFournisseurId === null">
+                                <span class="piece-designation" style="font-style: italic;">Tous les fournisseurs</span>
+                            </div>
+                            <div class="piece-item" *ngFor="let f of filteredFournisseurs" (click)="selectFournisseur(f.id); showFournisseurDropdown = false" [class.selected]="filterFournisseurId === f.id">
+                                <span class="piece-designation">{{ f.nom }}</span>
+                                <span class="piece-meta">{{ f.code }}</span>
+                            </div>
+                            <div class="piece-no-results" *ngIf="filteredFournisseurs.length === 0">
+                                Aucun fournisseur trouvé
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="filter-group">
+                <label>Pièce</label>
+                <div class="piece-dropdown-container">
+                    <div class="piece-dropdown-trigger" (click)="showPieceDropdown = !showPieceDropdown; $event.stopPropagation()">
+                        <span>{{ selectedPieceName }}</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="m6 9 6 6 6-6"></path>
+                        </svg>
+                    </div>
+                    <div class="piece-dropdown-menu" *ngIf="showPieceDropdown">
+                        <div class="piece-search-wrapper" (click)="$event.stopPropagation()">
+                            <input type="text" [(ngModel)]="searchTermPiece" placeholder="Rechercher une pièce..." class="piece-search-input" #pieceSearchInput>
+                        </div>
+                        <div class="piece-results-list">
+                            <div class="piece-item" (click)="selectPiece(null); showPieceDropdown = false" [class.selected]="filterPieceId === null">
+                                <span class="piece-designation" style="font-style: italic;">Toutes les pièces</span>
+                            </div>
+                            <div class="piece-item" *ngFor="let p of filteredPieces" (click)="selectPiece(p.id); showPieceDropdown = false" [class.selected]="filterPieceId === p.id">
+                                <span class="piece-designation">{{ p.designation || p.reference || p.code }}</span>
+                                <span class="piece-meta">{{ p.reference }} {{ p.code ? '(' + p.code + ')' : '' }}</span>
+                            </div>
+                            <div class="piece-no-results" *ngIf="filteredPieces.length === 0">
+                                Aucune pièce trouvée
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="filter-group">
                 <label>Date du</label>
@@ -93,14 +142,14 @@
                 <input type="date" [(ngModel)]="filterDateTo" class="filter-input">
             </div>
             <div class="filter-group">
-                <label>Montant TTC min ({{ entreprise?.devise?.symbole || 'DT' }})</label>
+                <label>Montant TTC min ({{ currencySymbol }})</label>
                 <input type="number" [(ngModel)]="filterMontantMin" class="filter-input" placeholder="Min" min="0"
-                    step="1">
+                    step="0.001">
             </div>
             <div class="filter-group">
-                <label>Montant TTC max ({{ entreprise?.devise?.symbole || 'DT' }})</label>
+                <label>Montant TTC max ({{ currencySymbol }})</label>
                 <input type="number" [(ngModel)]="filterMontantMax" class="filter-input" placeholder="Max" min="0"
-                    step="1">
+                    step="0.001">
             </div>
         </div>
         <div class="advanced-filter-footer">
@@ -114,7 +163,7 @@
                 <tr>
                     <th class="checkbox-cell"><input type="checkbox" [checked]="allBonsSelected"
                             (change)="toggleAllSelections($event)"></th>
-                    <th class="ref-col">Référence</th>
+                    <th>Référence</th>
                     <th *ngIf="isColumnVisible('type')">Type Bon</th>
                     <th *ngIf="isColumnVisible('typeMouvement')">Mouvement</th>
                     <th *ngIf="isColumnVisible('fournisseur')" class="fournisseur-col">Fournisseur & Code</th>
@@ -131,7 +180,7 @@
                         <input type="checkbox" [checked]="isBonSelected(bon.id)" (click)="$event.stopPropagation()"
                             (change)="toggleSelection(bon.id, $event)">
                     </td>
-                    <td class="ref-col font-bold">
+                    <td class="ref-col">
                         <span class="ref-link">{{ bon.numeroBon }}</span>
                     </td>
                     <td *ngIf="isColumnVisible('type')">
@@ -159,7 +208,7 @@
                     </td>
                     <td *ngIf="isColumnVisible('createur')" class="buyer-col">
                         <div class="buyer-badge" *ngIf="bon.createur">
-                            <span class="initial" [style.background-color]="'#3d7a7f'">{{
+                            <span class="initial" [style.background-color]="'var(--primary)'">{{
                                 getAcheteurInitials(bon.createur) }}</span>
                             <span class="name">{{ bon.createur.firstName || bon.createur.username }} {{
                                 bon.createur.lastName }}</span>
@@ -168,10 +217,9 @@
                     </td>
                     <td *ngIf="isColumnVisible('date')">{{ bon.date | date:'dd/MM/yyyy' }}</td>
                     <td *ngIf="isColumnVisible('montantHT')" class="text-right">{{ getBonHT(bon) | number:'1.3-3' }} {{
-                        entreprise?.devise?.symbole || 'DT' }}
-                    </td>
+                        currencySymbol }}</td>
                     <td *ngIf="isColumnVisible('montantTTC')" class="text-right">{{ getBonTTC(bon) | number:'1.3-3' }}
-                        {{ entreprise?.devise?.symbole || 'DT' }}</td>
+                        {{ currencySymbol }}</td>
                     <td class="actions-td" (click)="$event.stopPropagation()">
                         <div class="list-actions">
                             <button type="button" class="btn-action btn-action--print" (click)="printBon(bon, $event)"
@@ -185,7 +233,7 @@
                                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                 </svg>
                             </button>
-                            <button class="btn-icon-action delete" (click)="confirmDelete(bon)" title="Supprimer">
+                            <button class="btn-icon-action delete" (click)="confirmDelete(bon)" title="Supprimer" *ngIf="canManage()">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                     stroke-width="2">
                                     <polyline points="3 6 5 6 21 6"></polyline>
@@ -201,19 +249,19 @@
             <tfoot>
                 <tr class="totals-row">
                     <td class="checkbox-cell"></td>
-                    <td class="ref-col"></td>
+                    <td></td>
                     <td *ngIf="isColumnVisible('type')"></td>
                     <td *ngIf="isColumnVisible('typeMouvement')"></td>
                     <td *ngIf="isColumnVisible('fournisseur')" class="fournisseur-col text-right">
-                        <span class="totals-label">TOTAUX :</span>
+                        <span class="totals-label">TOTAL GÉNÉRAL :</span>
                     </td>
                     <td *ngIf="isColumnVisible('createur')"></td>
                     <td *ngIf="isColumnVisible('date')"></td>
                     <td *ngIf="isColumnVisible('montantHT')" class="text-right footer-total">
-                        {{ getGrandTotalHT() | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT' }}
+                        {{ getGrandTotalHT() | number:'1.3-3' }} <span class="footer-currency">{{ currencySymbol }}</span>
                     </td>
-                    <td *ngIf="isColumnVisible('montantTTC')" class="text-right footer-total">
-                        {{ getGrandTotalTTC() | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT' }}
+                    <td *ngIf="isColumnVisible('montantTTC')" class="text-right footer-total highlight-total">
+                        {{ getGrandTotalTTC() | number:'1.3-3' }} <span class="footer-currency">{{ currencySymbol }}</span>
                     </td>
                     <td></td>
                 </tr>

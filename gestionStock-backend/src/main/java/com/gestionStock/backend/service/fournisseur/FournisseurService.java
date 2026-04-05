@@ -4,7 +4,7 @@ import com.gestionStock.backend.entity.fournisseur.Fournisseur;
 import com.gestionStock.backend.repository.fournisseur.FournisseurRepository;
 import com.gestionStock.backend.service.user.UserService;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

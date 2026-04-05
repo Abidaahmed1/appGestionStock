@@ -6,7 +6,7 @@ import com.gestionStock.backend.entity.piece.PieceDetachee;
 import com.gestionStock.backend.repository.piece.ProduitFiniRepository;
 import com.gestionStock.backend.service.user.UserService;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -85,7 +85,7 @@ public class ProduitFiniService {
         if (produit.getImageUrl() != null) {
             existing.setImageUrl(produit.getImageUrl());
         }
-        
+
         // Mise à jour des pièces associées
         if (produit.getPieces() != null) {
             existing.setPieces(produit.getPieces());

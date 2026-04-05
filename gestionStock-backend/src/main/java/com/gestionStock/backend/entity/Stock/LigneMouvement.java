@@ -30,18 +30,14 @@ public class LigneMouvement {
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private Long id;
-	@com.fasterxml.jackson.annotation.JsonBackReference
+	@com.fasterxml.jackson.annotation.JsonBackReference("mvt_ligne")
 	@ManyToOne
 	@JoinColumn(name = "mouvement_id", nullable = false)
 	private MouvementStock mouvementStock;
 
-	@ManyToOne(cascade = { CascadeType.MERGE })
+	@ManyToOne
 	@JoinColumn(name = "piece_id", nullable = true)
 	private PieceDetachee piece;
-
-	@ManyToOne(cascade = { CascadeType.MERGE })
-	@JoinColumn(name = "detail_piece_id")
-	private com.gestionStock.backend.entity.piece.DetailPiece detailPiece;
 
 	private Integer quantite;
 	private Double prixHTVA;

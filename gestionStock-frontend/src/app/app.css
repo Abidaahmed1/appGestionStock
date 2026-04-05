@@ -1,5 +1,5 @@
 :root {
-    --primary: #3d7a7f;
+    --primary: var(--primary);
     --primary-light: #5a9ca1;
     --accent: #a8d5d8;
     --text-main: #2c3e50;

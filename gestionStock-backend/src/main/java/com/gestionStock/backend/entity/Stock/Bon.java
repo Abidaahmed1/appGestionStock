@@ -22,12 +22,16 @@ import lombok.*;
 @ToString(exclude = "mouvement")
 @Table(uniqueConstraints = {
 		@UniqueConstraint(columnNames = { "numeroBon", "entreprise_id" })
+}, indexes = {
+		@Index(name = "idx_bon_entreprise_date", columnList = "entreprise_id, date"),
+		@Index(name = "idx_bon_createur", columnList = "createur_id")
 })
 public class Bon {
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private Long id;
 
+	@JsonIgnore
 	@ManyToOne
 	@JoinColumn(name = "entreprise_id")
 	private Entreprise entreprise;
@@ -45,9 +49,11 @@ public class Bon {
 	@JoinColumn(name = "bon_origine_id")
 	private Bon bonOrigine;
 
+	@JsonManagedReference("bon_mvt")
 	@OneToOne(mappedBy = "bon", cascade = CascadeType.ALL, orphanRemoval = true)
 	private MouvementStock mouvement;
 
+	@JsonIgnoreProperties({ "entreprise", "theme", "accentColor", "emailOrders", "emailStock", "pushAlerts" })
 	@ManyToOne
 	private User createur;
 

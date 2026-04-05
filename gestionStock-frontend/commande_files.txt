@@ -1,0 +1,8 @@
+D:\projetPfe\appGestionStock\gestionStock-frontend\src\app\logistique\components\commande-fournisseur-form
+D:\projetPfe\appGestionStock\gestionStock-frontend\src\app\logistique\components\commande-fournisseur-list
+D:\projetPfe\appGestionStock\gestionStock-frontend\src\app\logistique\components\commande-fournisseur-form\commande-fournisseur-form.component.css
+D:\projetPfe\appGestionStock\gestionStock-frontend\src\app\logistique\components\commande-fournisseur-form\commande-fournisseur-form.component.html
+D:\projetPfe\appGestionStock\gestionStock-frontend\src\app\logistique\components\commande-fournisseur-form\commande-fournisseur-form.component.ts
+D:\projetPfe\appGestionStock\gestionStock-frontend\src\app\logistique\components\commande-fournisseur-list\commande-fournisseur-list.component.css
+D:\projetPfe\appGestionStock\gestionStock-frontend\src\app\logistique\components\commande-fournisseur-list\commande-fournisseur-list.component.html
+D:\projetPfe\appGestionStock\gestionStock-frontend\src\app\logistique\components\commande-fournisseur-list\commande-fournisseur-list.component.ts

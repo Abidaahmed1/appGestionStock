@@ -1,118 +1,530 @@
-<div class="settings-container">
-    <div class="settings-header">
-        <h1>
-            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path
-                    d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                <circle cx="12" cy="12" r="3" />
-            </svg>
-            Paramètres du compte
-        </h1>
-        <p>Gérez vos informations personnelles et vos préférences</p>
-    </div>
-
-    <div class="settings-content">
-        <div class="settings-card">
-            <div class="card-header">
-                <h2>Informations personnelles</h2>
-                <p>Mettez à jour vos informations de profil</p>
+<div class="settings-wrapper">
+    <div class="settings-body">
+        <header class="body-header">
+            @switch (currentSection()) {
+            @case ('profile') {
+            <div class="title-group">
+                <h1>Paramètres du profil</h1>
+                <p>Gérez vos informations personnelles et comment les autres vous voient.</p>
             </div>
+            }
+            @case ('security') {
+            <div class="title-group">
+                <h1>Sécurité du compte</h1>
+                <p>Sécurisez votre compte avec un mot de passe robuste et des options de récupération.</p>
+            </div>
+            }
+            @case ('appearance') {
+            <div class="title-group">
+                <h1>Personnalisation</h1>
+                <p>Personnalisez l'apparence de votre espace de travail.</p>
+            </div>
+            }
+            @case ('notifications') {
+            <div class="title-group">
+                <h1>Préférences de notification</h1>
+                <p>Choisissez comment et quand vous souhaitez être informé.</p>
+            </div>
+            }
+            }
+        </header>
 
-            <form [formGroup]="profileForm" (ngSubmit)="updateProfile()">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="firstName">Prénom</label>
-                        <input type="text" id="firstName" formControlName="firstName" placeholder="Votre prénom"
-                            autocomplete="given-name">
-                        <span class="error-msg"
-                            *ngIf="profileForm.get('firstName')?.invalid && profileForm.get('firstName')?.touched">
-                            Le prénom est requis
-                        </span>
+        <main class="body-content">
+            @if (currentSection() === 'profile') {
+            <section class="settings-card profile-card animate-in">
+                <div class="card-icon-header">
+                    <div class="header-icon-badge profile-bg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
+                        </svg>
+                    </div>
+                    <div class="header-text">
+                        <h2>Identité & Contact</h2>
+                        <span>Gérez vos informations de base et votre visibilité</span>
+                    </div>
+                </div>
+
+                <div class="profile-layout">
+                    <div class="avatar-section">
+                        <div class="avatar-display">
+                            <div class="avatar-circle">
+                                <span>{{ profileForm.get('firstName')?.value?.[0] }}{{
+                                    profileForm.get('lastName')?.value?.[0] }}</span>
+                            </div>
+                            <div class="status-indicator online"></div>
+                        </div>
+                        <div class="avatar-info">
+                            <span class="role-badge">{{ userRole }}</span>
+                            <p class="verification-status"><svg xmlns="http://www.w3.org/2000/svg" width="12"
+                                    height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 6 9 17l-5-5" />
+                                </svg> Profil Vérifié</p>
+                        </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="lastName">Nom</label>
-                        <input type="text" id="lastName" formControlName="lastName" placeholder="Votre nom"
-                            autocomplete="family-name">
-                        <span class="error-msg"
-                            *ngIf="profileForm.get('lastName')?.invalid && profileForm.get('lastName')?.touched">
-                            Le nom est requis
-                        </span>
+                    <form [formGroup]="profileForm" (ngSubmit)="updateProfile()" class="modern-form profile-form-grid">
+                        <div class="form-field-item">
+                            <label for="firstName">Prénom</label>
+                            <div class="premium-input">
+                                <i class="fas fa-user-tag input-icon-alt"></i>
+                                <input type="text" id="firstName" formControlName="firstName"
+                                    placeholder="Votre prénom">
+                            </div>
+                            <span class="v-error"
+                                *ngIf="profileForm.get('firstName')?.invalid && profileForm.get('firstName')?.touched">Ce
+                                champ est requis</span>
+                        </div>
+
+                        <div class="form-field-item">
+                            <label for="lastName">Nom de famille</label>
+                            <div class="premium-input">
+                                <i class="fas fa-id-card input-icon-alt"></i>
+                                <input type="text" id="lastName" formControlName="lastName" placeholder="Votre nom">
+                            </div>
+                            <span class="v-error"
+                                *ngIf="profileForm.get('lastName')?.invalid && profileForm.get('lastName')?.touched">Ce
+                                champ est requis</span>
+                        </div>
+
+                        <div class="form-field-item full">
+                            <label for="email">Adresse email professionelle</label>
+                            <div class="premium-input disabled">
+                                <i class="fas fa-envelope input-icon-alt"></i>
+                                <input type="email" id="email" formControlName="email">
+                                <div class="read-only-badge">Lecture seule</div>
+                            </div>
+                            <p class="field-hint">L'email est synchronisé avec Keycloak et ne peut pas être modifié ici.
+                            </p>
+                        </div>
+
+                        <div class="form-actions-premium">
+                            <button type="button" class="btn-cancel-premium" (click)="cancelProfileEdit()">
+                                <i class="fas fa-undo-alt"></i> Réinitialiser
+                            </button>
+                            <button type="submit" class="btn-save-premium"
+                                [disabled]="profileForm.invalid || !profileForm.dirty">
+                                <i class="fas fa-check-circle"></i> Enregistrer les modifications
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+            }
+
+            @if (currentSection() === 'security') {
+            <section class="settings-card security-card animate-in">
+                <div class="card-icon-header">
+                    <div class="header-icon-badge security-bg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                            <path d="m9 12 2 2 4-4" />
+                        </svg>
+                    </div>
+                    <div class="header-text">
+                        <h2>Sécurité du compte</h2>
+                        <span class="security-meta"><i class="fas fa-history"></i> Protection activée • Mise à jour
+                            recommandée</span>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="email">Adresse email</label>
-                    <input type="email" id="email" formControlName="email" placeholder="votre.email@exemple.com"
-                        autocomplete="email">
-                    <span class="error-msg"
-                        *ngIf="profileForm.get('email')?.invalid && profileForm.get('email')?.touched">
-                        Email invalide
-                    </span>
+                <div class="security-banner-info">
+                    <div class="banner-icon"><i class="fas fa-shield-alt"></i></div>
+                    <div class="banner-content">
+                        <h4>Protection de vos données</h4>
+                        <p>Changez régulièrement votre mot de passe pour garantir la sécurité de vos stocks et
+                            informations sensibles.</p>
+                    </div>
                 </div>
 
-                <div class="form-actions">
-                    <button type="button" class="btn-secondary" (click)="cancelProfileEdit()">Annuler</button>
-                    <button type="submit" class="btn-primary" [disabled]="profileForm.invalid || !profileForm.dirty">
-                        Enregistrer les modifications
-                    </button>
+                <form [formGroup]="passwordForm" (ngSubmit)="updatePassword()" class="modern-form security-form-layout">
+                    <div class="form-field-item full">
+                        <label for="currentPassword">Mot de passe actuel</label>
+                        <div class="premium-input"
+                            [class.error-border]="passwordForm.get('currentPassword')?.invalid && passwordForm.get('currentPassword')?.touched">
+                            <i class="fas fa-key input-icon-alt"></i>
+                            <input type="password" id="currentPassword" formControlName="currentPassword"
+                                placeholder="Saisissez votre mot de passe actuel">
+                        </div>
+                        <div class="v-error-msg"
+                            *ngIf="passwordForm.get('currentPassword')?.invalid && passwordForm.get('currentPassword')?.touched">
+                            <i class="fas fa-exclamation-triangle"></i> Le mot de passe actuel est obligatoire pour
+                            confirmer votre identité.
+                        </div>
+                    </div>
+
+                    <div class="password-pair">
+                        <div class="form-field-item">
+                            <label for="newPassword">Nouveau mot de passe</label>
+                            <div class="premium-input"
+                                [class.error-border]="passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched">
+                                <i class="fas fa-lock input-icon-alt"></i>
+                                <input type="password" id="newPassword" formControlName="newPassword"
+                                    placeholder="Nouveau secret">
+                            </div>
+
+                            <!-- Enhanced Strength UI -->
+                            <div class="strength-meter-container" *ngIf="passwordForm.get('newPassword')?.value">
+                                <div class="strength-labels">
+                                    <span>Force :</span>
+                                    <span class="strength-text" [style.color]="getPasswordStrengthColor()">{{
+                                        getPasswordStrengthText() }}</span>
+                                </div>
+                                <div class="pwd-strength-bar">
+                                    <div class="strength-fill" [style.width]="getPasswordStrengthWidth()"
+                                        [style.background]="getPasswordStrengthColor()"></div>
+                                </div>
+                            </div>
+
+                            <div class="v-error-msg"
+                                *ngIf="passwordForm.get('newPassword')?.errors?.['required'] && passwordForm.get('newPassword')?.touched">
+                                <i class="fas fa-exclamation-triangle"></i> Un nouveau mot de passe est requis.
+                            </div>
+                            <div class="v-error-msg"
+                                *ngIf="passwordForm.get('newPassword')?.errors?.['minlength'] && passwordForm.get('newPassword')?.touched">
+                                <i class="fas fa-exclamation-circle"></i> Trop court ! Minimum 8 caractères.
+                            </div>
+                        </div>
+
+                        <div class="form-field-item">
+                            <label for="confirmPassword">Confirmez le nouveau</label>
+                            <div class="premium-input"
+                                [class.error-border]="(passwordForm.hasError('mismatch') || passwordForm.get('confirmPassword')?.invalid) && passwordForm.get('confirmPassword')?.touched">
+                                <i class="fas fa-lock-open input-icon-alt"></i>
+                                <input type="password" id="confirmPassword" formControlName="confirmPassword"
+                                    placeholder="Répétez le nouveau">
+                            </div>
+                            <div class="v-error-msg"
+                                *ngIf="passwordForm.hasError('mismatch') && passwordForm.get('confirmPassword')?.touched">
+                                <i class="fas fa-times-circle"></i> Les mots de passe ne correspondent pas.
+                            </div>
+                            <div class="v-error-msg"
+                                *ngIf="passwordForm.get('confirmPassword')?.errors?.['required'] && passwordForm.get('confirmPassword')?.touched && !passwordForm.hasError('mismatch')">
+                                <i class="fas fa-exclamation-triangle"></i> La confirmation est obligatoire.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions-premium">
+                        <button type="button" class="btn-cancel-premium" (click)="cancelPasswordEdit()">Annuler</button>
+                        <button type="submit" class="btn-save-premium security-btn-accent shadow-pulse"
+                            [disabled]="passwordForm.invalid || !passwordForm.dirty">
+                            <i class="fas fa-shield-alt"></i> Sécuriser mon compte
+                        </button>
+                    </div>
+                </form>
+            </section>
+            }
+
+            @if (currentSection() === 'appearance') {
+            <section class="settings-card appearance-card animate-in">
+                <div class="card-icon-header">
+                    <div class="header-icon-badge appearance-bg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2a10 10 0 1 0 10 10 10 10 0 0 0-10-10zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" />
+                            <path d="M12 2a10 10 0 0 0-10 10h20a10 10 0 0 0-10-10z" />
+                        </svg>
+                    </div>
+                    <div class="header-text">
+                        <h2>Style & Thème</h2>
+                        <span>Personnalisez l'aspect visuel de votre interface</span>
+                    </div>
                 </div>
-            </form>
-        </div>
 
+                <form [formGroup]="appearanceForm" (ngSubmit)="updateAppearance()" class="modern-form">
+                    <div class="settings-group">
+                        <div class="group-header">
+                            <label class="group-label">Thème de l'interface</label>
+                            <p class="group-sublabel">Choisissez entre un mode clair reposant ou un mode sombre élégant.
+                            </p>
+                        </div>
 
-        <div class="settings-card">
-            <div class="card-header">
-                <h2>Sécurité</h2>
-                <p>Modifiez votre mot de passe</p>
-            </div>
+                        <div class="theme-grid-premium">
+                            <label class="theme-card-option"
+                                [class.selected]="appearanceForm.get('theme')?.value === 'light'">
+                                <input type="radio" formControlName="theme" value="light">
+                                <div class="theme-visual light">
+                                    <div class="v-sidebar"></div>
+                                    <div class="v-main">
+                                        <div class="v-nav"></div>
+                                        <div class="v-content">
+                                            <div class="v-block"></div>
+                                            <div class="v-block"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="theme-label">
+                                    <span class="t-name">Clair</span>
+                                    <div class="t-radio"></div>
+                                </div>
+                            </label>
 
-            <form [formGroup]="passwordForm" (ngSubmit)="updatePassword()">
-                <div class="form-group">
-                    <label for="currentPassword">Mot de passe actuel</label>
-                    <input type="password" id="currentPassword" formControlName="currentPassword"
-                        placeholder="Entrez votre mot de passe actuel" autocomplete="current-password">
-                    <span class="error-msg"
-                        *ngIf="passwordForm.get('currentPassword')?.invalid && passwordForm.get('currentPassword')?.touched">
-                        Le mot de passe actuel est requis
-                    </span>
+                            <label class="theme-card-option"
+                                [class.selected]="appearanceForm.get('theme')?.value === 'dark'">
+                                <input type="radio" formControlName="theme" value="dark">
+                                <div class="theme-visual dark">
+                                    <div class="v-sidebar"></div>
+                                    <div class="v-main">
+                                        <div class="v-nav"></div>
+                                        <div class="v-content">
+                                            <div class="v-block"></div>
+                                            <div class="v-block"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="theme-label">
+                                    <span class="t-name">Sombre</span>
+                                    <div class="t-radio"></div>
+                                </div>
+                            </label>
+
+                            <label class="theme-card-option"
+                                [class.selected]="appearanceForm.get('theme')?.value === 'system'">
+                                <input type="radio" formControlName="theme" value="system">
+                                <div class="theme-visual system">
+                                    <div class="v-half light"></div>
+                                    <div class="v-half dark"></div>
+                                    <div class="v-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10" />
+                                            <path d="M12 2v20" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="theme-label">
+                                    <span class="t-name">Système</span>
+                                    <div class="t-radio"></div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="settings-group accent-group">
+                        <div class="group-header">
+                            <label class="group-label">Couleur d'accentuation</label>
+                            <p class="group-sublabel">Cette couleur sera utilisée pour les boutons, liens et
+                                indicateurs.</p>
+                        </div>
+
+                        <div class="accent-picker-premium">
+                            <div class="accent-options">
+                                <label class="accent-bubble lime"
+                                    [class.active]="appearanceForm.get('accentColor')?.value === 'lime'">
+                                    <input type="radio" formControlName="accentColor" value="lime">
+                                    <span class="check-icon">✓</span>
+                                </label>
+                                <label class="accent-bubble teal"
+                                    [class.active]="appearanceForm.get('accentColor')?.value === 'teal'">
+                                    <input type="radio" formControlName="accentColor" value="teal">
+                                    <span class="check-icon">✓</span>
+                                </label>
+                                <label class="accent-bubble blue"
+                                    [class.active]="appearanceForm.get('accentColor')?.value === 'blue'">
+                                    <input type="radio" formControlName="accentColor" value="blue">
+                                    <span class="check-icon">✓</span>
+                                </label>
+                                <label class="accent-bubble indigo"
+                                    [class.active]="appearanceForm.get('accentColor')?.value === 'indigo'">
+                                    <input type="radio" formControlName="accentColor" value="indigo">
+                                    <span class="check-icon">✓</span>
+                                </label>
+                                <label class="accent-bubble amber"
+                                    [class.active]="appearanceForm.get('accentColor')?.value === 'amber'">
+                                    <input type="radio" formControlName="accentColor" value="amber">
+                                    <span class="check-icon">✓</span>
+                                </label>
+                                <label class="accent-bubble rose"
+                                    [class.active]="appearanceForm.get('accentColor')?.value === 'rose'">
+                                    <input type="radio" formControlName="accentColor" value="rose">
+                                    <span class="check-icon">✓</span>
+                                </label>
+                            </div>
+
+                            <button type="submit" class="btn-primary-glow" [disabled]="!appearanceForm.dirty">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M20 6 9 17l-5-5" />
+                                </svg>
+                                <span>Appliquer le style</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </section>
+            }
+
+            @if (currentSection() === 'notifications') {
+            <section class="settings-card notifications-card animate-in">
+                <div class="card-icon-header">
+                    <div class="header-icon-badge notifications-bg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                        </svg>
+                    </div>
+                    <div class="header-text">
+                        <h2>Canaux de notification</h2>
+                        <span>Configurez quand et comment vous êtes prévenu</span>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="newPassword">Nouveau mot de passe</label>
-                    <input type="password" id="newPassword" formControlName="newPassword"
-                        placeholder="Entrez un nouveau mot de passe" autocomplete="new-password">
-                    <span class="error-msg"
-                        *ngIf="passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched">
-                        Le mot de passe doit contenir au moins 8 caractères
-                    </span>
-                </div>
+                <form [formGroup]="notificationsForm" (ngSubmit)="updateNotifications()" class="modern-form">
+                    <div class="notifications-vgrid">
+                        <div class="notif-card-item">
+                            <div class="notif-icon-box orders">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+                                    <path d="M3 6h18" />
+                                    <path d="M16 10a4 4 0 0 1-8 0" />
+                                </svg>
+                            </div>
+                            <div class="notif-details">
+                                <h3>Commandes Fournisseurs</h3>
+                                <p>Recevoir un récapitulatif par e-mail lors de la création d'un bon de commande.</p>
+                            </div>
+                            <div class="notif-action">
+                                <label class="modern-toggle">
+                                    <input type="checkbox" formControlName="emailOrders">
+                                    <div class="toggle-track">
+                                        <div class="toggle-thumb"></div>
+                                    </div>
+                                    <span class="toggle-status">{{ notificationsForm.get('emailOrders')?.value ?
+                                        'Activé' : 'Désactivé' }}</span>
+                                </label>
+                            </div>
+                        </div>
 
-                <div class="form-group">
-                    <label for="confirmPassword">Confirmer le mot de passe</label>
-                    <input type="password" id="confirmPassword" formControlName="confirmPassword"
-                        placeholder="Confirmez le nouveau mot de passe" autocomplete="new-password">
-                    <span class="error-msg"
-                        *ngIf="passwordForm.hasError('mismatch') && passwordForm.get('confirmPassword')?.touched">
-                        Les mots de passe ne correspondent pas
-                    </span>
-                </div>
+                        <div class="notif-card-item">
+                            <div class="notif-icon-box stock">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M3 3v18h18" />
+                                    <path d="m19 9-5 5-4-4-3 3" />
+                                </svg>
+                            </div>
+                            <div class="notif-details">
+                                <h3>Alertes de Stock Critique</h3>
+                                <p>Notifications prioritaires lorsque le stock d'un produit descend sous le seuil
+                                    d'alerte.</p>
+                            </div>
+                            <div class="notif-action">
+                                <label class="modern-toggle">
+                                    <input type="checkbox" formControlName="emailStock">
+                                    <div class="toggle-track">
+                                        <div class="toggle-thumb"></div>
+                                    </div>
+                                    <span class="toggle-status">{{ notificationsForm.get('emailStock')?.value ? 'Activé'
+                                        : 'Désactivé' }}</span>
+                                </label>
+                            </div>
+                        </div>
 
-                <div class="form-actions">
-                    <button type="button" class="btn-secondary" (click)="cancelPasswordEdit()">Annuler</button>
-                    <button type="submit" class="btn-primary" [disabled]="passwordForm.invalid || !passwordForm.dirty">
-                        Changer le mot de passe
-                    </button>
-                </div>
-            </form>
-        </div>
+                        <div class="notif-card-item">
+                            <div class="notif-icon-box system">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path
+                                        d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                </svg>
+                            </div>
+                            <div class="notif-details">
+                                <h3>Notifications Système</h3>
+                                <p>Tenez-vous au courant des maintenances planifiées et des nouveautés de la plateforme.
+                                </p>
+                            </div>
+                            <div class="notif-action">
+                                <label class="modern-toggle">
+                                    <input type="checkbox" formControlName="pushAlerts">
+                                    <div class="toggle-track">
+                                        <div class="toggle-thumb"></div>
+                                    </div>
+                                    <span class="toggle-status">{{ notificationsForm.get('pushAlerts')?.value ? 'Activé'
+                                        : 'Désactivé' }}</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-footer-simple">
+                        <button type="submit" class="btn-primary-premium shadow-pulse"
+                            [disabled]="!notificationsForm.dirty">
+                            Sauvegarder les préférences
+                        </button>
+                    </div>
+                </form>
+            </section>
+            }
+        </main>
     </div>
 
+    <!-- Sidebar Navigation : Right Side -->
+    <aside class="sidebar-nav">
+        <div class="sidebar-header">
+            <i class="fas fa-cog"></i>
+            <span>PARAMÈTRES</span>
+        </div>
 
-    <div class="notification-toast" *ngIf="notification" [class.success]="notification.type === 'success'"
-        [class.error]="notification.type === 'error'">
-        <span class="msg">{{ notification.message }}</span>
-        <button class="close-btn" (click)="notification = null">✕</button>
+        <div class="nav-links">
+            <div class="nav-item" [class.active]="currentSection() === 'profile'" (click)="setSection('profile')">
+                <div class="nav-label">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Profil</span>
+                </div>
+            </div>
+
+            <div class="nav-item" [class.active]="currentSection() === 'security'" (click)="setSection('security')">
+                <div class="nav-label">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Sécurité</span>
+                </div>
+            </div>
+
+            <div class="nav-item" [class.active]="currentSection() === 'appearance'" (click)="setSection('appearance')">
+                <div class="nav-label">
+                    <i class="fas fa-paint-brush"></i>
+                    <span>Apparence</span>
+                </div>
+            </div>
+
+            <div class="nav-item" [class.active]="currentSection() === 'notifications'"
+                (click)="setSection('notifications')">
+                <div class="nav-label">
+                    <i class="fas fa-bell"></i>
+                    <span>Notifications</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Floating Premium Toast -->
+    <div class="premium-toast-container" *ngIf="notification">
+        <div class="premium-toast" [class.success]="notification.type === 'success'"
+            [class.error]="notification.type === 'error'">
+            <div class="toast-indicator"></div>
+            <div class="toast-icon-wrapper">
+                <i *ngIf="notification.type === 'success'" class="fas fa-check-circle"></i>
+                <i *ngIf="notification.type === 'error'" class="fas fa-exclamation-circle"></i>
+            </div>
+            <div class="toast-body">
+                <span class="toast-headline">{{ notification.type === 'success' ? 'Succès' : 'Attention' }}</span>
+                <span class="toast-text">{{ notification.message }}</span>
+            </div>
+            <button class="toast-dismiss" (click)="notification = null">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
     </div>
 </div>

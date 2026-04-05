@@ -36,6 +36,7 @@ export interface DetailPiece {
     parametre: Parametre;
     parametreNom?: string;
     valeur: string;
+    valeurBool?: boolean;
 }
 
 export interface Categorie {

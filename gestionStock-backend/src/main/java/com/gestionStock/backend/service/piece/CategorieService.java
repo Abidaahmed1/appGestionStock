@@ -8,7 +8,7 @@ import com.gestionStock.backend.entity.piece.Categorie;
 import com.gestionStock.backend.repository.piece.CategorieRepository;
 import com.gestionStock.backend.service.user.UserService;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service

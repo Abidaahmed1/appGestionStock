@@ -6,6 +6,7 @@ import { MagasinierService } from '../../services/magasinier.service';
 import { PieceDetachee, Categorie, ProduitFini, Parametre, DetailPiece, Unite } from '../../models/magasinier.models';
 import { EntrepriseService } from '../../../admin/services/entreprise.service';
 import { Entreprise } from '../../../admin/models/entreprise.model';
+import { DocumentConfigService, DocumentType } from '../../../admin/services/document-config.service';
 
 import Swal from 'sweetalert2';
 
@@ -38,6 +39,7 @@ export class PieceListComponent implements OnInit {
     filterStockStatus: string = 'all';
     filterMinPrice: number | null = null;
     filterMaxPrice: number | null = null;
+    sortOption: string = 'designation_asc';
     showDeleteConfirm = false;
     itemToDelete: PieceDetachee | null = null;
     isBulkDelete = false;
@@ -64,6 +66,7 @@ export class PieceListComponent implements OnInit {
     showAssocProducts: boolean = true; // Added for expanding/collapsing the products list
 
     parametres: Parametre[] = [];
+    visibleVarianteIds: number[] = [];
     private imageCache = new Map<string, string>();
 
     // Multi-selection
@@ -73,6 +76,7 @@ export class PieceListComponent implements OnInit {
     private platformId = inject(PLATFORM_ID);
     private cdr = inject(ChangeDetectorRef);
     private ngZone = inject(NgZone);
+    private docConfigService = inject(DocumentConfigService);
     public entrepriseService = inject(EntrepriseService); // Changed to public for template access
 
     @HostListener('document:click', ['$event'])
@@ -98,6 +102,10 @@ export class PieceListComponent implements OnInit {
                 this.cdr.detectChanges();
             }
         }
+    }
+
+    get currencySymbol(): string {
+        return this.entrepriseService.getDeviseSymbol(this.entreprise);
     }
 
     constructor(private magasinierService: MagasinierService) { }
@@ -207,13 +215,27 @@ export class PieceListComponent implements OnInit {
     ngOnInit() {
         if (isPlatformBrowser(this.platformId)) {
             this.userRoles = this.keycloak.getUserRoles() || [];
-            this.cdr.detectChanges();
+
             this.loadPieces();
             this.loadCategories();
             this.loadProduits();
             this.loadParametres();
             this.loadUnites();
             this.loadEntreprise();
+            this.loadDisplaySettings();
+
+            const draft = sessionStorage.getItem('piece_draft');
+            if (draft) {
+                try {
+                    const parsed = JSON.parse(draft);
+                    this.selectedPiece = parsed.piece;
+                    this.showCreateModal = true;
+                } catch (e) {
+                    console.error('Error parsing piece_draft', e);
+                }
+            }
+
+            this.cdr.detectChanges();
         }
     }
 
@@ -303,6 +325,17 @@ export class PieceListComponent implements OnInit {
                 this.cdr.detectChanges();
             },
             error: (err: any) => console.error('Erreur chargement entreprise:', err)
+        });
+    }
+
+    loadDisplaySettings(): void {
+        // On utilise BON_ENTREE par défaut pour la liste globale des pièces
+        this.docConfigService.getSettingByType(DocumentType.BON_ENTREE).subscribe({
+            next: (setting) => {
+                this.visibleVarianteIds = setting.visibleVarianteIds || [];
+                this.cdr.detectChanges();
+            },
+            error: (err) => console.error('Erreur chargement config visibilité:', err)
         });
     }
 
@@ -413,14 +446,33 @@ export class PieceListComponent implements OnInit {
     }
 
     openEditModal(piece: PieceDetachee): void {
-        const groupItems = this.pieces.filter(p => p.designation === piece.designation);
+        this.selectedPiece = piece;
+        this.formError = null;
+        this.showCreateModal = true;
+        this.cdr.detectChanges();
+    }
 
-        // Populate the selected piece's variations with its siblings
-        this.selectedPiece = {
+    openDuplicateModal(piece: PieceDetachee): void {
+        const duplicatedPiece = {
             ...piece,
-            variations: groupItems.filter(p => p.id !== piece.id)
+            id: undefined,
+            reference: 'AUTO',
+            codeBarre: '',
+            quantite: 0,
+            archivee: false
         };
 
+        if (piece.details) {
+            duplicatedPiece.details = piece.details.map(d => ({
+                ...d,
+                id: undefined
+            }));
+        }
+        if (piece.produitsAssocies) {
+            duplicatedPiece.produitsAssocies = [...piece.produitsAssocies];
+        }
+
+        this.selectedPiece = duplicatedPiece;
         this.formError = null;
         this.showCreateModal = true;
         this.cdr.detectChanges();
@@ -432,14 +484,20 @@ export class PieceListComponent implements OnInit {
         this.cdr.detectChanges();
     }
 
+    isSavingPiece: boolean = false;
+
     handleSavePiece(data: { piece: PieceDetachee, file: File | null }): void {
+        console.log('[DEBUG] piece-list component: handleSavePiece called', data);
         const pieceData = data.piece;
         const file = data.file;
 
+        this.isSavingPiece = true;
+
         if (this.selectedPiece && this.selectedPiece.id) {
+            console.log(`[DEBUG] Updating piece with id: ${this.selectedPiece.id}`);
             this.magasinierService.updatePiece(this.selectedPiece.id, pieceData).subscribe({
                 next: (saved) => {
-                    // Update activePiece if it was the one being edited
+                    console.log(`[DEBUG] updatePiece SUCCESS`, saved);
                     if (this.activePiece?.id === saved.id) {
                         this.activePiece = saved;
                     }
@@ -449,9 +507,11 @@ export class PieceListComponent implements OnInit {
                         this.notify('La pièce a été mise à jour avec succès.', 'success');
                         this.loadPieces();
                     }
+                    this.isSavingPiece = false;
                     this.closeCreateModal();
                 },
                 error: (err: any) => {
+                    this.isSavingPiece = false;
                     const errorMsg = this.extractErrorMessage(err, 'Erreur lors de la mise à jour de la pièce.');
                     this.formError = errorMsg;
                     this.notify(errorMsg, 'error');
@@ -466,9 +526,11 @@ export class PieceListComponent implements OnInit {
                         this.notify('La pièce a été créée avec succès.', 'success');
                         this.loadPieces();
                     }
+                    this.isSavingPiece = false;
                     this.closeCreateModal();
                 },
                 error: (err: any) => {
+                    this.isSavingPiece = false;
                     const errorMsg = this.extractErrorMessage(err, 'Erreur lors de la création de la pièce.');
                     this.formError = errorMsg;
                     this.notify(errorMsg, 'error');
@@ -492,14 +554,29 @@ export class PieceListComponent implements OnInit {
     }
 
     deletePiece(id: number): void {
+        const designation = this.itemToDelete?.designation || 'la pièce';
+        this.loading = true; // Prevents double-clicks
+
         this.magasinierService.deletePiece(id).subscribe({
             next: () => {
-                this.notify('Pièce supprimée avec succès', 'success');
-                this.loadPieces();
+                this.notify(`Pièce "${designation}" supprimée avec succès`, 'success');
+
+                // Optimistic UI update: remove from local lists immediately
+                this.pieces = this.pieces.filter(p => p.id !== id);
+                this.filteredPiecesList = this.filteredPiecesList.filter(p => p.id !== id);
+
+                // If deleted piece was the active one, close detail view
+                if (this.activePiece?.id === id) {
+                    this.activePiece = null;
+                }
+
+                this.loading = false;
+                this.loadPieces(); // Still reload from server as safety
                 this.cancelDelete();
                 this.cdr.detectChanges();
             },
             error: (err: any) => {
+                this.loading = false;
                 const msg = this.extractErrorMessage(err, 'Erreur lors de la suppression de la pièce.');
                 this.notify(msg, 'error');
                 this.cancelDelete();
@@ -513,46 +590,46 @@ export class PieceListComponent implements OnInit {
      * Avoids exposing raw technical/JSON errors to the user.
      */
     extractErrorMessage(err: any, defaultMsg: string): string {
-        console.error('[ANTIGRAVITY] Raw error object:', err);
+        console.error(' Error details:', err);
 
-        // 1. Try to find a message in the error body
+        // 1. Try to find a message in the error body (Erreur object or raw JSON)
         if (err.error) {
-            // String body
-            if (typeof err.error === 'string' && err.error.length < 1000 && !err.error.includes('<!DOCTYPE')) {
-                return err.error;
-            }
-            // Object body
+            // Case where err.error is a JSON object (Standard Erreur or Map from backend)
             if (typeof err.error === 'object') {
-                const fields = ['message', 'error', 'details', 'detail', 'msg'];
-                for (const field of fields) {
-                    if (err.error[field] && typeof err.error[field] === 'string') {
+                const priorityFields = ['message', 'error', 'details', 'detail', 'msg'];
+                for (const field of priorityFields) {
+                    if (err.error[field] && typeof err.error[field] === 'string' && err.error[field].length > 0) {
                         return err.error[field];
                     }
                 }
             }
+
+            // Case where err.error is a raw string (sometimes happens with 400 Bad Request)
+            if (typeof err.error === 'string' && err.error.length < 500 && !err.error.includes('<!DOCTYPE')) {
+                return err.error;
+            }
         }
 
-        // 2. Try the status text or the message field of the error object itself
-        if (err.statusText && err.statusText !== 'Unknown Error' && err.statusText !== 'OK') {
+        // 2. Specific HTTP Status fallback if no body message found
+        if (err.status === 409) {
+            return 'Impossible de supprimer cet élément car il est utilisé ailleurs (historique, bons, ou produits).';
+        }
+        if (err.status === 403) {
+            return 'Vous n\'avez pas les droits nécessaires pour effectuer cette action.';
+        }
+        if (err.status === 401) {
+            return 'Votre session a expiré. Veuillez vous reconnecter.';
+        }
+        if (err.status === 0) {
+            return 'Serveur injoignable. Vérifiez votre connexion.';
+        }
+
+        // 3. Status text or message field
+        if (err.statusText && err.statusText !== 'OK' && err.statusText !== 'Unknown Error') {
             return `Erreur ${err.status} : ${err.statusText}`;
         }
 
-        if (err.message && typeof err.message === 'string' && !err.message.includes('Http failure response')) {
-            return err.message;
-        }
-
-        // 3. Fallback based on HTTP status
-        switch (err.status) {
-            case 400: return 'Données invalides : veuillez vérifier vos champs.';
-            case 401: return 'Session expirée : veuillez vous reconnecter.';
-            case 403: return 'Accès refusé : vous n\'avez pas les droits nécessaires.';
-            case 404: return 'Ressource introuvable.';
-            case 409: return 'Conflit : cet élément (nom ou code) existe déjà ou est déjà utilisé.';
-            case 500: return 'Erreur interne du serveur. Veuillez contacter le support.';
-            case 0: return 'Le serveur est injoignable. Vérifiez votre connexion.';
-        }
-
-        return defaultMsg;
+        return defaultMsg || 'Une erreur inattendue est survenue.';
     }
 
     notify(message: string, type: 'success' | 'error'): void {
@@ -646,6 +723,7 @@ export class PieceListComponent implements OnInit {
         this.filterStockStatus = 'all';
         this.filterMinPrice = null;
         this.filterMaxPrice = null;
+        this.sortOption = 'designation_asc';
         this.catSearchTerm = '';
         this.filteredCategories = [...this.categories];
         this.applyFilters();
@@ -755,6 +833,27 @@ export class PieceListComponent implements OnInit {
             results = results.filter(p => (p.prixVente || 0) <= (this.filterMaxPrice || 0));
         }
 
+        switch (this.sortOption) {
+            case 'designation_asc':
+                results.sort((a, b) => (a.designation || '').localeCompare(b.designation || ''));
+                break;
+            case 'designation_desc':
+                results.sort((a, b) => (b.designation || '').localeCompare(a.designation || ''));
+                break;
+            case 'price_asc':
+                results.sort((a, b) => (a.prixVente || 0) - (b.prixVente || 0));
+                break;
+            case 'price_desc':
+                results.sort((a, b) => (b.prixVente || 0) - (a.prixVente || 0));
+                break;
+            case 'stock_asc':
+                results.sort((a, b) => this.getTotalStock(a) - this.getTotalStock(b));
+                break;
+            case 'stock_desc':
+                results.sort((a, b) => this.getTotalStock(b) - this.getTotalStock(a));
+                break;
+        }
+
         this.filteredPiecesList = results;
 
         // Ensure activePiece is still in the filtered list
@@ -832,11 +931,18 @@ export class PieceListComponent implements OnInit {
         return Math.min(percentage, 100);
     }
 
-    getVariantAttributes(variant: PieceDetachee): string[] {
-        if (!variant.details || variant.details.length === 0) return [];
-        return variant.details
-            .filter(d => d.valeur && d.parametre)
-            .map(d => `${d.parametre.nom} : ${d.valeur}`);
+    getVariantAttributes(piece: any): string[] {
+        if (!piece || !piece.details) return [];
+
+        if (this.visibleVarianteIds && this.visibleVarianteIds.length > 0) {
+            return piece.details
+                .filter((d: any) => {
+                    const hasValue = d.valeur && d.valeur.trim() !== '' && d.valeur !== '-';
+                    return d.parametre && d.parametre.id && hasValue && this.visibleVarianteIds.includes(d.parametre.id!);
+                })
+                .map((d: any) => `${d.parametre.nom}: ${d.valeur}`);
+        }
+        return [];
     }
 
     getGroupAttributes(group: { main: PieceDetachee, variations: PieceDetachee[] }): { key: string, values: string[] }[] {
@@ -847,11 +953,17 @@ export class PieceListComponent implements OnInit {
         allPieces.forEach(p => {
             if (p.details) {
                 p.details.forEach((d: any) => {
-                    if (d.parametre && d.valeur) {
-                        const name = d.parametre.nom;
-                        if (!map.has(name)) map.set(name, new Set<string>());
-                        map.get(name)!.add(d.valeur);
+                    const hasValue = d.valeur && d.valeur.trim() !== '' && d.valeur !== '-';
+                    if (!hasValue) return;
+
+                    // Filtre visibilité
+                    if (this.visibleVarianteIds && this.visibleVarianteIds.length > 0) {
+                        if (!d.parametre?.id || !this.visibleVarianteIds.includes(d.parametre.id)) return;
                     }
+
+                    const name = d.parametre.nom;
+                    if (!map.has(name)) map.set(name, new Set<string>());
+                    map.get(name)!.add(d.valeur);
                 });
             }
         });
@@ -919,26 +1031,37 @@ export class PieceListComponent implements OnInit {
     startBulkDelete(): void {
         const ids = Array.from(this.selectedIds);
         let successCount = 0;
+        let errorCount = 0;
         this.loading = true;
 
         const processNext = (index: number) => {
             if (index >= ids.length) {
-                this.notify(`${successCount} pièce(s) supprimée(s) avec succès`, 'success');
+                if (successCount > 0) {
+                    this.notify(`${successCount} pièce(s) supprimée(s) avec succès.`, 'success');
+                }
+                if (errorCount > 0) {
+                    this.notify(`${errorCount} pièce(s) n'ont pas pu être supprimées.`, 'error');
+                }
+
                 this.selectedIds.clear();
-                this.loadPieces();
+                this.loadPieces(); // Comprehensive reload
                 this.cancelDelete();
                 this.loading = false;
+                this.cdr.detectChanges();
                 return;
             }
 
-            this.magasinierService.deletePiece(ids[index]).subscribe({
+            const currentId = ids[index];
+            this.magasinierService.deletePiece(currentId).subscribe({
                 next: () => {
                     successCount++;
+                    // Optimistic removal
+                    this.pieces = this.pieces.filter(p => p.id !== currentId);
+                    this.filteredPiecesList = this.filteredPiecesList.filter(p => p.id !== currentId);
                     processNext(index + 1);
                 },
                 error: (err) => {
-                    const msg = this.extractErrorMessage(err, `Erreur lors de la suppression d'une pièce.`);
-                    this.notify(msg, 'error');
+                    errorCount++;
                     processNext(index + 1);
                 }
             });

@@ -51,6 +51,7 @@ public class Notification {
     @OneToMany(mappedBy = "notification", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     @Builder.Default
+    @com.fasterxml.jackson.annotation.JsonManagedReference("notif_targets")
     private Set<NotificationTarget> targets = new HashSet<>();
 
     @ManyToMany

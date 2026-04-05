@@ -40,11 +40,17 @@ export class CatalogueLayoutComponent implements OnInit {
     entreprise: Entreprise | null = null;
     userRoles: string[] = [];
 
+    get currencySymbol(): string {
+        return this.entrepriseService.getDeviseSymbol(this.entreprise);
+    }
+
     // Composition Modal
     showCompositionModal = false;
     selectedProduitForComposition: ProduitFini | null = null;
     compositionSearchTerm: string = '';
     filteredCompositionList: PieceDetachee[] = [];
+    showCompositionAdvancedFilters: boolean = false;
+    compositionStockStatusFilter: string = '';
 
     // Usage Modal
     showUsageModal = false;
@@ -249,6 +255,8 @@ export class CatalogueLayoutComponent implements OnInit {
     showProductComposition(produit: ProduitFini): void {
         this.selectedProduitForComposition = produit;
         this.compositionSearchTerm = '';
+        this.compositionStockStatusFilter = '';
+        this.showCompositionAdvancedFilters = false;
         this.showCompositionModal = true;
         this.applyCompositionFilter();
     }
@@ -260,17 +268,33 @@ export class CatalogueLayoutComponent implements OnInit {
     }
 
     applyCompositionFilter(): void {
-        const pieces = this.selectedProduitForComposition?.pieces || [];
-        if (!this.compositionSearchTerm) {
-            this.filteredCompositionList = pieces;
-            return;
+        let pieces = this.selectedProduitForComposition?.pieces || [];
+
+        // Search term filter
+        if (this.compositionSearchTerm) {
+            const term = this.compositionSearchTerm.toLowerCase();
+            pieces = pieces.filter(p =>
+                p.designation.toLowerCase().includes(term) ||
+                p.reference.toLowerCase().includes(term)
+            );
         }
 
-        const term = this.compositionSearchTerm.toLowerCase();
-        this.filteredCompositionList = pieces.filter(p =>
-            p.designation.toLowerCase().includes(term) ||
-            p.reference.toLowerCase().includes(term)
-        );
+        // Stock status filter
+        if (this.compositionStockStatusFilter) {
+            pieces = pieces.filter(p => this.getStockStatus(p) === this.compositionStockStatusFilter);
+        }
+
+        this.filteredCompositionList = pieces;
+    }
+
+    toggleCompositionAdvancedFilters(): void {
+        this.showCompositionAdvancedFilters = !this.showCompositionAdvancedFilters;
+    }
+
+    resetCompositionFilters(): void {
+        this.compositionSearchTerm = '';
+        this.compositionStockStatusFilter = '';
+        this.applyCompositionFilter();
     }
 
     // ==================== USAGE MODAL ====================

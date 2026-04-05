@@ -50,8 +50,8 @@ export class ParametreService {
         return this.http.get<NumerotationConfig[]>(`${this.apiUrl}/numerotation`);
     }
 
-    updateNumerotationConfigs(id: number, configs: NumerotationConfig[]): Observable<Parametre> {
-        return this.http.put<Parametre>(`${this.apiUrl}/${id}/numerotation`, configs);
+    updateNumerotationConfigs(configs: NumerotationConfig[]): Observable<Parametre> {
+        return this.http.put<Parametre>(`${this.apiUrl}/numerotation`, configs);
     }
 
     getTypesChamps(): Observable<any[]> {

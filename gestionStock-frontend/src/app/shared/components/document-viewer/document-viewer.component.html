@@ -1,0 +1,186 @@
+<div class="document-viewer-page no-print">
+  <div class="viewer-toolbar">
+    <div class="toolbar-left">
+      <button class="btn btn-outline" (click)="goBack()">
+        <i class="fas fa-arrow-left"></i> Retour
+      </button>
+      <div class="toolbar-title">Aperçu du Document : {{ getDocTitle() }} (N° {{ docData?.numeroBon ||
+        docData?.reference || '-' }})</div>
+    </div>
+    <div class="toolbar-actions">
+      <button class="btn btn-primary" (click)="print()">
+        <i class="fas fa-print"></i> Imprimer
+      </button>
+      <button class="btn btn-secondary" title="Envoyer par email">
+        <i class="fas fa-envelope"></i> Envoyer
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="document-container" *ngIf="!loading && !error && docData"
+  [ngClass]="['layout-' + config?.layout, 'font-' + config?.fontSize]" [style.--primary]="config?.primaryColor"
+  [style.--secondary]="config?.secondaryColor">
+
+  <div class="paper">
+    <header class="doc-header" [style.border-bottom-color]="config?.primaryColor">
+      <div class="header-top">
+        <div class="logo-side" *ngIf="config?.showLogo">
+          <img [src]="getLogoUrl()" class="doc-logo" alt="Logo" (error)="onLogoError($event)">
+        </div>
+        <div class="company-detail">
+          <h1 class="company-name" [style.color]="config?.primaryColor">{{ entreprise?.nom || 'MON ENTREPRISE' }}</h1>
+          <p class="company-address">{{ entreprise?.adresse || 'Zone Industrielle, Tunis, Tunisie' }}</p>
+          <div class="company-meta">
+            <span *ngIf="entreprise?.tel"><i class="fas fa-phone"></i> {{ entreprise?.tel }}</span>
+            <span *ngIf="entreprise?.email"><i class="fas fa-envelope"></i> {{ entreprise?.email }}</span>
+            <span *ngIf="entreprise?.siteWeb"><i class="fas fa-globe"></i> {{ entreprise?.siteWeb }}</span>
+          </div>
+        </div>
+        <div class="doc-meta-card">
+          <div class="doc-title-badge" [style.background-color]="config?.primaryColor"
+            [style.color]="config?.secondaryColor">
+            {{ getDocTitle() }}
+          </div>
+          <div class="meta-row">
+            <span class="label">N° Réf :</span>
+            <span class="value">{{ docData?.numeroBon || docData?.reference || '---' }}</span>
+          </div>
+          <div class="meta-row">
+            <span class="label">Date :</span>
+            <span class="value">{{ (docData?.date || docData?.dateCommande) | date:'dd/MM/yyyy' }}</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="doc-contacts">
+      <div class="contact-box">
+        <span class="contact-label">{{ getPartyLabel(true) }}</span>
+        <div class="contact-card">
+          <div class="contact-name" *ngIf="docData?.createur; else fallbackUser">
+            {{ docData?.createur?.firstName }} {{ docData?.createur?.lastName }}
+          </div>
+          <ng-template #fallbackUser>
+            <div class="contact-name">Magasinier Responsable</div>
+          </ng-template>
+          <div class="contact-info">Service Logistique</div>
+        </div>
+      </div>
+
+      <div class="contact-box" *ngIf="docData?.fournisseur">
+        <span class="contact-label">{{ getPartyLabel(false) }}</span>
+        <div class="contact-card highlight-contact">
+          <div class="contact-name">{{ docData?.fournisseur?.nom }}</div>
+          <div class="contact-info">{{ docData?.fournisseur?.adresse }}</div>
+          <div class="contact-info" *ngIf="docData?.fournisseur?.tel">Tél: {{ docData?.fournisseur?.tel }}</div>
+        </div>
+      </div>
+
+      <div class="contact-box" *ngIf="!docData?.fournisseur && docData?.userDestination">
+        <span class="contact-label">DESTINATAIRE</span>
+        <div class="contact-card">
+          <div class="contact-name">{{ docData?.userDestination?.firstName }} {{ docData?.userDestination?.lastName }}
+          </div>
+          <div class="contact-info">Magasin de Destination</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc-items">
+      <table class="items-table">
+        <thead [style.background-color]="config?.primaryColor">
+          <tr>
+            <th class="th-num" [attr.style]="'color: ' + config?.secondaryColor + ' !important'">\#</th>
+            <th class="th-desc" [attr.style]="'color: ' + config?.secondaryColor + ' !important'">Désignation du Produit</th>
+            <th class="th-qty" [attr.style]="'color: ' + config?.secondaryColor + ' !important'">Qté</th>
+            <th class="th-price" *ngIf="config?.showPriceHT" [attr.style]="'color: ' + config?.secondaryColor + ' !important'">Unit HT</th>
+            <th class="th-tax" *ngIf="config?.showTVA" [attr.style]="'color: ' + config?.secondaryColor + ' !important'">TVA %</th>
+            <th class="th-discount" *ngIf="config?.showDiscount" [attr.style]="'color: ' + config?.secondaryColor + ' !important'">Rem.</th>
+            <th class="th-total" [attr.style]="'color: ' + config?.secondaryColor + ' !important'">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            *ngFor="let item of (docData?.mouvement?.ligneMouvement || docData?.lignes || docData?.lignesCommande); let i = index">
+            <td class="td-num">{{ i + 1 }}</td>
+            <td class="td-desc">
+              <div class="item-title-row">
+                <span class="item-main">{{ item.piece?.designation || (item.article ? item.article.nom : 'Produit inconnu') }}</span>
+                <small class="item-ref" *ngIf="item.piece?.reference || item.article?.reference">[{{ item.piece?.reference || item.article?.reference }}]</small>
+              </div>
+              <div class="item-meta-row" *ngIf="hasAnyVariant(item)">
+                <div class="item-variants-inline">
+                  <ng-container *ngFor="let vid of config?.visibleVarianteIds">
+                    <span class="variant-simple-text" *ngIf="getVariantValue(item, vid)">
+                      {{ getVariantName(vid) }}: {{ getVariantValue(item, vid) }}
+                    </span>
+                  </ng-container>
+                </div>
+              </div>
+            </td>
+            <td class="td-qty">{{ item.quantite || item.qteCmd }}</td>
+            <td class="td-price" *ngIf="config?.showPriceHT">{{ (item.prixHTVA || item.prixAchat || item.prixUnitaire ||
+              0) | number:'1.3-3' }}</td>
+            <td class="td-tax" *ngIf="config?.showTVA">{{ (item.tauxTVA || item.taxe || 0) }}%</td>
+            <td class="td-discount" *ngIf="config?.showDiscount">{{ (item.remise || 0) }}%</td>
+            <td class="td-total">
+              {{ calculateTotalLigne(item) | number:'1.3-3' }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="doc-summary">
+      <div class="totals-area-wrapper">
+        <div class="totals-area">
+          <div class="total-row" *ngIf="config?.showPriceHT">
+            <span>Total Hors Taxes :</span>
+            <span class="value">{{ getTotalHT() | number:'1.3-3' }} {{ currencySymbol }}</span>
+          </div>
+          <div class="total-row" *ngIf="config?.showTVA">
+            <span>Calcul des Taxes (TVA) :</span>
+            <span class="value">{{ getTotalTVA() | number:'1.3-3' }} {{ currencySymbol }}</span>
+          </div>
+          <div class="total-row main-total" [style.background-color]="config?.primaryColor"
+            [style.color]="config?.secondaryColor">
+            <span class="grand-label" [attr.style]="'color: ' + config?.secondaryColor + ' !important'">NET À PAYER (TTC) :</span>
+            <span class="grand-value" [attr.style]="'color: ' + config?.secondaryColor + ' !important'">{{ getTotalTTC() | number:'1.3-3' }} {{ currencySymbol }}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="doc-signatures">
+      <div class="signature-box" *ngIf="config?.showSignatureMagasinier">
+        <div class="sig-label">Le Responsable Stock</div>
+        <div class="sig-space"></div>
+      </div>
+      <div class="signature-box" *ngIf="config?.showSignatureClient">
+        <div class="sig-label">{{ (documentType === 'BON_SORTIE' ? 'Le Client / Récipiendaire' : 'Le Fournisseur') }}
+        </div>
+        <div class="sig-space"></div>
+      </div>
+    </footer>
+
+    <div class="doc-footer-notes">
+      <div class="notes-content">
+        {{ config?.footerText || docData.commentaire || 'Ce document atteste de l\'opération effectuée et référencée
+        ci-dessus. Signature obligatoire pour validation.' }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="loading-overlay" *ngIf="loading">
+  <div class="spinner"></div>
+  <p>Génération du document en cours...</p>
+</div>
+
+<div class="error-state" *ngIf="error">
+  <i class="fas fa-exclamation-triangle"></i>
+  <h2>Oups ! Impossible d'afficher le document</h2>
+  <p>{{ error }}</p>
+  <button class="btn btn-outline" (click)="goBack()">Retourner en arrière</button>
+</div>

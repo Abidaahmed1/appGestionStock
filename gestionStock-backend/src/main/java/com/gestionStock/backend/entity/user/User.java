@@ -31,4 +31,10 @@ public class User {
 	private boolean active = true;
 	@Enumerated(value = EnumType.STRING)
 	private Role role;
+
+	private String theme = "light";
+	private String accentColor = "teal";
+	private boolean emailOrders = true;
+	private boolean emailStock = true;
+	private boolean pushAlerts = true;
 }

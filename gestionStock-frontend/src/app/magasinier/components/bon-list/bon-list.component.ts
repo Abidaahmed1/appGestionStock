@@ -24,6 +24,12 @@ export class BonListComponent implements OnInit {
     notification: { message: string, type: 'success' | 'error' } | null = null;
     searchTerm: string = '';
     entreprise: Entreprise | null = null;
+    pieces: any[] = [];
+    filterPieceId: number | null = null;
+    searchTermPiece: string = '';
+    showPieceDropdown = false;
+    searchTermFournisseur: string = '';
+    showFournisseurDropdown = false;
 
 
     showOptionsMenu = false;
@@ -59,13 +65,18 @@ export class BonListComponent implements OnInit {
     private router = inject(Router);
     private entrepriseService = inject(EntrepriseService);
 
+    get currencySymbol(): string {
+        return this.entrepriseService.getDeviseSymbol(this.entreprise);
+    }
+
     constructor(private logistiqueService: LogistiqueService) { }
 
     ngOnInit() {
         if (isPlatformBrowser(this.platformId)) {
-            this.userRoles = this.keycloak.getUserRoles() || [];
+            this.userRoles = this.keycloak.getUserRoles();
             this.loadBons();
             this.loadFournisseurs();
+            this.loadPieces();
             this.loadEntreprise();
             this.cdr.detectChanges();
         }
@@ -97,6 +108,18 @@ export class BonListComponent implements OnInit {
             },
             error: () => {
                 this.notify('Erreur lors du chargement des bons', 'error');
+            }
+        });
+    }
+
+    loadPieces(): void {
+        this.logistiqueService.getAllStocks().subscribe({
+            next: (data) => {
+                this.pieces = data || [];
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                console.error('Erreur lors du chargement des pièces');
             }
         });
     }
@@ -135,7 +158,10 @@ export class BonListComponent implements OnInit {
         event.stopPropagation();
         event.preventDefault();
         if (bon.id != null) {
-            this.router.navigate(['/magasinier/bons', bon.id], { queryParams: { print: '1' } });
+            let docType = 'BON_ENTREE';
+            if (bon.typeBon === 'SORTIE') docType = 'BON_SORTIE';
+            if (bon.typeBon === 'RETOUR') docType = 'BON_RETOUR';
+            this.router.navigate(['/document/preview', bon.id], { queryParams: { type: docType } });
         }
     }
 
@@ -257,6 +283,11 @@ export class BonListComponent implements OnInit {
         this.filterDateTo = '';
         this.filterMontantMin = null;
         this.filterMontantMax = null;
+        this.filterPieceId = null;
+        this.searchTermPiece = '';
+        this.searchTermFournisseur = '';
+        this.showFournisseurDropdown = false;
+        this.showPieceDropdown = false;
         this.cdr.detectChanges();
     }
 
@@ -267,7 +298,8 @@ export class BonListComponent implements OnInit {
             this.filterDateFrom ||
             this.filterDateTo ||
             (this.filterMontantMin != null && !isNaN(this.filterMontantMin)) ||
-            (this.filterMontantMax != null && !isNaN(this.filterMontantMax))
+            (this.filterMontantMax != null && !isNaN(this.filterMontantMax)) ||
+            this.filterPieceId != null
         );
     }
 
@@ -381,7 +413,56 @@ export class BonListComponent implements OnInit {
             list = list.filter(b => this.getBonTTC(b) <= this.filterMontantMax!);
         }
 
+        if (this.filterPieceId != null) {
+            list = list.filter(b =>
+                b.mouvement?.ligneMouvement?.some(l => l.piece?.id === this.filterPieceId)
+            );
+        }
+
         return list;
+    }
+
+    get filteredPieces() {
+        const term = this.searchTermPiece.toLowerCase().trim();
+        if (!term) return this.pieces;
+        return this.pieces.filter(p =>
+            p.designation?.toLowerCase().includes(term) ||
+            p.reference?.toLowerCase().includes(term) ||
+            p.code?.toLowerCase().includes(term)
+        );
+    }
+
+    selectPiece(pieceId: number | null | undefined) {
+        this.filterPieceId = pieceId ?? null;
+        this.searchTermPiece = '';
+        this.cdr.detectChanges();
+    }
+
+    get selectedPieceName(): string {
+        if (this.filterPieceId == null) return 'Toutes les pièces';
+        const p = this.pieces.find(p => p.id === this.filterPieceId);
+        return p ? (p.designation || p.reference || p.code) : 'Pièce inconnue';
+    }
+
+    get filteredFournisseurs() {
+        const term = this.searchTermFournisseur.toLowerCase().trim();
+        if (!term) return this.fournisseurs;
+        return this.fournisseurs.filter(f =>
+            f.nom?.toLowerCase().includes(term) ||
+            f.code?.toLowerCase().includes(term)
+        );
+    }
+
+    selectFournisseur(fournisseurId: number | null | undefined) {
+        this.filterFournisseurId = fournisseurId ?? null;
+        this.searchTermFournisseur = '';
+        this.cdr.detectChanges();
+    }
+
+    get selectedFournisseurName(): string {
+        if (this.filterFournisseurId == null) return 'Tous les fournisseurs';
+        const f = this.fournisseurs.find(f => f.id === this.filterFournisseurId);
+        return f ? (f.nom || f.code) : 'Fournisseur inconnu';
     }
 
     notify(message: string, type: 'success' | 'error'): void {

@@ -11,51 +11,50 @@
             </ng-template>
             <div class="header-content">
                 <span class="entreprise-name">{{ entreprise?.nom || 'Global' }}</span>
-                <h1>Tableau de Bord</h1>
-                <p>Analyse prédictive et suivi des stocks</p>
+                <h1>Aperçu des Stocks</h1>
+                <p>Analyse prédictive et performances</p>
             </div>
         </div>
         <div class="header-actions">
             <!-- Searchable Dropdown Piece Filter -->
-            <div class="filter-group search-dropdown" style="position: relative; margin-right: 1.5rem;">
-                <div class="dropdown-trigger" (click)="toggleDropdown()"
-                    style="display: flex; align-items: center; background: rgba(61, 122, 127, 0.1); padding: 0.5rem 1rem; border-radius: 12px; border: 1px solid rgba(61, 122, 127, 0.3); cursor: pointer; min-width: 250px;">
-                    <i class="fas fa-search" style="color: #3d7a7f; margin-right: 0.75rem;"></i>
-                    <span style="font-weight: 600; color: #1e293b; font-size: 0.9rem; flex-grow: 1;">{{
-                        selectedPieceName }}</span>
-                    <i class="fas fa-chevron-down" style="color: #3d7a7f; font-size: 0.7rem;"></i>
+            <div class="filter-group search-dropdown">
+                <div class="dropdown-trigger" (click)="toggleDropdown()">
+                    <i class="fas fa-search search-icon"></i>
+                    <span class="selected-text">{{ selectedPieceName }}</span>
+                    <i class="fas fa-chevron-down chevron-icon"></i>
                 </div>
 
-                <div *ngIf="showDropdown" class="dropdown-content"
-                    style="position: absolute; top: 110%; left: 0; width: 300px; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; z-index: 1000; padding: 0.5rem;">
-
-                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                        <input type="text" [(ngModel)]="searchTerm" placeholder="Filtrer..." autofocus
-                            style="flex-grow: 1; padding: 0.6rem; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-size: 0.85rem;">
-                        <button (click)="showDropdown = false"
-                            style="background: #f1f5f9; border: none; padding: 0 0.75rem; border-radius: 8px; cursor: pointer; color: #64748b;"><i
-                                class="fas fa-times"></i></button>
+                <div *ngIf="showDropdown" class="dropdown-content">
+                    <div class="search-input-area">
+                        <input type="text" [(ngModel)]="searchTerm" placeholder="Filtrer..." autofocus class="dropdown-search-input">
+                        <button (click)="showDropdown = false" class="btn-close-dropdown">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
 
-                    <ul style="list-style: none; padding: 0; margin: 0; max-height: 250px; overflow-y: auto;">
-                        <li (click)="selectPiece(null)"
-                            [style.background]="selectedPieceIds.length === 0 ? '#f0f7f7' : ''"
-                            style="padding: 0.6rem 0.75rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
-                            <strong>Tout (Global)</strong>
-                            <i *ngIf="selectedPieceIds.length === 0" class="fas fa-check" style="color: #3d7a7f;"></i>
+                    <ul class="dropdown-list">
+                        <li (click)="selectPiece(null)" class="dropdown-item" [class.selected]="selectedPieceIds.length === 0">
+                            <strong class="designation">Tout (Global)</strong>
+                            <i *ngIf="selectedPieceIds.length === 0" class="fas fa-check check-icon"></i>
                         </li>
-                        <li *ngFor="let p of filteredPieces" (click)="selectPiece(p)"
-                            style="padding: 0.6rem 0.75rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 0.85rem; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
-                            <div style="display: flex; flex-direction: column;">
-                                <span style="font-weight: 600; color: #1e293b;">{{ p.designation }}</span>
-                                <span style="font-size: 0.75rem; color: #64748b;">Réf: {{ p.reference }}</span>
+                        <li *ngFor="let p of filteredPieces" (click)="selectPiece(p)" class="dropdown-item" [class.selected]="isPieceSelected(p.id)">
+                            <div class="item-info">
+                                <span class="designation">{{ p.designation }}</span>
+                                <span class="reference">Réf: {{ p.reference }}</span>
                             </div>
-                            <i *ngIf="isPieceSelected(p.id)" class="fas fa-check-square"
-                                style="color: #3d7a7f; font-size: 1.1rem;"></i>
-                            <i *ngIf="!isPieceSelected(p.id)" class="far fa-square"
-                                style="color: #cbd5e1; font-size: 1.1rem;"></i>
+                            <i *ngIf="isPieceSelected(p.id)" class="fas fa-check-square check-icon"></i>
+                            <i *ngIf="!isPieceSelected(p.id)" class="far fa-square check-icon empty"></i>
                         </li>
                     </ul>
+                </div>
+            </div>
+
+            <!-- Financial Value Capsule -->
+            <div class="stock-value-capsule">
+                <div class="val-icon"><i class="fas fa-wallet"></i></div>
+                <div class="val-text">
+                    <span class="val-label">Valeur Marchande</span>
+                    <span class="val-amount">{{ totalStockValue | number:'1.2-2' }} {{ currencySymbol }}</span>
                 </div>
             </div>
 
@@ -74,32 +73,46 @@
     <ng-container *ngIf="metrics && !loading">
         <div class="kpi-grid">
             <div class="kpi-card stats-articles" title="Nombre total de références de pièces différentes enregistrées">
-                <div class="kpi-icon"><i class="fas fa-box-open"></i></div>
+                <div class="kpi-card-header">
+                    <div class="kpi-icon"><i class="fas fa-box-open"></i></div>
+                    <span class="trend-badge"><i class="fas fa-arrow-up"></i> 12%</span>
+                </div>
                 <div class="kpi-info">
-                    <span class="label">Articles Actifs</span>
                     <span class="value">{{ metrics.totalArticles }}</span>
+                    <span class="label">Articles Actifs</span>
                 </div>
             </div>
-            <div class="kpi-card stats-units"
-                title="Nombre total d'unités physiques en stock (tous articles confondus)">
-                <div class="kpi-icon"><i class="fas fa-layer-group"></i></div>
+            
+            <div class="kpi-card stats-units" title="Nombre total d'unités physiques en stock (tous articles confondus)">
+                <div class="kpi-card-header">
+                    <div class="kpi-icon"><i class="fas fa-layer-group"></i></div>
+                    <span class="trend-badge"><i class="fas fa-arrow-up"></i> 8%</span>
+                </div>
                 <div class="kpi-info">
-                    <span class="label">Volume Total</span>
                     <span class="value">{{ metrics.totalUnits }}</span>
+                    <span class="label">Volume Total</span>
                 </div>
             </div>
+
             <div class="kpi-card stats-alert" title="Articles ayant atteint ou dépassé leur seuil de sécurité minimum">
-                <div class="kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="kpi-card-header">
+                    <div class="kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <span class="trend-badge" style="opacity: 0.7;"><i class="fas fa-minus"></i> 0%</span>
+                </div>
                 <div class="kpi-info">
-                    <span class="label">Sous Seuil</span>
                     <span class="value">{{ metrics.lowStockArticles }}</span>
+                    <span class="label">Sous Seuil</span>
                 </div>
             </div>
+
             <div class="kpi-card stats-rupture" title="Articles dont le stock est actuellement à zéro">
-                <div class="kpi-icon"><i class="fas fa-times-circle"></i></div>
+                <div class="kpi-card-header">
+                    <div class="kpi-icon"><i class="fas fa-times-circle"></i></div>
+                    <span class="trend-badge"><i class="fas fa-arrow-down"></i> 3%</span>
+                </div>
                 <div class="kpi-info">
-                    <span class="label">Rupture</span>
                     <span class="value">{{ metrics.outOfStockArticles }}</span>
+                    <span class="label">En Rupture</span>
                 </div>
             </div>
         </div>
@@ -135,77 +148,52 @@
             </div>
         </div>
 
-        <!-- Predictions Table - Integrated Style with More Details -->
-        <div class="prediction-section card">
-            <div class="card-header">
-                <h3>Anticipation des Ruptures (EDS)</h3>
-                <span class="badge">Intelligence Prédictive</span>
-            </div>
-
-            <div class="table-container" *ngIf="metrics.predictions.length > 0; else noPredictions">
-                <table class="prediction-table">
-                    <thead>
-                        <tr>
-                            <th>Pièce & Détails</th>
-                            <th>Catégorie</th>
-                            <th>Stock / Seuil</th>
-                            <th>Conso. (/j)</th>
-                            <th>Autonomie</th>
-                            <th>Rupture</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr *ngFor="let pred of metrics.predictions">
-                            <td>
-                                <div class="piece-cell">
-                                    <span class="piece-name">{{ pred.designation }}</span>
-                                    <span class="piece-id">Réf: {{ pred.reference }} &bull; {{ pred.predictionMethod ||
-                                        'IA' }}</span>
-                                    <div *ngIf="pred.technicalDetails && (pred.technicalDetails | keyvalue).length > 0"
-                                        class="technical-details">
-                                        {{ getTechnicalDetailsString(pred.technicalDetails) }}
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge" style="background: #f1f5f9; color: #475569; font-size: 0.7rem;">
-                                    {{ pred.categoryName }}
-                                </span>
-                            </td>
-                            <td>
-                                <div style="display: flex; flex-direction: column;">
-                                    <span style="font-weight: 800; color: #1e293b;">{{ pred.currentQty }}</span>
-                                    <span style="font-size: 0.75rem; color: #64748b;">Min: {{ pred.minQty }}</span>
-                                </div>
-                            </td>
-                            <td>{{ pred.dailyConsumptionRate | number:'1.1-2' }}</td>
-                            <td>
-                                <div class="days-badge" [ngClass]="getPredictionClass(pred.daysRemaining)">
-                                    {{ pred.daysRemaining }} jours
-                                </div>
-                            </td>
-                            <td style="font-size: 0.85rem; font-weight: 600; color: #475569;">
-                                {{ pred.estimatedStockoutDate | date:'dd/MM/yyyy' }}
-                            </td>
-                            <td>
-                                <button class="btn-restock" *ngIf="pred.daysRemaining < 15">
-                                    Réappro.
-                                </button>
-                                <span style="color: #10b981; font-size: 0.8rem; font-weight: 600;"
-                                    *ngIf="pred.daysRemaining >= 15">OK</span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <ng-template #noPredictions>
-                <div style="padding: 3rem; text-align: center; color: #64748b;">
-                    <i class="fas fa-check-circle" style="font-size: 2rem; color: #3d7a7f; margin-bottom: 1rem;"></i>
-                    <p>Aucun risque de rupture immédiat détecté.</p>
+        <!-- Secondary Charts Row -->
+        <div class="dashboard-grid">
+            <div class="chart-section card">
+                <div class="card-header">
+                    <h3>Santé Globale du Stock</h3>
+                    <span class="badge">État Réel</span>
                 </div>
-            </ng-template>
+                <div class="chart-wrapper">
+                    <apx-chart *ngIf="statusChartOptions"
+                        [series]="statusChartOptions.series" [chart]="statusChartOptions.chart"
+                        [labels]="statusChartOptions.labels" [colors]="statusChartOptions.colors"
+                        [plotOptions]="statusChartOptions.plotOptions" [dataLabels]="statusChartOptions.dataLabels"
+                        [legend]="statusChartOptions.legend" width="100%"></apx-chart>
+                </div>
+            </div>
+
+            <div class="chart-section card">
+                <div class="card-header">
+                    <h3>Répartition par Catégorie</h3>
+                    <span class="badge">Volume Central</span>
+                </div>
+                <div class="chart-wrapper">
+                    <apx-chart *ngIf="categoryChartOptions"
+                        [series]="categoryChartOptions.series" [chart]="categoryChartOptions.chart"
+                        [labels]="categoryChartOptions.labels" [colors]="categoryChartOptions.colors"
+                        [plotOptions]="categoryChartOptions.plotOptions" [dataLabels]="categoryChartOptions.dataLabels"
+                        [legend]="categoryChartOptions.legend" width="100%"></apx-chart>
+                </div>
+            </div>
+        </div>
+
+        <!-- Third Row: Value Bar Chart (Full Width) -->
+        <div class="dashboard-grid">
+            <div class="chart-section card" style="grid-column: 1 / -1;">
+                <div class="card-header">
+                    <h3>Top 5 - Actifs les Plus Précieux</h3>
+                    <span class="badge">Valorisation Stock</span>
+                </div>
+                <div class="chart-wrapper">
+                    <apx-chart *ngIf="topValeurChartOptions"
+                        [series]="topValeurChartOptions.series" [chart]="topValeurChartOptions.chart"
+                        [xaxis]="topValeurChartOptions.xaxis" [colors]="topValeurChartOptions.colors"
+                        [plotOptions]="topValeurChartOptions.plotOptions" [dataLabels]="topValeurChartOptions.dataLabels"
+                        [tooltip]="topValeurChartOptions.tooltip"></apx-chart>
+                </div>
+            </div>
         </div>
     </ng-container>
 </div>

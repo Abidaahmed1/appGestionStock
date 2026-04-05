@@ -19,7 +19,6 @@ function initializeKeycloak(keycloak: KeycloakService, platformId: object) {
         initOptions: {
           onLoad: 'login-required',
           checkLoginIframe: false,
-          redirectUri: window.location.origin,
           flow: 'standard',
           pkceMethod: 'S256'
         },

@@ -39,6 +39,7 @@
     "express": "^5.1.0",
     "keycloak-angular": "^21.0.0",
     "keycloak-js": "^26.2.3",
+    "libphonenumber-js": "^1.12.41",
     "ng-apexcharts": "^2.3.0",
     "rxjs": "~7.8.0",
     "sweetalert2": "^11.26.24",

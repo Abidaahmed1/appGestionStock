@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { Devise, Entreprise, Pays } from '../../models/entreprise.model';
 import { EntrepriseService } from '../../services/entreprise.service';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { PhoneInputComponent } from '../../../shared/components/phone-input/phone-input.component';
 
 @Component({
     selector: 'app-entreprise-details',
     standalone: true,
-    imports: [CommonModule, FormsModule, RouterModule],
+    imports: [CommonModule, FormsModule, RouterModule, PhoneInputComponent],
     templateUrl: './entreprise-details.component.html',
     styleUrls: ['./entreprise-details.component.css']
 })
@@ -35,7 +36,9 @@ export class EntrepriseDetailsComponent implements OnInit {
     pendingLogoFile: File | null = null;
     countries: Pays[] = [];
     devises: Devise[] = [];
+    isPhoneValid = true;
     notification: { message: string, type: 'success' | 'error' } | null = null;
+    formErrors: { [key: string]: boolean } = {};
 
     constructor(
         private entrepriseService: EntrepriseService,
@@ -56,7 +59,6 @@ export class EntrepriseDetailsComponent implements OnInit {
                 },
                 error: (err) => {
                     console.error('Error fetching entreprise', err);
-                    // Si l'entreprise n'existe pas (404), on repasse en mode création
                     if (err.status === 404) {
                         this.entreprise = {
                             nom: '',
@@ -75,8 +77,6 @@ export class EntrepriseDetailsComponent implements OnInit {
                 }
             });
         } else {
-            // Pas d'ID dans l'URL : on est en mode création.
-            // L'interface doit rester vide et être remplie par l'administrateur.
             this.isEditing = true;
             this.loading = false;
         }
@@ -108,7 +108,6 @@ export class EntrepriseDetailsComponent implements OnInit {
             this.logoInput?.nativeElement?.click();
         }
     }
-
 
     onLogoChange(event: Event): void {
         if (!isPlatformBrowser(this.platformId)) return;
@@ -166,7 +165,35 @@ export class EntrepriseDetailsComponent implements OnInit {
         return this.getLogoUrl(this.logoPreview || this.entreprise.logoUrl || '');
     }
 
+    validate(): boolean {
+        let isValid = true;
+        this.formErrors = {};
+
+        if (!this.entreprise.nom || this.entreprise.nom.trim() === '') {
+            this.formErrors['nom'] = true;
+            isValid = false;
+        }
+        if (!this.entreprise.telephone || this.entreprise.telephone.trim() === '' || !this.isPhoneValid) {
+            this.formErrors['telephone'] = true;
+            isValid = false;
+        }
+        if (!this.entreprise.email || this.entreprise.email.trim() === '') {
+            this.formErrors['email'] = true;
+            isValid = false;
+        }
+        if (!this.entreprise.devise) {
+            this.formErrors['devise'] = true;
+            isValid = false;
+        }
+
+        return isValid;
+    }
+
     save(): void {
+        if (!this.validate()) {
+            this.notify('Veuillez remplir correctement tous les champs obligatoires.', 'error');
+            return;
+        }
         this.saveError = '';
         if (this.entreprise.id) {
             this.entrepriseService.updateEntreprise(this.entreprise.id, this.entreprise).subscribe({
@@ -189,7 +216,6 @@ export class EntrepriseDetailsComponent implements OnInit {
                     this.entreprise = created;
                     this.isEditing = false;
                     this.notify('Société créée avec succès !', 'success');
-                    // If a logo was selected before saving, upload it now
                     if (this.pendingLogoFile && created.id) {
                         this.entrepriseService.uploadLogo(created.id, this.pendingLogoFile).subscribe({
                             next: (updated) => {
@@ -214,7 +240,9 @@ export class EntrepriseDetailsComponent implements OnInit {
         this.notification = { message, type };
         if (isPlatformBrowser(this.platformId)) {
             setTimeout(() => {
-                this.notification = null;
+                if (this.notification?.message === message) {
+                    this.notification = null;
+                }
             }, 5000);
         }
     }

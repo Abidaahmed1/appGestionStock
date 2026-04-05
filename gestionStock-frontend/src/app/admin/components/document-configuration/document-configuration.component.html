@@ -1,0 +1,400 @@
+<div class="doc-config-container">
+    <!-- Notifications -->
+    <div *ngIf="notification" class="notification-toast" [class]="notification.type">
+        <i class="fas" [class.fa-check-circle]="notification.type === 'success'"
+            [class.fa-exclamation-circle]="notification.type === 'error'"></i>
+        <span class="message">{{ notification.message }}</span>
+    </div>
+    <div class="config-header">
+        <div class="header-content">
+            <h1 class="header-title">Personnalisation des Documents</h1>
+            <p class="header-subtitle">Personnalisez le style et les colonnes des bons et commandes de l'application.
+            </p>
+        </div>
+        <div class="header-actions">
+            <a routerLink="/admin/settings" class="btn-secondary">
+                <i class="fas fa-arrow-left"></i> Retour
+            </a>
+            <button class="btn-primary" (click)="save()" [disabled]="saving || loading">
+                <i class="fas" [class.fa-save]="!saving" [class.fa-spinner]="saving" [class.fa-spin]="saving"></i>
+                {{ saving ? 'Enregistrement...' : 'Enregistrer les modifications' }}
+            </button>
+        </div>
+    </div>
+
+    <div class="tabs-toolbar">
+        <div class="doc-type-tabs">
+            <button *ngFor="let type of documentTypes" class="tab-btn" [class.active]="selectedType === type.value"
+                (click)="loadSetting(type.value)">
+                {{ type.label }}
+            </button>
+        </div>
+    </div>
+
+    <div class="config-content" *ngIf="currentSetting && !loading; else loadingState">
+        <div class="config-sections">
+            <div class="config-section">
+                <h3 class="section-title"><i class="fas fa-palette"></i> Style Visuel</h3>
+                <div class="config-grid">
+                    <div class="form-group">
+                        <label>Couleur Primaire (Thème)</label>
+                        <div class="preset-colors">
+                            <div class="color-swatch" *ngFor="let c of presetColors" [style.backgroundColor]="c"
+                                [style.--swatch-color]="c"
+                                [class.selected]="currentSetting.primaryColor === c || (currentSetting.primaryColor && currentSetting.primaryColor.toUpperCase() === c.toUpperCase())"
+                                (click)="currentSetting.primaryColor = c">
+                                <i class="fas fa-check"
+                                    *ngIf="currentSetting.primaryColor === c || (currentSetting.primaryColor && currentSetting.primaryColor.toUpperCase() === c.toUpperCase())"></i>
+                            </div>
+                            <label class="color-swatch custom-color-picker" title="Couleur personnalisée"
+                                [style.--swatch-color]="currentSetting.primaryColor"
+                                [class.selected]="!presetColors.includes(currentSetting.primaryColor) && (!currentSetting.primaryColor || !presetColors.includes(currentSetting.primaryColor.toUpperCase()))">
+                                <input type="color" [(ngModel)]="currentSetting.primaryColor"
+                                    style="position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer;">
+                                <i class="fas fa-palette"></i>
+                            </label>
+                            <input type="text" [(ngModel)]="currentSetting.primaryColor" class="custom-hex-input"
+                                placeholder="#HEX"
+                                style="width: 80px; margin-left: 0.5rem; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-primary); border-radius: 6px; padding: 0.25rem 0.5rem; text-align: center;">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Couleur Secondaire (Texte Header)</label>
+                        <div class="color-picker-wrapper">
+                            <input type="color" [(ngModel)]="currentSetting.secondaryColor">
+                            <input type="text" [(ngModel)]="currentSetting.secondaryColor" placeholder="#1e293b">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="toggles-grid">
+                    <div class="toggle-item">
+                        <label class="switch">
+                            <input type="checkbox" [(ngModel)]="currentSetting.showLogo">
+                            <span class="slider round"></span>
+                        </label>
+                        <span class="toggle-label">Afficher le logo de la société</span>
+                    </div>
+                    <div class="toggle-item">
+                        <label class="switch">
+                            <input type="checkbox" [(ngModel)]="currentSetting.showSignatureMagasinier">
+                            <span class="slider round"></span>
+                        </label>
+                        <span class="toggle-label">
+                          {{ selectedType === 'INVENTAIRE' ? 'Afficher Signature Responsable Audit' : 'Afficher Signature Magasinier' }}
+                        </span>
+                    </div>
+                    <div class="toggle-item">
+                        <label class="switch">
+                            <input type="checkbox" [(ngModel)]="currentSetting.showSignatureClient">
+                            <span class="slider round"></span>
+                        </label>
+                        <span class="toggle-label">
+                          {{ selectedType === 'INVENTAIRE' ? 'Afficher Signature Directeur / Valideur' : 'Afficher Signature Tiers' }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="form-group full-width">
+                    <label>Texte de pied de page (Ex: Conditions de garantie)</label>
+                    <textarea [(ngModel)]="currentSetting.footerText" rows="2"
+                        placeholder="Saisissez ici le texte qui apparaîtra en bas du document..."></textarea>
+                </div>
+            </div>
+
+            <!-- Layout Section -->
+            <div class="config-section">
+                <h3 class="section-title"><i class="fas fa-th-large"></i> Mise en Page & Format</h3>
+
+                <div class="form-group">
+                    <label>Modèle de Document</label>
+                    <div class="layout-selector">
+                        <div class="layout-option" [class.selected]="currentSetting.layout === 'MODERN'"
+                            (click)="currentSetting.layout = 'MODERN'">
+                            <div class="layout-icon"><i class="fas fa-file-alt"></i></div>
+                            <span>Moderne</span>
+                        </div>
+                        <div class="layout-option" [class.selected]="currentSetting.layout === 'CLASSIC'"
+                            (click)="currentSetting.layout = 'CLASSIC'">
+                            <div class="layout-icon"><i class="fas fa-file-invoice"></i></div>
+                            <span>Classique</span>
+                        </div>
+                        <div class="layout-option" [class.selected]="currentSetting.layout === 'MINIMAL'"
+                            (click)="currentSetting.layout = 'MINIMAL'">
+                            <div class="layout-icon"><i class="fas fa-align-left"></i></div>
+                            <span>Minimaliste</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Taille de Police</label>
+                    <div class="font-size-selector">
+                        <button class="size-btn" [class.active]="currentSetting.fontSize === 'SMALL'"
+                            (click)="currentSetting.fontSize = 'SMALL'">A</button>
+                        <button class="size-btn" [class.active]="currentSetting.fontSize === 'MEDIUM'"
+                            (click)="currentSetting.fontSize = 'MEDIUM'">A</button>
+                        <button class="size-btn" [class.active]="currentSetting.fontSize === 'LARGE'"
+                            (click)="currentSetting.fontSize = 'LARGE'">A</button>
+                    </div>
+                </div>
+
+                <div class="columns-visibility" *ngIf="selectedType !== 'INVENTAIRE'">
+                    <label class="group-label">Colonnes Financières</label>
+                    <div class="toggles-row">
+                        <div class="mini-toggle">
+                            <label class="switch small">
+                                <input type="checkbox" [(ngModel)]="currentSetting.showPriceHT">
+                                <span class="slider round"></span>
+                            </label>
+                            <span>Prix HT</span>
+                        </div>
+                        <div class="mini-toggle">
+                            <label class="switch small">
+                                <input type="checkbox" [(ngModel)]="currentSetting.showTVA">
+                                <span class="slider round"></span>
+                            </label>
+                            <span>TVA</span>
+                        </div>
+                        <div class="mini-toggle">
+                            <label class="switch small">
+                                <input type="checkbox" [(ngModel)]="currentSetting.showDiscount">
+                                <span class="slider round"></span>
+                            </label>
+                            <span>Remise</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="columns-visibility" *ngIf="selectedType === 'INVENTAIRE'">
+                    <label class="group-label">Colonnes Affichées</label>
+                    <div class="toggles-row">
+                        <div class="mini-toggle">
+                            <label class="switch small">
+                                <input type="checkbox" [checked]="true" [disabled]="true">
+                                <span class="slider round"></span>
+                            </label>
+                            <span>Stock Théorique</span>
+                        </div>
+                        <div class="mini-toggle">
+                            <label class="switch small">
+                                <input type="checkbox" [checked]="true" [disabled]="true">
+                                <span class="slider round"></span>
+                            </label>
+                            <span>Stock Physique</span>
+                        </div>
+                        <div class="mini-toggle">
+                            <label class="switch small">
+                                <input type="checkbox" [checked]="true" [disabled]="true">
+                                <span class="slider round"></span>
+                            </label>
+                            <span>Écart</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Variants Section (The MOST IMPORTANT PART for the user request) -->
+            <div class="config-section">
+                <h3 class="section-title"><i class="fas fa-columns"></i> Attributs (Variantes) affichés</h3>
+                <p class="section-desc">Cochez les attributs que vous souhaitez inclure dans le tableau des produits de
+                    ce document.</p>
+
+                <div class="variants-selector-grid">
+                    <div *ngIf="allVariantes.length === 0" class="no-variants">
+                        <i class="fas fa-info-circle"></i>
+                        <p>Aucune variante (attribut dynamique) n'est configurée dans le système.</p>
+                        <a routerLink="/admin/parametres" class="text-link">Gérer les pièces et variantes</a>
+                    </div>
+
+                    <div *ngFor="let v of allVariantes" class="variant-checkbox-card"
+                        [class.selected]="isVarianteSelected(v.id!)" (click)="toggleVariante(v.id!)">
+                        <div class="checkbox-box">
+                            <i class="fas fa-check" *ngIf="isVarianteSelected(v.id!)"></i>
+                        </div>
+                        <div class="variant-info">
+                            <span class="variant-name">{{ v.nom }}</span>
+                            <span class="variant-type">{{ v.type }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview Mockup (Bonus for WOW) -->
+        <div class="document-preview-section">
+            <div class="preview-header">
+                <h3 class="section-title"><i class="fas fa-eye"></i> Aperçu Interactif</h3>
+                <span class="preview-badge">Simulation Format A4</span>
+            </div>
+
+            <div class="mockup-paper"
+                [ngClass]="['layout-' + currentSetting.layout, 'font-' + currentSetting.fontSize]"
+                [style.--mockup-primary]="currentSetting.primaryColor"
+                [style.--mockup-secondary]="currentSetting.secondaryColor">
+                <div class="mockup-header" [style.border-bottom-color]="currentSetting.primaryColor">
+                    <div class="mockup-logo-area" *ngIf="currentSetting.showLogo">
+                        <div class="logo-box">LOGO</div>
+                    </div>
+                    <div class="mockup-company-info">
+                        <div class="comp-name" [style.color]="currentSetting.primaryColor">MA SOCIÉTÉ SARL</div>
+                        <div class="comp-address">Avenue des Entrepreneurs, Zone Industrielle</div>
+                    </div>
+                    <div class="mockup-doc-meta">
+                        <div class="doc-title" [style.background-color]="currentSetting.primaryColor"
+                            [attr.style]="'color: ' + currentSetting.secondaryColor + ' !important'">
+                            {{ selectedType === 'INVENTAIRE' ? 'INVENTAIRE' : selectedType.split('_').join(' ') }}
+                        </div>
+                        <div class="doc-ref" *ngIf="selectedType !== 'INVENTAIRE'">N° BCR-2026-0045</div>
+                        <div class="doc-ref" *ngIf="selectedType === 'INVENTAIRE'">Audit Avril 2026</div>
+                        <div class="doc-date">Date: 30/03/2026</div>
+                    </div>
+                </div>
+
+                <!-- ── Preview table for COMMERCIAL documents ── -->
+                <ng-container *ngIf="selectedType !== 'INVENTAIRE'">
+                    <div class="mockup-table">
+                        <div class="mockup-thead" [style.background-color]="currentSetting.primaryColor">
+                            <span class="m-col-num" [attr.style]="'color: ' + currentSetting.secondaryColor + ' !important'">#</span>
+                            <span class="m-col-main" [attr.style]="'color: ' + currentSetting.secondaryColor + ' !important'">Désignation du Produit</span>
+                            <span *ngIf="currentSetting.showPriceHT" class="m-col-fin" [attr.style]="'color: ' + currentSetting.secondaryColor + ' !important'">Unit HT</span>
+                            <span *ngIf="currentSetting.showTVA" class="m-col-fin" [attr.style]="'color: ' + currentSetting.secondaryColor + ' !important'">TVA %</span>
+                            <span *ngIf="currentSetting.showDiscount" class="m-col-fin" [attr.style]="'color: ' + currentSetting.secondaryColor + ' !important'">Rem.</span>
+                            <span class="m-col-fin" [attr.style]="'color: ' + currentSetting.secondaryColor + ' !important'">Total</span>
+                        </div>
+                        <div class="mockup-tr">
+                            <span class="m-col-num">1</span>
+                            <div class="m-col-main mockup-item-info">
+                                <div class="m-item-header">
+                                    <span class="m-item-name">Produit de démonstration</span>
+                                    <span class="m-item-ref">[PRD-01]</span>
+                                </div>
+                                <div class="m-item-variants">
+                                    <ng-container *ngFor="let vid of currentSetting.visibleVarianteIds">
+                                        <span class="m-v-text">{{ getVariantName(vid) }}: ...</span>
+                                    </ng-container>
+                                </div>
+                            </div>
+                            <span *ngIf="currentSetting.showPriceHT" class="m-col-fin">100.00</span>
+                            <span *ngIf="currentSetting.showTVA" class="m-col-fin">19%</span>
+                            <span *ngIf="currentSetting.showDiscount" class="m-col-fin">5%</span>
+                            <span class="m-col-fin">114.00</span>
+                        </div>
+                    </div>
+                    <div class="mockup-summary-section">
+                        <div class="mockup-sig-area"
+                            *ngIf="currentSetting.showSignatureMagasinier || currentSetting.showSignatureClient">
+                            <div class="sig-box" *ngIf="currentSetting.showSignatureMagasinier">
+                                <div class="sig-label">Le Magasinier</div>
+                                <div class="sig-line"></div>
+                            </div>
+                            <div class="sig-box" *ngIf="currentSetting.showSignatureClient">
+                                <div class="sig-label">Le Client / Tiers</div>
+                                <div class="sig-line"></div>
+                            </div>
+                        </div>
+                        <div class="mockup-totals">
+                            <div class="total-line"><span>Total HT</span> <span>100.00 DT</span></div>
+                            <div class="total-line main" [style.background-color]="currentSetting.primaryColor">
+                                <span [attr.style]="'color: ' + currentSetting.secondaryColor + ' !important'">NET À PAYER</span> 
+                                <span [attr.style]="'color: ' + currentSetting.secondaryColor + ' !important'">114.00 DT</span>
+                            </div>
+                        </div>
+                    </div>
+                </ng-container>
+
+                <!-- ── Preview table for INVENTAIRE ── -->
+                <ng-container *ngIf="selectedType === 'INVENTAIRE'">
+                    <div class="mockup-table">
+                        <div class="mockup-thead" [style.background-color]="currentSetting.primaryColor">
+                            <span class="m-col-num" [attr.style]="'color: ' + currentSetting.secondaryColor + ' !important'">#</span>
+                            <span class="m-col-main" [attr.style]="'color: ' + currentSetting.secondaryColor + ' !important'">Désignation</span>
+                            <span class="m-col-fin" [attr.style]="'color: ' + currentSetting.secondaryColor + ' !important'">Théorique</span>
+                            <span class="m-col-fin" [attr.style]="'color: ' + currentSetting.secondaryColor + ' !important'">Physique</span>
+                            <span class="m-col-fin" [attr.style]="'color: ' + currentSetting.secondaryColor + ' !important'">Écart</span>
+                        </div>
+                        <div class="mockup-tr">
+                            <span class="m-col-num">1</span>
+                            <div class="m-col-main mockup-item-info">
+                                <div class="m-item-header">
+                                    <span class="m-item-name">Pièce de démonstration</span>
+                                    <span class="m-item-ref">[REF-01]</span>
+                                </div>
+                            </div>
+                            <span class="m-col-fin">50</span>
+                            <span class="m-col-fin">48</span>
+                            <span class="m-col-fin" style="color:#ef4444;font-weight:700">-2</span>
+                        </div>
+                        <div class="mockup-tr">
+                            <span class="m-col-num">2</span>
+                            <div class="m-col-main mockup-item-info">
+                                <div class="m-item-header">
+                                    <span class="m-item-name">Composant B</span>
+                                    <span class="m-item-ref">[REF-02]</span>
+                                </div>
+                            </div>
+                            <span class="m-col-fin">20</span>
+                            <span class="m-col-fin">20</span>
+                            <span class="m-col-fin" style="color:#10b981;font-weight:700">0</span>
+                        </div>
+                    </div>
+                    <div class="mockup-summary-section">
+                        <div class="mockup-sig-area"
+                            *ngIf="currentSetting.showSignatureMagasinier || currentSetting.showSignatureClient">
+                            <div class="sig-box" *ngIf="currentSetting.showSignatureMagasinier">
+                                <div class="sig-label">Responsable Audit</div>
+                                <div class="sig-line"></div>
+                            </div>
+                            <div class="sig-box" *ngIf="currentSetting.showSignatureClient">
+                                <div class="sig-label">Directeur / Valideur</div>
+                                <div class="sig-line"></div>
+                            </div>
+                        </div>
+                        <div class="mockup-totals">
+                            <div class="total-line"><span>Total Produits</span><span>2</span></div>
+                            <div class="total-line main" [style.background-color]="currentSetting.primaryColor">
+                                <span [attr.style]="'color: ' + currentSetting.secondaryColor + ' !important'">TOTAL ÉCARTS</span>
+                                <span [attr.style]="'color: ' + currentSetting.secondaryColor + ' !important'">2</span>
+                            </div>
+                        </div>
+                    </div>
+                </ng-container>
+
+                <div class="mockup-footer-text" *ngIf="currentSetting.footerText">
+                    <i class="fas fa-info-circle"></i> {{ currentSetting.footerText }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <ng-template #loadingState>
+        <div class="loading-container">
+            <i class="fas fa-circle-notch fa-spin fa-3x"></i>
+            <p>Chargement de la configuration...</p>
+        </div>
+    </ng-template>
+    <!-- Custom Confirmation Modal -->
+    <div class="modal-overlay" *ngIf="showConfirmModal" (click)="showConfirmModal = false">
+        <div class="modal-card" (click)="$event.stopPropagation()">
+            <div class="modal-icon">
+                <i class="fas fa-save"></i>
+            </div>
+            <h2 class="modal-title">Enregistrer les modifications</h2>
+            <p class="modal-message">
+                Voulez-vous appliquer ces nouveaux réglages (style, couleurs, colonnes)
+                uniquement à <strong>{{ selectedType.replace('_', ' ') }}</strong> ou à
+                <strong>tous les types de documents</strong> ?
+            </p>
+            <div class="modal-actions-list">
+                <button class="btn-modal btn-primary-choice" (click)="confirmSave(true)">
+                    <i class="fas fa-copy"></i> Appliquer à TOUS les documents
+                </button>
+                <button class="btn-modal btn-secondary-choice" (click)="confirmSave(false)">
+                    <i class="fas fa-check"></i> Ce document uniquement
+                </button>
+                <button class="btn-modal btn-cancel-choice" (click)="showConfirmModal = false">
+                    Annuler
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

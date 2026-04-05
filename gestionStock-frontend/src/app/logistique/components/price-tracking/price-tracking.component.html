@@ -64,7 +64,6 @@
         </div>
     </div>
 
-    <!-- Charts Section -->
     <div class="charts-grid" *ngIf="initialized">
         <div class="chart-card">
             <div class="chart-header">
@@ -165,11 +164,13 @@
                 <div class="detail-stats">
                     <div class="stat-item">
                         <span class="stat-label">Dernier Prix</span>
-                        <span class="stat-value">{{ selectedPiece.lastPrice | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT' }}</span>
+                        <div class="card-metric-value">{{ selectedPiece.lastPrice | number:'1.3-3' }} <span
+                                class="currency">{{ currencySymbol }}</span></div>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Prix Moyen</span>
-                        <span class="stat-value">{{ selectedPiece.avgPrice | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT' }}</span>
+                        <div class="card-metric-value">{{ selectedPiece.avgPrice | number:'1.3-3' }} <span
+                                class="currency">{{ currencySymbol }}</span></div>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Évolution</span>

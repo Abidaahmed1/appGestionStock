@@ -3,7 +3,6 @@ package com.gestionStock.backend.service.stock;
 import com.gestionStock.backend.dto.dashboard.DashboardDTO;
 import com.gestionStock.backend.entity.Stock.LigneMouvement;
 import com.gestionStock.backend.entity.Stock.MouvementStock;
-import com.gestionStock.backend.entity.Stock.TypeMouvement;
 import com.gestionStock.backend.entity.entreprise.Entreprise;
 import com.gestionStock.backend.entity.piece.PieceDetachee;
 import com.gestionStock.backend.repository.stock.MouvementStockRepository;
@@ -42,10 +41,13 @@ public class DashboardService {
 
                 long totalArticles = allPieces.size();
                 long lowStockCount = allPieces.stream()
-                                .filter(p -> p.getQuantite() != null && p.getQuantite() <= p.getSeuilMinimum() && p.getQuantite() > 0)
+                                .filter(p -> p.getQuantite() != null && p.getQuantite() <= p.getSeuilMinimum()
+                                                && p.getQuantite() > 0)
                                 .count();
-                long outOfStockCount = allPieces.stream().filter(p -> p.getQuantite() == null || p.getQuantite() == 0).count();
-                long totalUnits = allPieces.stream().mapToLong(p -> p.getQuantite() != null ? p.getQuantite() : 0).sum();
+                long outOfStockCount = allPieces.stream().filter(p -> p.getQuantite() == null || p.getQuantite() == 0)
+                                .count();
+                long totalUnits = allPieces.stream().mapToLong(p -> p.getQuantite() != null ? p.getQuantite() : 0)
+                                .sum();
 
                 List<DashboardDTO.StockLevelDTO> stockLevels = allPieces.stream()
                                 .limit(20)
@@ -57,7 +59,8 @@ public class DashboardService {
                                                         p.getSeuilMinimum(),
                                                         technicalDetails);
                                 })
-                                .collect(Collectors.toMap(s -> s.getDesignation(), s -> s, (s1, s2) -> s1)).values().stream()
+                                .collect(Collectors.toMap(s -> s.getDesignation(), s -> s, (s1, s2) -> s1)).values()
+                                .stream()
                                 .collect(Collectors.toList());
 
                 // Movement Flow (Entries vs Exits) - Last 30 days
@@ -77,8 +80,10 @@ public class DashboardService {
                         DashboardDTO.MovementFlowDTO flow = flowMap.computeIfAbsent(date,
                                         d -> new DashboardDTO.MovementFlowDTO(d, 0, 0));
 
-                        boolean isEntry = (m.getTypeMouvement() == TypeMouvement.ENTREE_RECEPTION
-                                        || m.getTypeMouvement() == TypeMouvement.ENTREE_RETOUR);
+                        boolean isEntry = m.getTypeMouvement() != null
+                                        && m.getTypeMouvement().name().startsWith("ENTREE");
+                        boolean isExit = m.getTypeMouvement() != null
+                                        && m.getTypeMouvement().name().startsWith("SORTIE");
 
                         long qty = m.getLigneMouvement().stream()
                                         .filter(l -> l.getPiece() != null)
@@ -89,7 +94,7 @@ public class DashboardService {
 
                         if (isEntry) {
                                 flow.setEntryQty(flow.getEntryQty() + qty);
-                        } else {
+                        } else if (isExit) {
                                 flow.setExitQty(flow.getExitQty() + qty);
                         }
                 }
@@ -116,10 +121,8 @@ public class DashboardService {
                 Map<Long, Double> dailyConso = new HashMap<>();
 
                 for (MouvementStock m : movements) {
-                        boolean isExit = (m.getTypeMouvement() == TypeMouvement.SORTIE_VENTE ||
-                                        m.getTypeMouvement() == TypeMouvement.SORTIE_PERTE ||
-                                        m.getTypeMouvement() == TypeMouvement.SORTIE_MAINTENANCE ||
-                                        m.getTypeMouvement() == TypeMouvement.SORTIE_RETOUR);
+                        boolean isExit = m.getTypeMouvement() != null
+                                        && m.getTypeMouvement().name().startsWith("SORTIE");
 
                         if (isExit) {
                                 for (LigneMouvement ligne : m.getLigneMouvement()) {

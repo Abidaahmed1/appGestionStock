@@ -57,9 +57,13 @@ export class FournisseurListComponent implements OnInit {
     ngOnInit() {
         if (isPlatformBrowser(this.platformId)) {
             this.userRoles = this.keycloak.getUserRoles() || [];
-            console.log('User Roles:', this.userRoles);
-            console.log('Can Manage:', this.canManage());
             this.loadFournisseurs();
+
+            if (history.state && history.state.message) {
+                setTimeout(() => {
+                    this.notify(history.state.message, 'success');
+                }, 100);
+            }
             this.cdr.detectChanges();
         }
     }

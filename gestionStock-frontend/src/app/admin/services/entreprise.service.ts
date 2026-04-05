@@ -85,4 +85,14 @@ export class EntrepriseService {
         }
         return finalUrl;
     }
+
+    getDeviseSymbol(entreprise: Entreprise | null | undefined): string {
+        const devise = entreprise?.devise;
+        const symbol = devise?.symbole || '€';
+        const code = devise?.code || 'EUR';
+        
+        // Match any Arabic character in the symbol (\u0600-\u06FF)
+        const containsArabic = /[\u0600-\u06FF]/.test(symbol);
+        return containsArabic ? code : symbol;
+    }
 }

@@ -1,71 +1,84 @@
-/* Google Fonts Import */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Premium Keycloak Theme - StockMasters */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-    --primary: #3d7a7f;
-    --primary-hover: #2d6569;
-    --primary-light: #5a9ca1;
-    --bg-gradient-start: #4a7a7f;
-    --bg-gradient-end: #a8d5d8;
+    /* Exact tokens from Dashboard and Main Layout */
+    --teal-50: #f0fdfa;
+    --teal-100: #ccfbf1;
+    --teal-600: #0d9488;
+    --teal-700: #0f766e;
+    --teal-800: #32656A; /* Dashboard Dark Teal */
+    --gray-50: #fafcff;  /* Dashboard Background */
+    --gray-100: #f1f5f9;
+    --gray-200: #e2e8f0;
+    --gray-600: #64748b;
+    --gray-900: #0f172a; /* Dashboard Dark Slate */
+    
+    --primary: var(--teal-600);
+    --primary-hover: var(--teal-700);
+    --bg-main: var(--gray-50);
     --card-bg: #ffffff;
-    --text-main: #333333;
-    --text-muted: #666666;
-    --input-bg: #f5f8f9;
-    --input-focus: #3d7a7f;
-    --info-bg: #d1eff2;
-    --info-text: #083e46;
-    --border-color: #e1e4e8;
-    --logo-gray: #7C7C7C;
-    --logo-teal: #3d7a7f;
+    --text-main: var(--gray-900);
+    --text-muted: var(--gray-600);
+    --border-main: var(--gray-100);
+    --card-radius: 24px;   /* Match Dashboard Cards */
 }
 
-html {
+html, body {
     height: 100%;
     margin: 0;
     padding: 0;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
+    background-color: var(--bg-main) !important;
 }
 
 body {
-    background-color: #f7f9fc !important;
-    background-image: url('../img/backAuth.png') !important;
-    background-size: 140% auto !important;
-    background-position: center center !important;
-    background-repeat: no-repeat !important;
-    background-attachment: fixed !important;
-    font-family: 'Inter', sans-serif !important;
-    color: var(--text-main) !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
     display: flex;
     align-items: center;
     justify-content: center;
+    /* Subtle premium background matching the dashboard feel */
+    background-image: radial-gradient(circle at 0% 0%, #f0fdfa 0%, transparent 50%),
+                      radial-gradient(circle at 100% 100%, #f1f5f9 0%, transparent 50%) !important;
     min-height: 100vh;
 }
 
-#kc-header,
-#kc-page-title {
+#kc-header, #kc-page-title {
     display: none !important;
 }
 
-.login-pf body {
-    background: transparent;
-}
-
+/* Auth Card */
 .card-pf {
     background: var(--card-bg) !important;
-    border: 1px solid var(--border-color) !important;
-    border-radius: 12px !important;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04) !important;
-    padding: 2.5rem !important;
+    border: 1px solid var(--border-main) !important;
+    border-radius: var(--card-radius) !important;
+    /* Exact Dashboard Shadow */
+    box-shadow: 0 10px 30px -4px rgba(15, 23, 42, 0.04) !important;
+    padding: 3rem 2.5rem !important;
     width: 100% !important;
     max-width: 440px !important;
-    margin: 2rem auto !important;
+    margin: 1.5rem auto !important;
     position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-/* Logo placement INSIDE the card, before everything else */
+.card-pf:hover {
+    box-shadow: 0 20px 40px -8px rgba(15, 23, 42, 0.08) !important;
+    transform: translateY(-2px);
+}
+
+/* Card Accent Bar */
+.card-pf::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: linear-gradient(to right, var(--teal-600), var(--teal-800));
+}
+
+/* Logo Styling */
 .card-pf::before {
     content: "";
     display: block;
@@ -73,148 +86,225 @@ body {
     background-size: contain !important;
     background-repeat: no-repeat !important;
     background-position: center !important;
-    height: 160px !important;
+    height: 60px !important;
     width: 100% !important;
-    margin-bottom: 1.5rem !important;
+    margin-bottom: 2.5rem !important;
 }
 
-/* Form Elements */
+/* Labels */
 label {
-    color: var(--text-main) !important;
-    font-weight: 500 !important;
-    margin-bottom: 0.5rem !important;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    margin-top: 1.2rem;
+    color: var(--gray-600) !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    margin-bottom: 0.6rem !important;
+    display: block !important;
 }
 
-/* Reset password link inside label row */
-#kc-login-reset-password a {
-    font-size: 0.8rem;
-    font-weight: 400;
-    color: var(--primary) !important;
-}
-
+/* Input Fields */
 .pf-c-form-control,
 input[type="text"],
 input[type="password"],
 input[type="email"] {
-    background-color: var(--input-bg) !important;
-    border: 1px solid #dce4ec !important;
-    border-radius: 4px !important;
-    color: var(--text-main) !important;
-    padding: 0.8rem 1rem !important;
-    transition: all 0.2s ease !important;
+    background-color: white !important;
+    border: 1.5px solid var(--gray-200) !important;
+    border-radius: 16px !important;
+    color: var(--gray-900) !important;
+    padding: 0.85rem 1.25rem !important;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
     width: 100%;
-    font-size: 0.95rem !important;
+    font-size: 1rem !important;
+    font-family: inherit !important;
 }
 
 .pf-c-form-control:focus,
 input[type="text"]:focus,
 input[type="password"]:focus,
 input[type="email"]:focus {
-    border-color: var(--input-focus) !important;
-    background-color: #ffffff !important;
-    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1) !important;
+    border-color: var(--teal-600) !important;
+    box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.08) !important;
     outline: none !important;
 }
 
-/* Password eye icon */
+/* Password Eye / Input Groups */
+.pf-c-input-group {
+    background-color: transparent !important;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
 .pf-c-button.pf-m-control {
-    background-color: var(--input-bg) !important;
-    color: var(--text-muted) !important;
-    border: 1px solid #dce4ec !important;
-    border-left: none !important;
-    border-radius: 0 4px 4px 0 !important;
-    padding: 0 12px !important;
+    background-color: transparent !important;
+    color: var(--gray-600) !important;
+    border: none !important;
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.pf-c-button.pf-m-control:focus {
-    border-color: var(--input-focus) !important;
-    border-left-color: #dce4ec !important;
-}
-
-.pf-c-input-group input {
-    border-radius: 4px 0 0 4px !important;
-}
-
-/* Button Styling */
+/* Primary Button */
 .btn-primary,
 .pf-c-button.pf-m-primary {
-    background-color: var(--primary) !important;
-    background-image: none !important;
+    background: #0f172a !important; /* Dashboard Dark-Restock look for primary */
     border: none !important;
-    border-radius: 4px !important;
-    padding: 0.8rem !important;
-    font-weight: 600 !important;
+    border-radius: 16px !important;
+    padding: 1rem !important;
+    font-weight: 800 !important;
     font-size: 1rem !important;
     color: white !important;
-    text-transform: uppercase !important;
     width: 100% !important;
-    margin-top: 1.5rem !important;
+    margin-top: 2rem !important;
     cursor: pointer;
-    transition: background-color 0.2s ease !important;
-    display: block !important;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15) !important;
 }
 
 .btn-primary:hover,
 .pf-c-button.pf-m-primary:hover {
-    background-color: var(--primary-hover) !important;
-    box-shadow: 0 4px 12px rgba(61, 122, 127, 0.4) !important;
+    background: #1e293b !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(15, 23, 42, 0.2) !important;
 }
 
-/* Links */
+.btn-primary:active,
+.pf-c-button.pf-m-primary:active {
+    transform: translateY(0);
+}
+
+/* Alternative: Use Teal for Button if user prefers */
+/* .btn-primary { background: var(--teal-600) !important; } */
+
+/* Links & Secondary Options */
 a {
-    color: var(--primary) !important;
+    color: var(--teal-600) !important;
     text-decoration: none !important;
-    font-weight: 400 !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    transition: all 0.2s ease;
 }
 
 a:hover {
+    color: var(--teal-800) !important;
     text-decoration: underline !important;
 }
 
-/* Feedback/Alert Boxes  */
-.alert {
-    border-radius: 4px !important;
-    background-color: var(--info-bg) !important;
-    border: none !important;
-    color: var(--info-text) !important;
-    padding: 1rem !important;
-    margin-bottom: 1.5rem !important;
-    font-size: 0.9rem !important;
-    line-height: 1.4;
-    text-align: center;
+#kc-form-options {
+    margin-top: 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.alert-error {
-    background-color: #f8d7da !important;
-    color: #721c24 !important;
-}
-
-#kc-info-wrapper {
-    background-color: transparent !important;
-    text-align: center !important;
-    margin-top: 1.5rem !important;
-    font-size: 0.95rem !important;
-}
-
-#kc-registration {
-    color: var(--text-muted) !important;
-    margin-top: 1.5rem !important;
-}
-
-#kc-login-reset-password {
-    float: right;
+/* Checkbox */
+.checkbox label {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 0.6rem;
+    font-weight: 600 !important;
+    color: var(--gray-600) !important;
+    cursor: pointer;
+    text-transform: none !important;
+    letter-spacing: normal !important;
     font-size: 0.85rem !important;
 }
 
-/* Keycloak 24+ specifics for the input group container */
-.pf-c-input-group {
-    background-color: transparent !important;
+/* Feedback/Alert Boxes */
+.alert {
+    border-radius: 16px !important;
+    padding: 1rem 1.25rem !important;
+    margin-bottom: 2rem !important;
+    font-size: 0.9rem !important;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    border: 1px solid transparent !important;
 }
 
-.pf-c-form-control:where(div) {
-    background-color: transparent !important;
+.alert-error {
+    background-color: #fff1f2 !important;
+    border-color: #ffe4e6 !important;
+    color: #f43f5e !important;
+}
+
+.alert-info {
+    background-color: #f0fdfa !important;
+    border-color: #ccfbf1 !important;
+    color: #0D9488 !important;
+}
+
+/* Bottom Registration Link */
+#kc-info-wrapper {
+    margin-top: 2.5rem !important;
+    text-align: center !important;
+    border-top: 1px border var(--gray-100);
+    padding-top: 2rem;
+}
+
+#kc-registration {
+    font-size: 0.95rem !important;
+    color: var(--gray-600) !important;
+}
+
+#kc-registration span {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+/* Keycloak specific cleanups */
+.pf-c-input-group input {
+    border-radius: 16px !important;
+}
+
+.login-pf-page .login-pf-header {
+    margin-bottom: 0 !important;
+}
+
+/* Mobile Responsiveness - "Application Mobile" Focus */
+@media (max-width: 480px) {
+    body {
+        background: white !important;
+    }
+    
+    .card-pf {
+        padding: 3rem 1.5rem !important;
+        border: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    
+    .card-pf::after {
+        display: none;
+    }
+    
+    .card-pf::before {
+        height: 50px !important;
+        margin-bottom: 3rem !important;
+    }
+    
+    .btn-primary,
+    .pf-c-button.pf-m-primary {
+        padding: 1.1rem !important;
+        border-radius: 18px !important;
+    }
+    
+    input {
+        border-radius: 16px !important;
+        padding: 0.95rem 1.25rem !important;
+    }
 }

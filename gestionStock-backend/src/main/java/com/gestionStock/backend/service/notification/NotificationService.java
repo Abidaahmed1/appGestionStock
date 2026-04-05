@@ -15,7 +15,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -60,10 +63,22 @@ public class NotificationService {
         targetRepo.saveAll(unreadTargets);
     }
 
+    public void createNotificationForRoles(String titre, String message, NotificationType type, List<Role> roles) {
+        createNotificationForRoles(titre, message, type, roles, null);
+    }
+
     public void createNotificationForRoles(String titre, String message, NotificationType type, List<Role> roles,
             Long relatedId) {
-        List<User> users = new java.util.ArrayList<>();
-        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
+        createNotificationForRolesAndEntreprise(titre, message, type, roles, relatedId, null);
+    }
+
+    public void createNotificationForRolesAndEntreprise(String titre, String message, NotificationType type, List<Role> roles,
+            Long relatedId, com.gestionStock.backend.entity.entreprise.Entreprise providedEntreprise) {
+        List<User> users = new ArrayList<>();
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = providedEntreprise;
+        if (entreprise == null) {
+            entreprise = userService.getCurrentUserEntreprise();
+        }
 
         if (roles != null && !roles.isEmpty() && entreprise != null) {
             users.addAll(userRepository.findByRoleInAndEntreprise(roles, entreprise));
@@ -74,14 +89,12 @@ public class NotificationService {
         java.util.Map<String, User> uniqueUsers = users.stream()
                 .collect(Collectors.toMap(User::getId, u -> u, (u1, u2) -> u1));
 
-        System.out.println("NotificationForRoles: found " + uniqueUsers.size() + " targets " + uniqueUsers.keySet()
-                + " for roles " + roles);
-
         Notification notification = Notification.builder()
                 .titre(titre)
                 .message(message)
                 .type(type)
                 .date(LocalDateTime.now())
+                .targets(new HashSet<>())
                 .build();
 
         for (User u : uniqueUsers.values()) {
@@ -95,6 +108,8 @@ public class NotificationService {
 
         if (relatedId != null) {
             pieceRepository.findById(relatedId).ifPresent(piece -> {
+                if (notification.getPieces() == null)
+                    notification.setPieces(new HashSet<>());
                 notification.getPieces().add(piece);
             });
         }
@@ -108,11 +123,12 @@ public class NotificationService {
                 .message(message)
                 .type(type)
                 .date(LocalDateTime.now())
+                .targets(new HashSet<>())
                 .build();
 
         try {
             Role userRole = Role.valueOf(role);
-            List<User> targetUsers = userRepository.findByRoleIn(List.of(userRole));
+            List<User> targetUsers = userRepository.findByRoleIn(java.util.Arrays.asList(userRole));
             for (User u : targetUsers) {
                 NotificationTarget nt = NotificationTarget.builder()
                         .notification(notification)
@@ -122,11 +138,40 @@ public class NotificationService {
                 notification.getTargets().add(nt);
             }
         } catch (Exception e) {
-
         }
 
         if (relatedId != null) {
             pieceRepository.findById(relatedId).ifPresent(piece -> {
+                if (notification.getPieces() == null)
+                    notification.setPieces(new HashSet<>());
+                notification.getPieces().add(piece);
+            });
+        }
+
+        notificationRepo.save(notification);
+    }
+
+    public void createNotificationForUser(String titre, String message, NotificationType type, User user,
+            Long relatedId) {
+        Notification notification = Notification.builder()
+                .titre(titre)
+                .message(message)
+                .type(type)
+                .date(LocalDateTime.now())
+                .targets(new HashSet<>())
+                .build();
+
+        NotificationTarget nt = NotificationTarget.builder()
+                .notification(notification)
+                .user(user)
+                .lu(false)
+                .build();
+        notification.getTargets().add(nt);
+
+        if (relatedId != null) {
+            pieceRepository.findById(relatedId).ifPresent(piece -> {
+                if (notification.getPieces() == null)
+                    notification.setPieces(new HashSet<>());
                 notification.getPieces().add(piece);
             });
         }

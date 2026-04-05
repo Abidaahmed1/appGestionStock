@@ -79,7 +79,6 @@
         <table *ngIf="filteredFournisseurs.length > 0">
             <thead>
                 <tr>
-                    <th class="checkbox-cell"><input type="checkbox"></th>
                     <th *ngIf="isColumnVisible('code')">CODE</th>
                     <th *ngIf="isColumnVisible('nom')">FOURNISSEUR</th>
                     <th *ngIf="isColumnVisible('email')">EMAIL</th>
@@ -90,11 +89,10 @@
             </thead>
             <tbody>
                 <tr *ngFor="let fournisseur of filteredFournisseurs" (click)="openEditModal(fournisseur)">
-                    <td class="checkbox-cell" (click)="$event.stopPropagation()"><input type="checkbox"></td>
-                    <td class="ref-col" *ngIf="isColumnVisible('code')">{{ fournisseur.code }}</td>
+                    <td *ngIf="isColumnVisible('code')">{{ fournisseur.code }}</td>
                     <td *ngIf="isColumnVisible('nom')" class="buyer-col">
                         <div class="buyer-badge" *ngIf="fournisseur.nom">
-                            <span class="initial" [style.background-color]="'#3d7a7f'">{{
+                            <span class="initial" [style.background-color]="'var(--primary)'">{{
                                 getFournisseurInitials(fournisseur) }}</span>
                             <span class="name">{{ fournisseur.nom }}</span>
                         </div>

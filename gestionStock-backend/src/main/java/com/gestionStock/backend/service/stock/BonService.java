@@ -7,10 +7,13 @@ import org.springframework.stereotype.Service;
 
 import com.gestionStock.backend.entity.Stock.Bon;
 import com.gestionStock.backend.entity.Stock.TypeBon;
+import com.gestionStock.backend.entity.Stock.TypeMouvement;
+import com.gestionStock.backend.entity.Stock.LigneMouvement;
+import com.gestionStock.backend.entity.piece.PieceDetachee;
 import com.gestionStock.backend.repository.stock.BonRepository;
 
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.AllArgsConstructor;
 
 @Service
@@ -19,6 +22,7 @@ import lombok.AllArgsConstructor;
 public class BonService {
 
     private static final Object NUMERO_BON_LOCK = new Object();
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(BonService.class);
     private final BonRepository bonRepo;
     private final com.gestionStock.backend.service.user.UserService userService;
     private final MouvementStockService mouvementService;
@@ -32,12 +36,10 @@ public class BonService {
         com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
 
         if (isInternalRole(role)) {
-            return bonRepo.findByArchivedFalseAndEntreprise(entreprise);
+            return bonRepo.findByArchivedFalseAndEntrepriseOrderByDateDesc(entreprise);
         }
 
-        // Pour les magasiniers/auditeurs restreints, on filtre par créateur ET
-        // entreprise
-        return bonRepo.findByCreateurIdAndArchivedFalseAndEntreprise(userId, entreprise);
+        return bonRepo.findByCreateurIdAndArchivedFalseAndEntrepriseOrderByDateDesc(userId, entreprise);
     }
 
     public List<Bon> getAllArchived() {
@@ -47,10 +49,10 @@ public class BonService {
         com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
 
         if (isInternalRole(role)) {
-            return bonRepo.findByArchivedTrueAndEntreprise(entreprise);
+            return bonRepo.findByArchivedTrueAndEntrepriseOrderByDateDesc(entreprise);
         }
 
-        return bonRepo.findByCreateurIdAndArchivedTrueAndEntreprise(userId, entreprise);
+        return bonRepo.findByCreateurIdAndArchivedTrueAndEntrepriseOrderByDateDesc(userId, entreprise);
     }
 
     private String[] getCurrentUserIdAndRole() {
@@ -95,9 +97,11 @@ public class BonService {
         com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
 
         if (isInternalRole(role)) {
-            return bonRepo.findByTypeBonAndArchivedFalseAndEntreprise(typeBon, entreprise);
+            return bonRepo.findByTypeBonAndArchivedFalseAndEntrepriseOrderByDateDesc(typeBon, entreprise);
         }
-        return bonRepo.findByTypeBonAndCreateurIdAndArchivedFalseAndEntreprise(typeBon, userId, entreprise);
+
+        return bonRepo.findByTypeBonAndCreateurIdAndArchivedFalseAndEntrepriseOrderByDateDesc(typeBon, userId,
+                entreprise);
     }
 
     public List<Bon> getByDateRange(LocalDate startDate, LocalDate endDate) {
@@ -107,9 +111,9 @@ public class BonService {
         com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
 
         if (isInternalRole(role)) {
-            return bonRepo.findByDateBetweenAndArchivedFalseAndEntreprise(startDate, endDate, entreprise);
+            return bonRepo.findByDateBetweenAndArchivedFalseAndEntrepriseOrderByDateDesc(startDate, endDate, entreprise);
         }
-        return bonRepo.findByDateBetweenAndCreateurIdAndArchivedFalseAndEntreprise(startDate, endDate, userId,
+        return bonRepo.findByDateBetweenAndCreateurIdAndArchivedFalseAndEntrepriseOrderByDateDesc(startDate, endDate, userId,
                 entreprise);
     }
 
@@ -128,6 +132,7 @@ public class BonService {
     }
 
     public Bon save(Bon bon) {
+        validateBon(bon);
         if (bon.getArchived() == null) {
             bon.setArchived(false);
         }
@@ -171,7 +176,6 @@ public class BonService {
                 System.err.println("Could not set creator/entreprise for Bon: " + e.getMessage());
             }
 
-            // Fallback for entreprise if still null
             if (bon.getEntreprise() == null) {
                 bon.setEntreprise(userService.getCurrentUserEntreprise());
             }
@@ -185,61 +189,63 @@ public class BonService {
             }
         }
 
+        // --- PRE-SAVE: Map bidirectional and ROLLBACK stock if editing ---
         if (bon.getMouvement() != null) {
             com.gestionStock.backend.entity.Stock.MouvementStock mvt = bon.getMouvement();
             mvt.setBon(bon);
-            if (mvt.getLigneMouvement() != null) {
-                for (com.gestionStock.backend.entity.Stock.LigneMouvement ligne : mvt.getLigneMouvement()) {
-                    ligne.setMouvementStock(mvt);
 
-                    // Resolve piece: replace the detached/partial Piece with a managed entity
+            // Default Movement Type
+            if (mvt.getTypeMouvement() == null) {
+                switch (bon.getTypeBon()) {
+                    case ENTREE:
+                        mvt.setTypeMouvement(TypeMouvement.ENTREE_RECEPTION);
+                        break;
+                    case SORTIE:
+                        mvt.setTypeMouvement(TypeMouvement.SORTIE_VENTE);
+                        break;
+                    case RETOUR:
+                        mvt.setTypeMouvement(TypeMouvement.ENTREE_RETOUR);
+                        break;
+                }
+            }
+
+            // Resolve actual Piece entities from DB
+            if (mvt.getLigneMouvement() != null) {
+                for (LigneMouvement ligne : mvt.getLigneMouvement()) {
+                    ligne.setMouvementStock(mvt);
                     if (ligne.getPiece() != null) {
-                        com.gestionStock.backend.entity.piece.PieceDetachee managedPiece = mouvementService
-                                .resolvePiece(ligne.getPiece());
-                        if (managedPiece != null) {
+                        PieceDetachee managedPiece = mouvementService.resolvePiece(ligne.getPiece());
+                        if (managedPiece != null)
                             ligne.setPiece(managedPiece);
-                        }
                     }
                 }
+            }
 
-                // CRITICAL: Update stock quantities BEFORE the save loop.
-                // This ensures all lines point to PERSISTED Stock entities so that bonRepo.save
-                // won't complain about transient Stock objects.
-                mouvementService.updateStockForMouvement(mvt);
+            // ROLLBACK old quantity if editing
+            if (!isNew && bon.getId() != null) {
+                Bon oldBon = bonRepo.findById(bon.getId()).orElse(null);
+                if (oldBon != null && oldBon.getMouvement() != null) {
+                    System.err.println("[STOCK_SYNC] ROLLBACK for old Bon #" + oldBon.getNumeroBon());
+                    mouvementService.rollbackStockQuantity(oldBon.getMouvement());
+                }
             }
         }
 
-        Bon savedBon = null;
-        int maxAttempts = 3;
-        for (int i = 0; i < maxAttempts; i++) {
-            if (isNew) {
-                if (bon.getNumeroBon() == null || bon.getNumeroBon().isEmpty() || "0".equals(bon.getNumeroBon())
-                        || "AUTO".equalsIgnoreCase(bon.getNumeroBon()) || i > 0) {
-                    synchronized (NUMERO_BON_LOCK) {
-                        bon.setNumeroBon(
-                                numerotationService.generateNextNumber(getNumerotationModule(bon.getTypeBon())));
-                    }
-                } else if (i == 0) {
-                    numerotationService.validateReference(getNumerotationModule(bon.getTypeBon()), bon.getNumeroBon());
-                    if (bonRepo.existsByNumeroBonAndEntreprise(bon.getNumeroBon(), bon.getEntreprise())) {
-                        throw new IllegalStateException(
-                                "Un bon avec ce numéro (" + bon.getNumeroBon() + ") existe déjà");
-                    }
-                }
+        // Generate Number if needed
+        if (isNew && (bon.getNumeroBon() == null || bon.getNumeroBon().isEmpty()
+                || "AUTO".equalsIgnoreCase(bon.getNumeroBon()))) {
+            synchronized (NUMERO_BON_LOCK) {
+                bon.setNumeroBon(numerotationService.generateNextNumber(getNumerotationModule(bon.getTypeBon())));
             }
+        }
 
-            try {
-                savedBon = bonRepo.save(bon);
-                break;
-            } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                System.err.println("[ANTIGRAVITY] Save attempt " + (i + 1) + " failed: " + e.getMessage());
-                if (i == maxAttempts - 1)
-                    throw e;
+        System.err.println("[STOCK_SYNC] SAVING Bon #" + bon.getNumeroBon());
+        Bon savedBon = bonRepo.save(bon);
+        bonRepo.flush();
 
-                // If number was fixed but still violated, it might be due to a race condition
-                // in numbering table
-                // or parallel request from same user. We retry.
-            }
+        if (savedBon.getMouvement() != null) {
+            System.err.println("[STOCK_SYNC] UPDATE for Bon #" + savedBon.getNumeroBon());
+            mouvementService.updateStockForMouvement(savedBon.getMouvement());
         }
 
         return savedBon;
@@ -312,5 +318,21 @@ public class BonService {
         }
 
         return saved;
+    }
+
+    private void validateBon(Bon bon) {
+        if (bon.getMouvement() != null && bon.getMouvement().getLigneMouvement() != null) {
+            for (com.gestionStock.backend.entity.Stock.LigneMouvement l : bon.getMouvement().getLigneMouvement()) {
+                if (l.getQuantite() == null || l.getQuantite() <= 0) {
+                    throw new IllegalArgumentException("La quantité doit être supérieure à 0 pour chaque ligne");
+                }
+                if (l.getPrixHTVA() == null || l.getPrixHTVA() <= 0) {
+                    throw new IllegalArgumentException("Le prix unitaire doit être supérieur à 0 pour chaque ligne");
+                }
+                if (l.getTauxTVA() == null || l.getTauxTVA() <= 0) {
+                    throw new IllegalArgumentException("Le taux TVA doit être supérieur à 0 pour chaque ligne");
+                }
+            }
+        }
     }
 }

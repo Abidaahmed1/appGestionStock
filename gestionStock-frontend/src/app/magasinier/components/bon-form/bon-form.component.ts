@@ -8,6 +8,7 @@ import { Bon, TypeBon, Fournisseur, MouvementStock, TypeMouvement, LigneMouvemen
 import { MagasinierService } from '../../services/magasinier.service';
 import { EntrepriseService } from '../../../admin/services/entreprise.service';
 import { Entreprise } from '../../../admin/models/entreprise.model';
+import { DocumentConfigService, DocumentDisplaySetting, DocumentType } from '../../../admin/services/document-config.service';
 
 @Component({
     selector: 'app-bon-form',
@@ -25,6 +26,9 @@ export class BonFormComponent implements OnInit {
     private cdr = inject(ChangeDetectorRef);
     private entrepriseService = inject(EntrepriseService);
     private keycloak = inject(KeycloakService);
+    private docConfigService = inject(DocumentConfigService);
+
+    docSetting: DocumentDisplaySetting | null = null;
 
     showReactivateConfirm = false;
     userRoles: string[] = [];
@@ -33,6 +37,10 @@ export class BonFormComponent implements OnInit {
     notification: { message: string, type: 'success' | 'error' } | null = null;
     isAutoNumeroBon = true;
     parametres: any = null;
+
+    get currencySymbol(): string {
+        return this.entrepriseService.getDeviseSymbol(this.entreprise);
+    }
 
     bon: Bon = {
         numeroBon: '',
@@ -60,6 +68,17 @@ export class BonFormComponent implements OnInit {
     errors: { [key: string]: string } = {};
     formSubmitted = false;
 
+    get isReadOnly(): boolean {
+        return this.isAuditeur();
+    }
+
+    isAuditeur(): boolean {
+        return this.userRoles.some(r =>
+            r.toLowerCase() === 'auditeur' ||
+            r.toLowerCase() === 'role_auditeur'
+        );
+    }
+
     openDropdownIndex: number | null = null;
     pieceSearchText: string = '';
     filteredPieces: any[] = [];
@@ -79,11 +98,13 @@ export class BonFormComponent implements OnInit {
 
     ngOnInit() {
         if (isPlatformBrowser(this.platformId)) {
+            this.userRoles = this.keycloak.getUserRoles() || [];
             this.loadFournisseurs();
             this.loadPieces();
             this.loadSourceBons();
             this.loadEntreprise();
             this.loadParametres();
+            this.loadDocSetting();
 
             const id = this.route.snapshot.paramMap.get('id');
             if (id && id !== 'nouveau') {
@@ -95,11 +116,12 @@ export class BonFormComponent implements OnInit {
             }
 
             this.route.queryParams.subscribe(params => {
-                if (params['print'] === '1') {
+                if (params['print'] === '1' || this.isPrintView) {
                     this.isPrintView = true;
+                    this.loadDocSetting();
                     setTimeout(() => {
                         window.print();
-                    }, 1000);
+                    }, 1200);
                 }
             });
 
@@ -187,9 +209,12 @@ export class BonFormComponent implements OnInit {
 
     print() {
         if (this.bon.id) {
-            this.router.navigate(['/magasinier/bons', this.bon.id], { queryParams: { print: '1' } });
+            let docType = 'BON_ENTREE';
+            if (this.bon.typeBon === 'SORTIE') docType = 'BON_SORTIE';
+            if (this.bon.typeBon === 'RETOUR') docType = 'BON_RETOUR';
+            this.router.navigate(['/document/preview', this.bon.id], { queryParams: { type: docType } });
         } else {
-            window.print();
+            alert('Veuillez sauvegarder le document avant de pouvoir l\'imprimer.');
         }
     }
 
@@ -371,17 +396,14 @@ export class BonFormComponent implements OnInit {
 
     explodePieces(pieces: any[]): any[] {
         return pieces.map(p => {
-            let variantLabel = '';
-            if (p.details && Array.isArray(p.details)) {
-                variantLabel = p.details
-                    .filter((d: any) => d.parametre && d.valeur)
-                    .map((d: any) => `${d.parametre.nom} ${d.valeur}`)
-                    .join(' ');
-            }
+            const rootDesignation = p.designation;
+            const visibleVariants = this.getFilteredVariantsForPiece(p);
+            const variantLabel = visibleVariants.join(' ');
 
             return {
                 ...p,
-                aggregatedDesignation: variantLabel ? `${p.designation} - ${variantLabel}` : p.designation,
+                aggregatedDesignation: rootDesignation,
+                designation: variantLabel ? `${rootDesignation} - ${variantLabel}` : rootDesignation,
                 originalPiece: p,
                 allDetails: p.details || []
             };
@@ -422,6 +444,58 @@ export class BonFormComponent implements OnInit {
                 this.router.navigate(['/magasinier/bons']);
             }
         });
+    }
+
+    loadDocSetting() {
+        const docType = this.mapTypeBonToDocType(this.bon.typeBon);
+        this.docConfigService.getSettingByType(docType).subscribe({
+            next: (setting) => {
+                this.docSetting = setting;
+                // Rafraîchir les pièces avec le nouveau réglage
+                if (this.pieces.length > 0) {
+                    const raw = this.pieces.map(p => p.originalPiece || p);
+                    this.pieces = this.explodePieces(raw);
+                }
+                this.cdr.detectChanges();
+            },
+            error: (err) => console.error('Erreur chargement doc settings:', err)
+        });
+    }
+
+    private mapTypeBonToDocType(type: TypeBon): DocumentType {
+        switch (type) {
+            case TypeBon.ENTREE: return DocumentType.BON_ENTREE;
+            case TypeBon.SORTIE: return DocumentType.BON_SORTIE;
+            case TypeBon.RETOUR: return DocumentType.BON_RETOUR;
+            default: return DocumentType.BON_ENTREE;
+        }
+    }
+
+    getFilteredVariantsForPiece(piece: any): string[] {
+        if (!piece) return [];
+        const details = piece.allDetails || piece.details || [];
+
+        // Mode restrictif : on n'affiche que si c'est autorisé ET si la valeur n'est pas vide ou "-"
+        if (this.docSetting && this.docSetting.visibleVarianteIds && this.docSetting.visibleVarianteIds.length > 0) {
+            return details
+                .filter((d: any) => {
+                    const hasValue = d.valeur && d.valeur.trim() !== '' && d.valeur !== '-';
+                    return d.parametre && d.parametre.id && hasValue && this.docSetting!.visibleVarianteIds.includes(d.parametre.id!);
+                })
+                .map((d: any) => `${d.parametre.nom}: ${d.valeur}`);
+        }
+
+        return [];
+    }
+
+    getPieceDisplayValue(index: number, ligne: any): string {
+        if (this.openDropdownIndex === index) return this.pieceSearchText;
+
+        const root = this.getPieceRootName(ligne);
+        if (root === '—') return '—';
+
+        const variants = this.getFilteredVariantsForPiece(ligne.piece);
+        return variants.length > 0 ? `${root} - ${variants.join(' ')}` : root;
     }
 
     toggleAutoNumeroBon(val: boolean): void {
@@ -556,10 +630,11 @@ export class BonFormComponent implements OnInit {
 
     getPieceVariantArray(ligne: any): string[] {
         if (!ligne || !ligne.piece) return [];
-        const details = ligne.piece.allDetails || ligne.piece.details || [];
-        return details
-            .filter((d: any) => d.parametre && d.valeur)
-            .map((d: any) => `${d.parametre.nom}: ${d.valeur}`);
+        return this.getVariantsForPiece(ligne.piece);
+    }
+
+    getVariantsForPiece(piece: any): string[] {
+        return this.getFilteredVariantsForPiece(piece);
     }
 
     getPieceDesignation(ligne: any): string {
@@ -570,10 +645,7 @@ export class BonFormComponent implements OnInit {
         return variantArray.length > 0 ? `${root} - ${variantArray.join(' ')}` : root;
     }
 
-    getPieceDisplayValue(index: number, ligne: any): string {
-        if (this.openDropdownIndex === index) return this.pieceSearchText;
-        return this.getPieceDesignation(ligne);
-    }
+
 
 
 
@@ -665,8 +737,16 @@ export class BonFormComponent implements OnInit {
                     }
                 }
 
-                if (l.quantite <= 0) {
-                    this.errors[`ligne_${i}_qte`] = `Ligne ${i + 1}: Quantité doit être > 0`;
+                if (l.quantite == null || l.quantite <= 0) {
+                    this.errors[`ligne_${i}_qte`] = `Ligne ${i + 1}: Quantité doit être supérieure à 0`;
+                }
+
+                if (l.prixHTVA == null || l.prixHTVA <= 0) {
+                    this.errors[`ligne_${i}_prix`] = `Ligne ${i + 1}: Le prix unitaire doit être supérieur à 0`;
+                }
+
+                if (l.tauxTVA == null || l.tauxTVA <= 0) {
+                    this.errors[`ligne_${i}_tva`] = `Ligne ${i + 1}: Le taux TVA doit être supérieur à 0`;
                 }
             });
         }

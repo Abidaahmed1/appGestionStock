@@ -1,0 +1,566 @@
+<div class="hub-container">
+
+  <div class="toast-hub" *ngIf="notification" [class.success]="notification.type === 'success'"
+    [class.error]="notification.type === 'error'">
+    <div class="toast-icon">{{ notification.type === 'success' ? '✓' : '!' }}</div>
+    <div class="toast-msg">{{ notification.msg }}</div>
+    <button class="toast-close" (click)="notification = null">✕</button>
+  </div>
+
+
+  <div class="hub-list-view" *ngIf="!currentAudit">
+
+
+    <header class="hub-navbar">
+      <div class="navbar-left">
+        <div class="hub-symbol">S</div>
+        <div class="hub-titles">
+          <h1 class="hub-primary-title">StockMasters Audit</h1>
+          <p class="hub-secondary-title">Système de Contrôle d'Inventaire Pro</p>
+        </div>
+      </div>
+      <div class="navbar-right">
+        <div class="hub-meta-stats" *ngIf="inventaires.length > 0">
+          <div class="stat-pill"><strong>{{ localStats.active }}</strong> actifs</div>
+          <div class="stat-pill"><strong>{{ localStats.accuracy }}%</strong> précision</div>
+        </div>
+        <button class="btn-neo-compact" (click)="openWizard()">
+          <svg class="hi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Nouveau Audit</span>
+        </button>
+      </div>
+    </header>
+
+
+    <div class="list-kpi-bar">
+      <div class="kpi-card-glass">
+        <div class="kpi-icon-box blue">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+            </path>
+          </svg>
+        </div>
+        <div class="kpi-info"><span class="kpi-val">{{ localStats.total }}</span><span class="kpi-lbl">Total</span>
+        </div>
+      </div>
+      <div class="kpi-card-glass">
+        <div class="kpi-icon-box orange">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+        <div class="kpi-info"><span class="kpi-val">{{ localStats.active }}</span><span class="kpi-lbl">En cours</span>
+        </div>
+      </div>
+      <div class="kpi-card-glass">
+        <div class="kpi-icon-box red">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="6"></circle>
+            <circle cx="12" cy="12" r="2"></circle>
+          </svg>
+        </div>
+        <div class="kpi-info"><span class="kpi-val">{{ localStats.globalGaps }}</span><span
+            class="kpi-lbl">Écarts</span></div>
+      </div>
+      <div class="kpi-card-glass">
+        <div class="kpi-icon-box green">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+        <div class="kpi-info"><span class="kpi-val">{{ localStats.accuracy }}%</span><span
+            class="kpi-lbl">Précision</span></div>
+      </div>
+    </div>
+
+
+    <div class="list-table-wrapper">
+      <table class="hub-list-table">
+        <thead>
+          <tr>
+            <th>Audit</th>
+            <th>Type</th>
+            <th>Date</th>
+            <th>Lignes</th>
+            <th>Statut</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let inv of inventaires" class="list-row" (click)="selectAudit(inv)">
+            <td>
+              <div class="list-audit-name-cell">
+                <div class="list-audit-icon" [class.valide]="inv.estValide">
+                  <svg *ngIf="!inv.estValide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                    </path>
+                  </svg>
+                  <svg *ngIf="inv.estValide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+                <span class="list-audit-name">{{ inv.nom }}</span>
+              </div>
+            </td>
+            <td><span class="type-pill">{{ inv.type }}</span></td>
+            <td><span class="date-lbl">{{ inv.date | date:'dd/MM/yyyy' }}</span></td>
+            <td><strong>{{ inv.lignes.length }}</strong> <span class="list-sub">produits</span></td>
+            <td>
+              <span class="list-status" [class.actif]="!inv.estValide" [class.archive]="inv.estValide">
+                <span class="status-dot"></span>
+                {{ inv.estValide ? 'Archivé' : 'En cours' }}
+              </span>
+            </td>
+            <td>
+              <button class="btn-open-audit">
+                Ouvrir →
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="inventaires.length === 0">
+            <td colspan="6" class="no-data-msg">Aucun audit disponible. Créez un nouvel audit pour commencer.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+
+  <div class="hub-detail-view" *ngIf="currentAudit">
+
+    <div class="detail-bar">
+      <div class="detail-bar-left">
+        <div class="detail-breadcrumb">
+          <span class="bc-link" (click)="currentAudit = null">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            Audits
+          </span>
+          <svg class="bc-sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+          <span class="bc-current">{{ currentAudit.nom }}</span>
+        </div>
+        <div class="detail-bar-badges">
+          <span class="ws-type-pill">{{ currentAudit.type }}</span>
+          <span class="ws-status-badge" [class.valide]="currentAudit.estValide">{{ currentAudit.estValide ? 'ARCHIVÉ' :
+            'OPÉRATIONNEL' }}</span>
+          <span class="ws-count-bubble">{{ currentAudit.lignes.length }}&nbsp;lignes</span>
+        </div>
+      </div>
+
+      <div class="detail-bar-right">
+        <label class="toggle-filter">
+          <input type="checkbox" [(ngModel)]="filterGaps">
+          <span class="pill-stats clickable">Écarts <strong>({{ getGapCount() }})</strong></span>
+        </label>
+
+        <div class="bar-divider"></div>
+
+        <div class="ws-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" [(ngModel)]="searchTerm" placeholder="Rechercher...">
+        </div>
+
+        <div class="bar-divider"></div>
+
+        <div class="ws-autosave" *ngIf="!currentAudit.estValide">
+          <div class="save-dot" [class.saving]="isSaving"></div>
+          <span>{{ isSaving ? 'Sauvegarde...' : 'Sauvegardé' }}</span>
+        </div>
+
+        <button class="btn-reconcile-compact" *ngIf="!currentAudit.estValide" (click)="validateAudit()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <span>Valider</span>
+        </button>
+
+        <button class="btn-export-detail" (click)="printInventaire()" title="Imprimer le rapport d'inventaire">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="audit-data-panel">
+      <div class="audit-table-container">
+        <table class="hub-premium-table">
+          <thead>
+            <tr>
+              <th>Produit / Famille</th>
+              <th>Référence</th>
+              <th>Responsable</th>
+              <th>Théorique</th>
+              <th>Physique (Réel)</th>
+              <th>Écart</th>
+              <th>Commentaires</th>
+              <th class="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let l of filteredRows" [class.gap-row]="hasEcart(l)">
+              <td>
+                <div class="product-info-cell">
+                  <span class="p-name">{{ l.piece?.designation }}</span>
+                  <span class="p-cat">{{ l.piece?.categorie?.nom }}</span>
+                </div>
+              </td>
+              <td><code>{{ l.piece?.reference }}</code></td>
+              <td>
+                <div class="user-audit-pill collaborative" *ngIf="!l.responsableLogistique">
+                  <div class="u-initials team-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="9" cy="7" r="4"></circle>
+                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                  </div>
+                  <div class="u-meta">
+                    <span class="u-full">Collaboratif</span>
+                    <span class="u-line-status">Ouvert à tous</span>
+                  </div>
+                </div>
+                <div class="user-audit-pill" *ngIf="l.responsableLogistique">
+                  <div class="u-initials">{{ l.responsableLogistique.firstName?.[0] }}{{
+                    l.responsableLogistique.lastName?.[0] }}</div>
+                  <div class="u-meta">
+                    <span class="u-full" style="font-weight: 800; color: #0F172A; display: block; margin-bottom: 2px;">
+                      {{ (l.responsableLogistique.firstName || l.responsableLogistique.lastName) ?
+                      (l.responsableLogistique.firstName + ' ' + l.responsableLogistique.lastName) :
+                      (l.responsableLogistique.email || 'Auditeur #' + l.responsableLogistique.id.substring(0,6)) }}
+                    </span>
+                    <span class="u-line-status"
+                      [ngClass]="{'en-attente-valide': l.stockPhysique !== null, 'en-attente': l.stockPhysique === null && l.statutLigne === 'EN_ATTENTE_AUDIT', 'recompter': l.statutLigne === 'A_RECOMPTER', 'refuse': l.statutLigne === 'REFUSE', 'valide': l.statutLigne === 'VALIDE'}">
+                      {{ (l.stockPhysique !== null) ? 'SCANNIER' : (l.statutLigne === 'EN_ATTENTE_AUDIT' ? 'Prêt pour
+                      contrôle' : l.statutLigne === 'A_RECOMPTER' ?
+                      'Re-comptage' : l.statutLigne === 'REFUSE' ? 'Refusé' : l.statutLigne === 'VALIDE' ? 'Validé' :
+                      'Assigné') }}
+                    </span>
+                  </div>
+                </div>
+              </td>
+              <td class="text-center"><strong>{{ l.stockTheorique }}</strong></td>
+              <td class="text-center">
+                <div class="physique-container">
+                  <input type="number" [(ngModel)]="l.stockPhysique" (change)="updateLigne(l)"
+                    [disabled]="currentAudit.estValide" class="audit-input"
+                    [placeholder]="l.stockPhysique === null ? '...' : ''">
+                  <span class="tentative-lbl"
+                    *ngIf="l.tentativePrecedente !== undefined && l.tentativePrecedente !== null">
+                    Prev: {{ l.tentativePrecedente }}
+                  </span>
+                </div>
+              </td>
+              <td class="text-center">
+                <div class="ecart-pill" [class.danger]="getEffectiveEcart(l) < 0"
+                  [class.warning]="getEffectiveEcart(l) > 0"
+                  [class.success]="getEffectiveEcart(l) === 0 && l.stockPhysique !== null">
+                  {{ getEffectiveEcart(l) > 0 ? '+' : '' }}{{ getEffectiveEcart(l) }}
+                </div>
+              </td>
+              <td>
+                <div class="analysis-box">
+                  <!-- Justification du responsable logistique -->
+                  <div class="justification-block" *ngIf="l.justification">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hi-icon-inline">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                    <span>{{ l.justification }}</span>
+                  </div>
+                  <!-- Motif de re-comptage demandé par l'auditeur -->
+                  <span class="recount-motif" *ngIf="l.statutLigne === 'A_RECOMPTER' && l.motifRecomptage">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                      class="hi-icon-inline">
+                      <path
+                        d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                      <line x1="12" y1="9" x2="12" y2="13" />
+                      <line x1="12" y1="17" x2="12.01" y2="17" />
+                    </svg>
+                    Audit: <strong>{{ l.motifRecomptage }}</strong>
+                  </span>
+                  <span class="analysis-none"
+                    *ngIf="!l.justification && hasEcart(l) && l.statutLigne !== 'A_RECOMPTER'">En attente
+                    d'analyse...</span>
+                </div>
+                <input type="text" [(ngModel)]="l.commentaire" (change)="autoSave()" [disabled]="currentAudit.estValide"
+                  placeholder="Note auditeur..." class="comment-input">
+              </td>
+              <td class="text-right">
+                <span class="empty-dots"
+                  *ngIf="l.statutLigne !== 'EN_ATTENTE_AUDIT' && l.statutLigne !== 'VALIDE' && l.statutLigne !== 'REFUSE' && l.statutLigne !== 'A_RECOMPTER'">...</span>
+
+                <div class="line-actions"
+                  *ngIf="l.statutLigne === 'EN_ATTENTE_AUDIT' || l.statutLigne === 'REFUSE' || l.statutLigne === 'A_RECOMPTER'">
+                  <button class="btn-action-icon success" (click)="validerLigne(l)" title="Tout est logique - Valider">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </button>
+
+                  <button class="btn-action-icon warning" (click)="refaireLigne(l)" title="Doute - Re-compter">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                      <path d="M3 3v5h5"></path>
+                    </svg>
+                  </button>
+
+                  <button class="btn-action-icon danger" (click)="refuserLigne(l)" title="Incohérent - Refuser">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+
+                <span class="badge-valide-inline" *ngIf="l.statutLigne === 'VALIDE'">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  Validé
+                </span>
+              </td>
+            </tr>
+            <tr *ngIf="filteredRows.length === 0">
+              <td colspan="7" class="no-data-msg">Aucun produit ne correspond à votre recherche.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="wizard-overlay-glass" *ngIf="showWizard" (click)="showWizard = false">
+    <div class="wizard-card-neo" (click)="$event.stopPropagation()">
+      <div class="wizard-header">
+        <div class="step-blob active done">1</div>
+        <button class="btn-close-wiz" (click)="showWizard = false">✕</button>
+      </div>
+
+      <div class="wizard-content">
+        <div *ngIf="wizardStep === 1" class="w-step-body animate-slide-in">
+          <h2 class="w-title">Mission d'Audit</h2>
+          <p class="w-subtitle">Paramétrez le cadre et la portée du comptage.</p>
+          <div class="w-form-group">
+            <label>Nom de l'Audit *</label>
+            <input type="text" [(ngModel)]="newReq.nom" placeholder="Ex: Inventaire Principal - Mars 2026">
+          </div>
+          <div class="w-form-group">
+            <label>Stratégie de comptage</label>
+            <div class="w-scope-selector">
+              <div class="scope-card" [class.selected]="newReq.type === 'TOTAL'" (click)="newReq.type = 'TOTAL'">
+                <div class="icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" height="32" width="32"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
+                    <path d="M9 22v-4h6v4" />
+                    <path d="M8 6h.01" />
+                    <path d="M16 6h.01" />
+                    <path d="M12 6h.01" />
+                    <path d="M12 10h.01" />
+                    <path d="M12 14h.01" />
+                    <path d="M16 10h.01" />
+                    <path d="M16 14h.01" />
+                    <path d="M8 10h.01" />
+                    <path d="M8 14h.01" />
+                  </svg>
+                </div>
+                <strong>Total</strong><span>Tous les produits actifs du système</span>
+              </div>
+              <div class="scope-card" [class.selected]="newReq.type === 'PARTIEL_CATEGORIE'"
+                (click)="newReq.type = 'PARTIEL_CATEGORIE'">
+                <div class="icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" height="32" width="32"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+                    <line x1="7" y1="7" x2="7.01" y2="7" />
+                  </svg>
+                </div>
+                <strong>Catégorie</strong><span>Limiter à un groupe de produits</span>
+              </div>
+            </div>
+          </div>
+          <div class="w-form-group animate-slide-in" *ngIf="newReq.type === 'PARTIEL_CATEGORIE'">
+            <label>Sélectionnez la catégorie cible</label>
+            <select class="w-pill-select" [(ngModel)]="targetCatId">
+              <option value="0">Toutes les catégories disponibles...</option>
+              <option *ngFor="let cat of availableCategories" [value]="cat.id">{{ cat.nom }}</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="wizard-footer">
+        <button class="btn-outline-neo" (click)="showWizard = false">Annuler</button>
+        <div class="spacer"></div>
+        <button class="btn-neo-primary" (click)="createAudit()"
+          [disabled]="!newReq.nom || (newReq.type === 'PARTIEL_CATEGORIE' && targetCatId == 0)">Confirmer et Lancer
+          l'Audit</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="custom-dialog-overlay" *ngIf="showRecountDialog" (click)="cancelRecount()">
+    <div class="custom-dialog-card" (click)="$event.stopPropagation()">
+      <div class="custom-dialog-header">
+        <div class="custom-dialog-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+            <path d="M3 3v5h5"></path>
+          </svg>
+        </div>
+        <div class="custom-dialog-titles">
+          <h3>Demande de Re-comptage</h3>
+          <p>Expliquez pourquoi vous demandez un nouveau comptage</p>
+        </div>
+        <button class="custom-dialog-close" (click)="cancelRecount()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="custom-dialog-body">
+        <label class="custom-dialog-label">Motif du re-comptage</label>
+        <textarea class="custom-dialog-textarea" [(ngModel)]="recountMotif"
+          placeholder="Ex: écart anormal détecté, erreur de saisie, article mal rangé..." rows="3" autofocus>
+        </textarea>
+      </div>
+      <div class="custom-dialog-footer">
+        <button class="custom-dialog-btn-cancel" (click)="cancelRecount()">Annuler</button>
+        <button class="custom-dialog-btn-confirm" (click)="confirmRecount()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+            <path d="M3 3v5h5"></path>
+          </svg>
+          Confirmer le Re-comptage
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="inv-print-doc" *ngIf="currentAudit" [ngClass]="'layout-' + (inventaireConfig?.layout || 'MODERN')"
+    [style.--inv-primary]="inventaireConfig?.primaryColor || '#0D9488'"
+    [style.--inv-secondary]="inventaireConfig?.secondaryColor || '#1e293b'"
+    [style.--inv-font-size]="inventaireConfig?.fontSize === 'SMALL' ? '11px' : (inventaireConfig?.fontSize === 'LARGE' ? '14px' : '12px')">
+
+    <div class="inv-print-header">
+      <div class="inv-print-logo-block">
+        <img *ngIf="inventaireConfig?.showLogo && getLogoUrl()" [src]="getLogoUrl()" class="inv-print-logo"
+          alt="Logo" />
+        <div class="inv-print-company">
+          <div class="inv-print-company-name">{{ entreprise?.nom || 'Mon Entreprise' }}</div>
+          <div class="inv-print-company-details" *ngIf="entreprise?.adresse">{{ entreprise?.adresse }}</div>
+          <div class="inv-print-company-details" *ngIf="entreprise?.telephone">Tél: {{ entreprise?.telephone }}</div>
+          <div class="inv-print-company-details" *ngIf="entreprise?.email">{{ entreprise?.email }}</div>
+        </div>
+      </div>
+      <div class="inv-print-title-block">
+        <div class="inv-print-doc-label">RAPPORT D'INVENTAIRE</div>
+        <div class="inv-print-audit-name">{{ currentAudit.nom }}</div>
+        <div class="inv-print-meta">
+          <span class="inv-meta-item">
+            <strong>Type :</strong> {{ currentAudit.type }}
+          </span>
+          <span class="inv-meta-item">
+            <strong>Date :</strong> {{ currentAudit.date | date:'dd/MM/yyyy' }}
+          </span>
+          <span class="inv-meta-item">
+            <strong>Statut :</strong> {{ currentAudit.estValide ? 'VALIDÉ / ARCHIVÉ' : 'EN COURS' }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="inv-print-kpis">
+      <div class="inv-kpi-box">
+        <div class="inv-kpi-val">{{ currentAudit.lignes.length }}</div>
+        <div class="inv-kpi-lbl">Produits</div>
+      </div>
+      <div class="inv-kpi-box">
+        <div class="inv-kpi-val inv-kpi-ok">{{ getConformeCount() }}</div>
+        <div class="inv-kpi-lbl">Conformes</div>
+      </div>
+      <div class="inv-kpi-box">
+        <div class="inv-kpi-val inv-kpi-err">{{ getGapCount() }}</div>
+        <div class="inv-kpi-lbl">Écarts</div>
+      </div>
+      <div class="inv-kpi-box">
+        <div class="inv-kpi-val inv-kpi-warn">{{ getGapTotal() }}</div>
+        <div class="inv-kpi-lbl">Δ Total</div>
+      </div>
+    </div>
+
+    <table class="inv-print-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Désignation</th>
+          <th>Référence</th>
+          <th>Catégorie</th>
+          <th>Responsable</th>
+          <th>Stock Théorique</th>
+          <th>Stock Physique</th>
+          <th>Écart</th>
+          <th>Commentaire</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let l of currentAudit.lignes; let i = index" [class.inv-row-gap]="(l.ecart ?? 0) !== 0">
+          <td class="inv-col-num">{{ i + 1 }}</td>
+          <td class="inv-col-name">{{ l.piece?.designation }}</td>
+          <td class="inv-col-ref"><code>{{ l.piece?.reference }}</code></td>
+          <td class="inv-col-cat">{{ l.piece?.categorie?.nom || '—' }}</td>
+          <td class="inv-col-resp">
+            <span *ngIf="l.responsableLogistique">
+              {{ l.responsableLogistique.firstName }} {{ l.responsableLogistique.lastName }}
+            </span>
+            <span *ngIf="!l.responsableLogistique" style="font-style: italic; opacity: 0.7;">Collectif</span>
+          </td>
+          <td class="inv-col-th text-center">{{ l.stockTheorique }}</td>
+          <td class="inv-col-ph text-center">{{ l.stockPhysique ?? '—' }}</td>
+          <td class="inv-col-ec text-center">
+            <span [class.inv-gap-pos]="(l.ecart ?? 0) > 0" [class.inv-gap-neg]="(l.ecart ?? 0) < 0">
+              {{ (l.ecart ?? 0) > 0 ? '+' : '' }}{{ l.ecart ?? 0 }}
+            </span>
+          </td>
+          <td class="inv-col-com">{{ l.commentaire || '' }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="inv-print-sigs"
+      *ngIf="inventaireConfig?.showSignatureMagasinier || inventaireConfig?.showSignatureClient">
+      <div class="inv-sig-block" *ngIf="inventaireConfig?.showSignatureMagasinier">
+        <div class="inv-sig-line"></div>
+        <div class="inv-sig-label">Responsable Audit</div>
+      </div>
+      <div class="inv-sig-block" *ngIf="inventaireConfig?.showSignatureClient">
+        <div class="inv-sig-line"></div>
+        <div class="inv-sig-label">Directeur / Valideur</div>
+      </div>
+    </div>
+
+    <div class="inv-print-footer">
+      <span *ngIf="inventaireConfig?.footerText">{{ inventaireConfig?.footerText }}</span>
+      <span *ngIf="!inventaireConfig?.footerText">{{ entreprise?.nom }} — Rapport d'inventaire généré le {{
+        currentAudit.date | date:'dd/MM/yyyy' }}</span>
+    </div>
+  </div>
+
+</div>

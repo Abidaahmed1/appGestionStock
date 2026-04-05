@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import jakarta.validation.Valid;
 
 import com.gestionStock.backend.entity.entreprise.Entreprise;
 import com.gestionStock.backend.service.entreprise.EntrepriseService;
@@ -65,7 +66,7 @@ public class EntrepriseController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMINISTRATEUR')")
-    public ResponseEntity<Entreprise> createEntreprise(@RequestBody Entreprise entreprise) {
+    public ResponseEntity<Entreprise> createEntreprise(@Valid @RequestBody Entreprise entreprise) {
         Entreprise savedEntreprise = entrepriseService.saveEntreprise(entreprise);
 
         userService.getCurrentUser().ifPresent(user -> {
@@ -80,7 +81,8 @@ public class EntrepriseController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMINISTRATEUR')")
-    public ResponseEntity<Entreprise> updateEntreprise(@PathVariable Long id, @RequestBody Entreprise entreprise) {
+    public ResponseEntity<Entreprise> updateEntreprise(@PathVariable Long id,
+            @Valid @RequestBody Entreprise entreprise) {
         entreprise.setId(id);
         return ResponseEntity.ok(entrepriseService.saveEntreprise(entreprise));
     }

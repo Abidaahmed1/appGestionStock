@@ -4,8 +4,8 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(15, 23, 42, 0.4);
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -13,12 +13,13 @@
 }
 
 .confirm-modal-content {
-    background: #ffffff;
-    border-radius: 16px;
-    width: 500px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    width: 480px;
     max-width: 90%;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
-    animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    box-shadow: var(--shadow-lg);
+    animation: slideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     overflow: hidden;
 }
 
@@ -27,7 +28,6 @@
         opacity: 0;
         transform: scale(0.95) translateY(-20px);
     }
-
     to {
         opacity: 1;
         transform: scale(1) translateY(0);
@@ -38,71 +38,74 @@
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 24px 32px;
+    padding: 32px 32px 24px 32px;
 }
 
 .warning-icon {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     flex-shrink: 0;
 }
 
 .warning-icon svg {
     width: 100%;
     height: 100%;
+    filter: drop-shadow(0 4px 6px rgba(245, 158, 11, 0.2));
 }
 
 .confirm-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #1e293b;
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--text-primary);
     margin: 0;
+    letter-spacing: -0.01em;
 }
 
 .confirm-body {
-    padding: 0 32px 24px 32px;
+    padding: 0 32px 32px 32px;
 }
 
 .confirm-message {
-    font-size: 0.95rem;
-    color: #64748b;
+    font-size: 1rem;
+    color: var(--text-secondary);
     margin: 0;
     line-height: 1.6;
+    font-weight: 500;
 }
 
 .confirm-divider {
     height: 1px;
-    background-color: #f1f5f9;
+    background-color: var(--border-color);
     width: 100%;
+    opacity: 0.6;
 }
 
 .confirm-actions {
     display: flex;
     flex-direction: row-reverse;
-    /* Put primary action on the right */
     align-items: center;
     gap: 12px;
     padding: 20px 32px;
-    background-color: #f8fafc;
+    background-color: var(--bg-main);
 }
 
 .btn-stay {
-    background-color: #0d9488;
+    background-color: var(--primary);
     color: #ffffff;
     border: none;
-    border-radius: 8px;
-    padding: 11px 24px;
-    font-size: 0.9rem;
-    font-weight: 600;
+    border-radius: 10px;
+    padding: 12px 24px;
+    font-size: 0.95rem;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(13, 148, 136, 0.1);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 6px -1px rgba(13, 148, 136, 0.2);
 }
 
 .btn-stay:hover {
-    background-color: #0f766e;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px rgba(13, 148, 136, 0.2);
+    background-color: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px -2px rgba(13, 148, 136, 0.3);
 }
 
 .btn-stay:active {
@@ -110,24 +113,33 @@
 }
 
 .btn-quit {
-    background-color: transparent;
-    color: #64748b;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
+    background-color: var(--bg-card);
+    color: var(--text-secondary);
+    border: 1.5px solid var(--border-color);
+    border-radius: 10px;
     padding: 11px 24px;
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 0.95rem;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .btn-quit:hover {
-    background-color: #ffffff;
+    background-color: #fef2f2;
     color: #ef4444;
-    border-color: #fecaca;
-    background-color: #fff1f2;
+    border-color: #fca5a5;
+    transform: translateY(-1px);
+}
+
+:host-context(.dark-theme) .btn-quit:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.4);
 }
 
 .btn-quit:active {
-    background-color: #fca5a5;
+    background-color: #fee2e2;
+}
+
+:host-context(.dark-theme) .btn-quit:active {
+    background-color: rgba(239, 68, 68, 0.2);
 }

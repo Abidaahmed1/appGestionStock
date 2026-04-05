@@ -5,12 +5,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import com.gestionStock.backend.entity.entreprise.Entreprise;
@@ -23,6 +24,10 @@ import com.gestionStock.backend.entity.entreprise.Entreprise;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(of = { "id", "reference", "entreprise" })
+@Table(indexes = {
+		@Index(name = "idx_piece_entreprise_designation", columnList = "entreprise_id, designation"),
+		@Index(name = "idx_piece_reference", columnList = "reference")
+})
 @Entity
 public class PieceDetachee {
 
@@ -30,6 +35,7 @@ public class PieceDetachee {
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private Long id;
 
+	@JsonIgnore
 	@ManyToOne
 	@JoinColumn(name = "entreprise_id")
 	private Entreprise entreprise;
@@ -52,6 +58,7 @@ public class PieceDetachee {
 	@Column(columnDefinition = "TEXT")
 	private String imageUrl;
 
+	@NotNull(message = "L'unité est obligatoire")
 	@ManyToOne(cascade = { CascadeType.PERSIST, CascadeType.MERGE })
 	@JoinColumn(name = "unite_id")
 	private Unite unite;
@@ -60,6 +67,7 @@ public class PieceDetachee {
 	@Min(value = 0, message = "La quantité ne peut pas être négative")
 	private Integer quantite = 0;
 
+	@NotBlank(message = "Le code barre est obligatoire")
 	private String codeBarre;
 
 	@Builder.Default
@@ -70,10 +78,12 @@ public class PieceDetachee {
 	@Min(value = 0, message = "Le taux TVA ne peut pas être négatif")
 	private Double tauxTVA = 0.0;
 
+	@JsonIgnore
 	@JsonIgnoreProperties("pieces")
-	@ManyToMany(mappedBy = "pieces", fetch = FetchType.EAGER, cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+	@ManyToMany(mappedBy = "pieces", fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.MERGE })
 	@Builder.Default
 	private Set<ProduitFini> produitsAssocies = new HashSet<>();
+	@NotNull(message = "La catégorie est obligatoire")
 	@ManyToOne(cascade = { CascadeType.PERSIST, CascadeType.MERGE })
 	@JoinColumn(name = "categorie_id")
 	private Categorie categorie;
@@ -81,11 +91,13 @@ public class PieceDetachee {
 	@Column(columnDefinition = "TEXT")
 	private String description;
 
+	@JsonIgnore
 	@JsonManagedReference("piece_details")
 	@OneToMany(mappedBy = "piece", cascade = CascadeType.ALL, orphanRemoval = true)
 	@Builder.Default
 	private List<DetailPiece> details = new ArrayList<>();
 
+	@JsonIgnore
 	@JsonManagedReference("piece_historiques")
 	@OneToMany(mappedBy = "piece", cascade = CascadeType.ALL, orphanRemoval = true)
 	@OrderBy("date DESC")

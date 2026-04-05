@@ -1,10 +1,12 @@
-import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LogistiqueService } from '../../services/logistique.service';
 import { LigneCommande } from '../../models/logistique.models';
 import { EntrepriseService } from '../../../admin/services/entreprise.service';
 import { Entreprise } from '../../../admin/models/entreprise.model';
+import { UserService } from '../../../shared/services/user.service';
+import { Subscription } from 'rxjs';
 
 import { NgApexchartsModule } from "ng-apexcharts";
 
@@ -15,14 +17,19 @@ import { NgApexchartsModule } from "ng-apexcharts";
     templateUrl: './price-tracking.component.html',
     styleUrl: './price-tracking.component.css'
 })
-export class PriceTrackingComponent implements OnInit {
+export class PriceTrackingComponent implements OnInit, OnDestroy {
     priceStats: any[] = [];
     initialized = false;
     searchTerm = '';
     private logistiqueService = inject(LogistiqueService);
     private platformId = inject(PLATFORM_ID);
     private entrepriseService = inject(EntrepriseService);
+    private userService = inject(UserService);
     entreprise: Entreprise | null = null;
+    get currencySymbol(): string {
+        return this.entrepriseService.getDeviseSymbol(this.entreprise);
+    }
+    private themeSubscription?: Subscription;
     selectedPiece: any = null;
     showDropdown = false;
     
@@ -34,16 +41,27 @@ export class PriceTrackingComponent implements OnInit {
         priceStability: 0
     };
 
-    public priceTrendChartOptions: any;
-    public priceCompareChartOptions: any;
-    public detailChartOptions: any;
-    public priceDistributionChartOptions: any;
+    public priceTrendChartOptions: any = { series: [] };
+    public priceCompareChartOptions: any = { series: [] };
+    public detailChartOptions: any = { series: [] };
+    public priceDistributionChartOptions: any = { series: [] };
 
     ngOnInit() {
         if (isPlatformBrowser(this.platformId)) {
             this.loadStats();
             this.loadEntreprise();
+            
+            // Listen for theme changes to update charts
+            this.themeSubscription = this.userService.userSettings$.subscribe(() => {
+                if (this.initialized) {
+                    this.loadStats(); // Re-load or just re-init charts
+                }
+            });
         }
+    }
+
+    ngOnDestroy() {
+        this.themeSubscription?.unsubscribe();
     }
 
     loadEntreprise() {
@@ -113,7 +131,9 @@ export class PriceTrackingComponent implements OnInit {
                 this.initCharts(tempStats, timeSeriesData);
                 this.initialized = true;
             },
-            error: () => {
+            error: (err) => {
+                console.error("Erreur lors du chargement des statistiques:", err);
+                this.initCharts({}, {});
                 this.initialized = true;
             }
         });
@@ -146,9 +166,13 @@ export class PriceTrackingComponent implements OnInit {
             chart: {
                 type: 'area',
                 height: 320,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'inherit',
                 toolbar: { show: false },
-                zoom: { enabled: false }
+                zoom: { enabled: false },
+                background: 'transparent'
+            },
+            theme: {
+                mode: document.body.classList.contains('dark-theme') ? 'dark' : 'light'
             },
             stroke: { curve: 'smooth', width: 3 },
             xaxis: {
@@ -175,7 +199,7 @@ export class PriceTrackingComponent implements OnInit {
                 x: { format: 'dd MMM yyyy' },
                 y: {
                     formatter: (val: number) => {
-                        const symbol = (this.entreprise?.devise?.symbole || 'DT');
+                        const symbol = this.currencySymbol;
                         return val.toFixed(3) + ' ' + symbol;
                     }
                 }
@@ -220,8 +244,12 @@ export class PriceTrackingComponent implements OnInit {
             chart: {
                 type: "bar",
                 height: 350,
-                fontFamily: 'Inter, sans-serif',
-                toolbar: { show: false }
+                fontFamily: 'inherit',
+                toolbar: { show: false },
+                background: 'transparent'
+            },
+            theme: {
+                mode: document.body.classList.contains('dark-theme') ? 'dark' : 'light'
             },
             plotOptions: {
                 bar: {
@@ -244,7 +272,7 @@ export class PriceTrackingComponent implements OnInit {
             colors: ["#3d7a7f", "#94a3b8"],
             tooltip: {
                 y: {
-                    formatter: (val: any) => val.toFixed(3) + " " + (this.entreprise?.devise?.symbole || 'DT')
+                    formatter: (val: any) => val.toFixed(3) + " " + this.currencySymbol
                 }
             }
         };
@@ -270,9 +298,13 @@ export class PriceTrackingComponent implements OnInit {
             chart: {
                 type: "line",
                 height: 350,
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'inherit',
                 zoom: { enabled: false },
-                toolbar: { show: false }
+                toolbar: { show: false },
+                background: 'transparent'
+            },
+            theme: {
+                mode: document.body.classList.contains('dark-theme') ? 'dark' : 'light'
             },
             stroke: {
                 curve: "smooth",
@@ -297,7 +329,7 @@ export class PriceTrackingComponent implements OnInit {
             colors: ["#3d7a7f", "#ea580c", "#db2777", "#16a34a", "#6366f1"],
             tooltip: {
                 x: { format: "dd MMM yyyy" },
-                y: { formatter: (val: any) => val.toFixed(3) + " " + (this.entreprise?.devise?.symbole || 'DT') }
+                y: { formatter: (val: any) => val.toFixed(3) + " " + this.currencySymbol }
             }
         };
 
@@ -320,7 +352,11 @@ export class PriceTrackingComponent implements OnInit {
             chart: {
                 type: "donut",
                 height: 350,
-                fontFamily: 'Inter, sans-serif'
+                fontFamily: 'inherit',
+                background: 'transparent'
+            },
+            theme: {
+                mode: document.body.classList.contains('dark-theme') ? 'dark' : 'light'
             },
             labels: donutLabels,
             colors: ["#3d7a7f", "#ea580c", "#db2777", "#16a34a", "#6366f1", "#94a3b8"],
@@ -333,7 +369,7 @@ export class PriceTrackingComponent implements OnInit {
                             name: { show: true },
                             value: { 
                                 show: true,
-                                formatter: (val: number) => val.toFixed(2) + " " + (this.entreprise?.devise?.symbole || 'DT')
+                                formatter: (val: number) => val.toFixed(2) + " " + this.currencySymbol
                             }
                         }
                     }
@@ -342,7 +378,7 @@ export class PriceTrackingComponent implements OnInit {
             legend: { position: 'bottom' },
             tooltip: {
                 y: {
-                    formatter: (val: number) => val.toFixed(3) + " " + (this.entreprise?.devise?.symbole || 'DT')
+                    formatter: (val: number) => val.toFixed(3) + " " + this.currencySymbol
                 }
             }
         };

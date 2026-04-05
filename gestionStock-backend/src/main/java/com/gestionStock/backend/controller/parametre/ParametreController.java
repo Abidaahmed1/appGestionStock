@@ -93,13 +93,12 @@ public class ParametreController {
         return ResponseEntity.ok(parametreService.getNumerotationConfigs());
     }
 
-    @PutMapping("/{parametreId}/numerotation")
+    @PutMapping("/numerotation")
     @PreAuthorize("hasRole('ADMINISTRATEUR')")
     public ResponseEntity<Parametre> updateNumerotationConfigs(
-            @PathVariable Long parametreId,
             @RequestBody List<NumerotationConfig> configs) {
         try {
-            Parametre updatedParametre = parametreService.updateNumerotationConfigs(parametreId, configs);
+            Parametre updatedParametre = parametreService.updateNumerotationConfigs(configs);
             return ResponseEntity.ok(updatedParametre);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().build();

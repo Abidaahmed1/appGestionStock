@@ -27,7 +27,7 @@ export class PieceConfigurationComponent implements OnInit {
         { value: TypeChamp.NUMBER, label: 'Nombre' },
         { value: TypeChamp.BOOLEAN, label: 'Oui/Non' },
         { value: TypeChamp.DATE, label: 'Date' },
-        { value: TypeChamp.SELECT, label: 'Liste déroulante' },
+
         { value: TypeChamp.LISTE, label: 'Liste de valeurs' },
         { value: TypeChamp.EMAIL, label: 'Email' },
         { value: TypeChamp.URL, label: 'URL' },

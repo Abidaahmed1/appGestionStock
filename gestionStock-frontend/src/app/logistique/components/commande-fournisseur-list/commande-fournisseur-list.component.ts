@@ -68,6 +68,10 @@ export class CommandeFournisseurListComponent implements OnInit {
     private cdr = inject(ChangeDetectorRef);
     private entrepriseService = inject(EntrepriseService);
 
+    get currencySymbol(): string {
+        return this.entrepriseService.getDeviseSymbol(this.entreprise);
+    }
+
     ngOnInit() {
         if (isPlatformBrowser(this.platformId)) {
             this.userRoles = this.keycloak.getUserRoles() || [];
@@ -144,7 +148,7 @@ export class CommandeFournisseurListComponent implements OnInit {
         event.stopPropagation();
         event.preventDefault();
         if (cmd.id != null) {
-            this.router.navigate(['/logistique/commandes', cmd.id], { queryParams: { print: '1' } });
+            this.router.navigate(['/document/preview', cmd.id], { queryParams: { type: 'COMMANDE_FOURNISSEUR' } });
         }
     }
 

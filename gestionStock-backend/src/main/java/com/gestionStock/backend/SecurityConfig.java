@@ -32,6 +32,7 @@ public class SecurityConfig {
 				.authorizeHttpRequests(auth -> auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 						.requestMatchers("/images/**").permitAll().requestMatchers("/api/images/**").permitAll()
 						.requestMatchers("/api/metadata/**").permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/entreprises/**").permitAll()
 						.requestMatchers("/api/entreprises/**").authenticated()
 						.requestMatchers("/api/admin/**").hasRole("ADMINISTRATEUR").requestMatchers("/api/**")
 						.authenticated().anyRequest().permitAll())

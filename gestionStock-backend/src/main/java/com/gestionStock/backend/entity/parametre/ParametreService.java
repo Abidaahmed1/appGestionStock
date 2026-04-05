@@ -1,5 +1,7 @@
 package com.gestionStock.backend.entity.parametre;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -192,18 +194,63 @@ public class ParametreService {
         return List.of(TypeChamp.values());
     }
 
-    public Parametre updateNumerotationConfigs(Long parametreId, List<NumerotationConfig> configs) {
-        Parametre parametre = parametreRepository.findById(parametreId)
-                .orElseThrow(() -> new RuntimeException("Paramètre non trouvé avec l'ID: " + parametreId));
+    public Parametre updateNumerotationConfigs(List<NumerotationConfig> configs) {
+        Entreprise entreprise = userService.getCurrentUserEntreprise();
+        if (entreprise == null)
+            throw new RuntimeException("Entreprise non identifiée");
+
+        Parametre parametre = parametreRepository.findByEntrepriseId(entreprise.getId()).stream()
+                .findFirst()
+                .orElseGet(() -> {
+                    Parametre newParam = Parametre.builder()
+                            .entreprise(entreprise)
+                            .nom("Configuration Système")
+                            .type(TypeChamp.TEXT)
+                            .actif(true)
+                            .ordre(0)
+                            .build();
+                    return parametreRepository.save(newParam);
+                });
 
         parametre.setNumerotationConfigs(configs);
         return parametreRepository.save(parametre);
     }
 
     public List<NumerotationConfig> getNumerotationConfigs() {
-        return getCurrentParametres().stream()
+        List<NumerotationConfig> configs = getCurrentParametres().stream()
                 .flatMap(p -> p.getNumerotationConfigs().stream())
                 .collect(Collectors.toList());
+
+        if (configs.isEmpty()) {
+            return getDefaultModules();
+        }
+        return configs;
+    }
+
+    private List<NumerotationConfig> getDefaultModules() {
+        return Arrays.asList(
+                new NumerotationConfig("PIECE", "REF-", "00001", "AUCUN", true, true),
+                new NumerotationConfig("PRODUIT", "PRODUIT-", "00001", "AUCUN", true, true),
+                new NumerotationConfig("CATEGORIE", "CATEGORIE-", "00001", "AUCUN", true, true),
+                new NumerotationConfig("BON_COMMANDE", "BON_COMMANDE-", "00001", "AUCUN", true, true),
+                new NumerotationConfig("BON_SORTIE", "BON_SORTIE-", "00001", "AUCUN", true, true),
+                new NumerotationConfig("BON_ENTREE", "BON_ENTREE-", "00001", "AUCUN", true, true),
+                new NumerotationConfig("BON_RETOUR", "BON_RETOUR-", "00001", "AUCUN", true, true),
+                new NumerotationConfig("FOURNISSEUR", "FOUR-", "00001", "AUCUN", true, true));
+    }
+
+    public void initializeDefaultParameters(Entreprise entreprise) {
+        if (parametreRepository.findByEntrepriseId(entreprise.getId()).isEmpty()) {
+            Parametre systemParam = Parametre.builder()
+                    .entreprise(entreprise)
+                    .nom("Configuration Système")
+                    .type(TypeChamp.TEXT)
+                    .actif(true)
+                    .ordre(0)
+                    .numerotationConfigs(getDefaultModules())
+                    .build();
+            parametreRepository.save(systemParam);
+        }
     }
 
     public boolean validerValeurParametre(Parametre parametre, String valeur) {

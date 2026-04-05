@@ -22,6 +22,13 @@ public class UserController {
 		this.userService = userService;
 	}
 
+	@GetMapping("/me")
+	public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal Jwt jwt) {
+		return userService.findUserByJwt(jwt)
+				.map(ResponseEntity::ok)
+				.orElse(ResponseEntity.notFound().build());
+	}
+
 	@PutMapping("/profile")
 	public ResponseEntity<?> updateProfile(@AuthenticationPrincipal Jwt jwt,
 			@RequestBody Map<String, String> profileData) {
@@ -33,7 +40,7 @@ public class UserController {
 
 			keycloakAdminService.updateUserProfile(userId, firstName, lastName, email);
 
-			userService.getUserById(userId).ifPresent(user -> {
+			userService.findUserByJwt(jwt).ifPresent(user -> {
 				user.setFirstName(firstName);
 				user.setLastName(lastName);
 				user.setEmail(email);
@@ -65,6 +72,37 @@ public class UserController {
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body("Error updating password: " + e.getMessage());
+		}
+	}
+
+	@PutMapping("/appearance")
+	public ResponseEntity<?> updateAppearance(@AuthenticationPrincipal Jwt jwt,
+			@RequestBody Map<String, String> appearanceData) {
+		try {
+			userService.findUserByJwt(jwt).ifPresent(user -> {
+				user.setTheme(appearanceData.get("theme"));
+				user.setAccentColor(appearanceData.get("accentColor"));
+				userService.createUser(user); // Save/Update
+			});
+			return ResponseEntity.ok().build();
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+		}
+	}
+
+	@PutMapping("/notifications")
+	public ResponseEntity<?> updateNotifications(@AuthenticationPrincipal Jwt jwt,
+			@RequestBody Map<String, Object> notificationData) {
+		try {
+			userService.findUserByJwt(jwt).ifPresent(user -> {
+				user.setEmailOrders((Boolean) notificationData.get("emailOrders"));
+				user.setEmailStock((Boolean) notificationData.get("emailStock"));
+				user.setPushAlerts((Boolean) notificationData.get("pushAlerts"));
+				userService.createUser(user); // Save/Update
+			});
+			return ResponseEntity.ok().build();
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
 		}
 	}
 }

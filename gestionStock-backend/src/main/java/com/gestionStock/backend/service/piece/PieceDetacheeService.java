@@ -40,8 +40,9 @@ public class PieceDetacheeService {
     private final UserService userService;
     private final UniteRepository uniteRepo;
     private final com.gestionStock.backend.entity.parametre.NumerotationService numerotationService;
+    private final jakarta.persistence.EntityManager entityManager;
 
-    private void recordHistory(PieceDetachee piece, String action, String details) {
+    public void recordHistory(PieceDetachee piece, String action, String details) {
         try {
             com.gestionStock.backend.entity.user.User currentUser = userService.getCurrentUser().orElse(null);
             com.gestionStock.backend.entity.piece.PieceHistorique history = com.gestionStock.backend.entity.piece.PieceHistorique
@@ -161,7 +162,6 @@ public class PieceDetacheeService {
         PieceDetachee firstSaved = null;
         int variantCount = template.getVariations().size();
         for (PieceDetachee variant : template.getVariations()) {
-            // Inherit common fields from template
             variant.setDesignation(template.getDesignation());
             variant.setCategorie(template.getCategorie());
             variant.setUnite(template.getUnite());
@@ -180,17 +180,14 @@ public class PieceDetacheeService {
                 variant.setTauxTVA(template.getTauxTVA() != null ? template.getTauxTVA() : 0.0);
             }
 
-            // If the variant doesn't have its own archive status, use template's
             if (variant.getArchivee() == null)
                 variant.setArchivee(template.getArchivee() != null ? template.getArchivee() : false);
 
-            // Save without firing individual notifications
             PieceDetachee saved = saveSinglePieceNoNotify(variant);
             if (firstSaved == null)
                 firstSaved = saved;
         }
 
-        // Send a single consolidated notification for the whole variant group
         if (firstSaved != null) {
             notificationService.createNotificationForRoles(
                     "Nouvelle pièce avec variantes ajoutée",
@@ -205,7 +202,6 @@ public class PieceDetacheeService {
 
     private PieceDetachee saveSinglePiece(PieceDetachee piece) {
         PieceDetachee saved = saveSinglePieceNoNotify(piece);
-        // Notify RESPONSABLE_LOGISTIQUE and ADMINISTRATEUR on single piece creation
         notificationService.createNotificationForRoles(
                 "Nouvelle pièce ajoutée",
                 "La pièce '" + saved.getDesignation()
@@ -216,9 +212,6 @@ public class PieceDetacheeService {
         return saved;
     }
 
-    /**
-     * Saves a piece without firing a notification — used by bulk variant saving.
-     */
     private PieceDetachee saveSinglePieceNoNotify(PieceDetachee piece) {
         com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
 
@@ -286,8 +279,6 @@ public class PieceDetacheeService {
                     p.setImageUrl(imageUrl);
                     PieceDetachee saved = pieceRepo.save(p);
 
-                    // Propagate image to all sibling variants (same designation + entreprise, no
-                    // image yet)
                     if (p.getEntreprise() != null && p.getDesignation() != null) {
                         pieceRepo.findByArchiveeAndEntreprise(false, p.getEntreprise())
                                 .stream()
@@ -308,13 +299,70 @@ public class PieceDetacheeService {
     public PieceDetachee updateQuantity(Long id, Integer quantityToAdd) {
         PieceDetachee piece = pieceRepo.findById(id)
                 .orElseThrow(() -> new com.gestionStock.backend.exceptions.PieceException("Pièce non trouvée"));
-        int current = piece.getQuantite() != null ? piece.getQuantite() : 0;
-        piece.setQuantite(current + quantityToAdd);
+
+        int previousQty = piece.getQuantite() != null ? piece.getQuantite() : 0;
+        int newQty = previousQty + quantityToAdd;
+        piece.setQuantite(newQty);
+
         PieceDetachee saved = pieceRepo.save(piece);
         recordHistory(saved, "Mise à jour stock",
                 "Quantité " + (quantityToAdd >= 0 ? "ajoutée: " : "retirée: ") + Math.abs(quantityToAdd)
                         + ". Nouveau total: " + saved.getQuantite());
+
+        checkStockAlerts(saved, previousQty);
+
         return saved;
+    }
+
+    private void checkStockAlerts(PieceDetachee piece, int previousQty) {
+        int newQty = piece.getQuantite() != null ? piece.getQuantite() : 0;
+        int minSeuil = piece.getSeuilMinimum() > 0 ? piece.getSeuilMinimum() : 0;
+        String designation = piece.getDesignation();
+        String ref = piece.getReference();
+
+        String variantLabel = "";
+        if (piece.getDetails() != null && !piece.getDetails().isEmpty()) {
+            try {
+                String v = piece.getDetails().stream()
+                        .filter(d -> d != null && d.getParametre() != null && d.getValeur() != null
+                                && !d.getValeur().trim().isEmpty())
+                        .map(d -> d.getParametre().getNom() + ": " + d.getValeur())
+                        .collect(java.util.stream.Collectors.joining(", "));
+                if (!v.isEmpty())
+                    variantLabel = " [" + v + "]";
+            } catch (Exception ignored) {
+            }
+        }
+
+        try {
+            if (newQty == 0 && previousQty > 0) {
+                notificationService.createNotificationForRoles(
+                        "⚠️ Rupture de Stock",
+                        "ALERTE ! La pièce '" + designation + variantLabel + "' (Réf: " + ref
+                                + ") est en RUPTURE DE STOCK. Réapprovisionnement urgent requis.",
+                        NotificationType.RUPTURE_STOCK,
+                        List.of(
+                                Role.ADMINISTRATEUR,
+                                Role.RESPONSABLE_LOGISTIQUE,
+                                Role.MAGASINIER,
+                                Role.AUDITEUR),
+                        piece.getId());
+
+            } else if (newQty > 0 && newQty < minSeuil && previousQty >= minSeuil) {
+                notificationService.createNotificationForRoles(
+                        "⚡ Stock Faible – " + designation,
+                        "Attention ! La pièce '" + designation + variantLabel + "' (Réf: " + ref
+                                + ") est passée sous son seuil minimum.\nQuantité actuelle: " + newQty
+                                + " / Seuil min: " + minSeuil + ". Pensez à commander.",
+                        NotificationType.WARNING,
+                        List.of(
+                                Role.ADMINISTRATEUR,
+                                Role.RESPONSABLE_LOGISTIQUE),
+                        piece.getId());
+            }
+        } catch (Exception e) {
+            System.err.println("[STOCK ALERT] Erreur lors de l'envoi de la notification de stock: " + e.getMessage());
+        }
     }
 
     public void delete(Long id) {
@@ -322,23 +370,9 @@ public class PieceDetacheeService {
         if (p == null)
             return;
 
-        // Check for Stock
-        boolean hasStock = (p.getQuantite() != null && p.getQuantite() > 0);
-        if (hasStock) {
-            throw new IllegalStateException(
-                    "Impossible de supprimer la pièce '" + p.getDesignation() +
-                            "' car elle possède encore du stock disponible. Veuillez d'abord vider le stock.");
-        }
-
-        // Check for Associated Finished Products
-        if (p.getProduitsAssocies() != null && !p.getProduitsAssocies().isEmpty()) {
-            throw new IllegalStateException(
-                    "Impossible de supprimer la pièce '" + p.getDesignation() +
-                            "' car elle est encore associée à des produits finis.");
-        }
-
         p.setArchivee(true);
         this.pieceRepo.save(p);
+        recordHistory(p, "Archivage", "Pièce archivée par l'utilisateur");
     }
 
     public PieceDetachee findByReference(String reference) {
@@ -350,10 +384,32 @@ public class PieceDetacheeService {
     }
 
     public PieceDetachee update(Long id, PieceDetachee piece) {
-        PieceDetachee existingPiece = pieceRepo.findById(id)
-                .orElseThrow(() -> new PieceException("Pièce non trouvée avec l'ID : " + id));
+        // System.out.println("[DEBUG] Service.update called for ID: " + id + " |
+        // Designation: " + piece.getDesignation());
+        return updateInternal(id, piece, true);
+    }
 
-        // --- Snapshot for history ---
+    private PieceDetachee updateInternal(Long id, PieceDetachee piece, boolean isRoot) {
+        // System.out.println("[DEBUG] updateInternal called for ID: " + id);
+
+        entityManager.clear();
+
+        java.util.Optional<PieceDetachee> opt = pieceRepo.findById(id);
+
+        if (opt.isEmpty() && piece.getReference() != null) {
+            System.out.println("[DEBUG] findById failed for " + id + ", trying fallback by reference...");
+            opt = pieceRepo.findByReferenceAndEntreprise(piece.getReference(), userService.getCurrentUserEntreprise());
+        }
+
+        if (opt.isEmpty()) {
+            System.err.println("[ERROR] Final check: Piece NOT FOUND even with fallback for ID: " + id);
+            throw new PieceException("Pièce non trouvée avec l'ID : " + id);
+        }
+
+        PieceDetachee existingPiece = opt.get();
+        System.out.println("[DEBUG] Success! Working with piece: " + existingPiece.getDesignation() + " (ID: "
+                + existingPiece.getId() + ")");
+
         PieceDetachee oldState = PieceDetachee.builder()
                 .designation(existingPiece.getDesignation())
                 .reference(existingPiece.getReference())
@@ -395,7 +451,7 @@ public class PieceDetacheeService {
 
         checkBarcodeDuplicate(existingPiece, entreprise);
 
-        System.out.println("[ANTIGRAVITY] Incoming Produits size: "
+        System.out.println("Incoming Produits size: "
                 + (piece.getProduitsAssocies() != null ? piece.getProduitsAssocies().size() : 0));
 
         handleCategory(piece);
@@ -444,7 +500,6 @@ public class PieceDetacheeService {
             }
         }
 
-        // 4. Many-to-Many Synchronization (OWNER SIDE IS PRODUIT FINI)
         Set<ProduitFini> incomingProduits = piece.getProduitsAssocies() != null ? piece.getProduitsAssocies()
                 : new HashSet<>();
         Set<Long> incomingIds = incomingProduits.stream()
@@ -452,33 +507,33 @@ public class PieceDetacheeService {
                 .map(ProduitFini::getId)
                 .collect(Collectors.toSet());
 
-        // Products to REMOVE (were associated but not in incoming)
         Set<ProduitFini> currentlyAssociated = new HashSet<>(existingPiece.getProduitsAssocies());
-        for (ProduitFini prod : currentlyAssociated) {
-            if (!incomingIds.contains(prod.getId())) {
-                ProduitFini managedProd = produitRepo.findById(prod.getId()).orElse(null);
-                if (managedProd != null) {
-                    managedProd.getPieces().remove(existingPiece);
-                    produitRepo.save(managedProd);
-                }
-                existingPiece.getProduitsAssocies().remove(prod);
-            }
-        }
-
-        // Products to ADD (in incoming but not currently associated)
         Set<Long> currentIds = currentlyAssociated.stream().map(ProduitFini::getId).collect(Collectors.toSet());
-        for (ProduitFini prod : incomingProduits) {
-            if (prod.getId() != null && !currentIds.contains(prod.getId())) {
-                ProduitFini managedProd = produitRepo.findById(prod.getId()).orElse(null);
-                if (managedProd != null) {
-                    managedProd.getPieces().add(existingPiece);
-                    produitRepo.save(managedProd);
-                    existingPiece.getProduitsAssocies().add(managedProd);
+
+        boolean associationsChanged = !currentIds.equals(incomingIds);
+        if (associationsChanged) {
+            for (ProduitFini prod : currentlyAssociated) {
+                if (!incomingIds.contains(prod.getId())) {
+                    ProduitFini managedProd = produitRepo.findById(prod.getId()).orElse(null);
+                    if (managedProd != null) {
+                        managedProd.getPieces().remove(existingPiece);
+                        produitRepo.save(managedProd);
+                    }
+                    existingPiece.getProduitsAssocies().remove(prod);
+                }
+            }
+            for (ProduitFini prod : incomingProduits) {
+                if (prod.getId() != null && !currentIds.contains(prod.getId())) {
+                    ProduitFini managedProd = produitRepo.findById(prod.getId()).orElse(null);
+                    if (managedProd != null) {
+                        managedProd.getPieces().add(existingPiece);
+                        produitRepo.save(managedProd);
+                        existingPiece.getProduitsAssocies().add(managedProd);
+                    }
                 }
             }
         }
 
-        // --- Build History Diff BEFORE Saving ---
         String changeDetails = buildChangeDescription(oldState, existingPiece);
         if (detailDiff.length() > 0) {
             changeDetails += " | Détails Variantes : " + detailDiff.toString();
@@ -486,14 +541,12 @@ public class PieceDetacheeService {
 
         PieceDetachee saved = pieceRepo.save(existingPiece);
 
-        // --- Handle Variations Update recursively ---
         if (piece.getVariations() != null && !piece.getVariations().isEmpty()) {
             Set<Long> incomingVariantIds = piece.getVariations().stream()
                     .filter(v -> v.getId() != null)
                     .map(PieceDetachee::getId)
                     .collect(Collectors.toSet());
 
-            // 1. Archive siblings that are no longer present in the payload
             pieceRepo.findByArchiveeAndEntreprise(false, entreprise)
                     .stream()
                     .filter(s -> !s.getId().equals(id)
@@ -507,18 +560,19 @@ public class PieceDetacheeService {
                         }
                     });
 
-            // 2. Update existing variants or create new ones
             for (PieceDetachee vReq : piece.getVariations()) {
-                // Force inheritance of template fields
+                if (vReq.getId() != null && vReq.getId().equals(id)) {
+                    continue;
+                }
+
                 vReq.setDesignation(saved.getDesignation());
                 vReq.setCategorie(saved.getCategorie());
                 vReq.setUnite(saved.getUnite());
 
                 if (vReq.getId() != null) {
-                    // Prevent circular recursion: Clear variations of variations
                     List<PieceDetachee> subVars = vReq.getVariations();
                     vReq.setVariations(null);
-                    update(vReq.getId(), vReq);
+                    updateInternal(vReq.getId(), vReq, false);
                     vReq.setVariations(subVars);
                 } else {
                     saveSinglePieceNoNotify(vReq);
@@ -527,9 +581,9 @@ public class PieceDetacheeService {
         }
 
         recordHistory(saved, "Modification", changeDetails);
-        pieceRepo.flush();
-        System.out.println("[ANTIGRAVITY] Piece updated successfully. Final Produits size: "
-                + (saved.getProduitsAssocies() != null ? saved.getProduitsAssocies().size() : 0));
+        if (isRoot) {
+            pieceRepo.flush();
+        }
         return pieceRepo.findById(id).orElse(saved);
     }
 

@@ -8,6 +8,7 @@ export interface UserRepresentation {
     emailVerified?: boolean;
     attributes?: { [key: string]: string[] };
     role?: string;
+    createdTimestamp?: number;
 }
 
 export interface RoleRepresentation {

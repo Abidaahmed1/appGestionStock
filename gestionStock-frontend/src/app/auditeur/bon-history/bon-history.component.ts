@@ -24,6 +24,10 @@ export class BonHistoryComponent implements OnInit {
     loading = false;
     entreprise: Entreprise | null = null;
 
+    get currencySymbol(): string {
+        return this.entrepriseService.getDeviseSymbol(this.entreprise);
+    }
+
     // Advanced filters
     showAdvancedFilter = false;
     filterType: string = '';

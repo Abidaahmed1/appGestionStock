@@ -14,6 +14,9 @@
         </div>
     </div>
 
+    <!-- Full-screen backdrop: blocks native <select>/<input[date]> from bleeding through -->
+    <div class="notifications-backdrop" *ngIf="showDropdown" (click)="toggleDropdown()"></div>
+
     <!-- Panel Sidebar Content -->
     <div class="notifications-dropdown" *ngIf="showDropdown">
         <div class="dropdown-header">

@@ -60,7 +60,8 @@
                     {{ commande.numeroCmd }}
                 </span>
                 <ng-template #newBadge>
-                    <span class="badge-new">Nouveau (Génération AUTO)</span>
+                    <span class="badge-new" *ngIf="isAutoNumeroCmd">NOUVEAU (GÉNÉRATION AUTO)</span>
+                    <span class="badge-new" *ngIf="!isAutoNumeroCmd">NOUVELLE COMMANDE (SAISIE MANUELLE)</span>
                 </ng-template>
             </h1>
         </div>
@@ -104,25 +105,28 @@
                     <div class="input-wrapper">
                         <ng-container *ngIf="isAutoNumeroCmd">
                             <div class="auto-info-badge">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                </svg>
                                 Généré automatiquement ({{ getPrefix('BON_COMMANDE') }}...)
                             </div>
-                            <small class="format-hint info-text" style="display: block; margin-top: 4px; color: #666; font-size: 0.85em;">
-                                <i class="fas fa-info-circle" style="margin-right: 4px;"></i> {{ getFormatExplanation('BON_COMMANDE') }}
+                            <small class="format-hint">
+                                <i class="fas fa-info-circle"></i> {{ getFormatExplanation('BON_COMMANDE') }}
                             </small>
                         </ng-container>
 
                         <ng-container *ngIf="!isAutoNumeroCmd">
                             <input type="text" [(ngModel)]="commande.numeroCmd" name="numeroCmd"
-                                [placeholder]="'Ex: ' + getPrefix('BON_COMMANDE') + '100'" 
-                                class="form-control" [disabled]="!isEditable" required>
+                                [placeholder]="'Ex: ' + (getPrefix('BON_COMMANDE') || 'BC-') + '100'"
+                                class="form-control" [disabled]="!isEditable || isEditMode" required>
                             <i class="icon-help" [title]="getFormatExplanation('BON_COMMANDE')">?</i>
-                            <small class="format-hint info-text" style="display: block; margin-top: 4px; color: #666; font-size: 0.85em;">
-                                <i class="fas fa-info-circle" style="margin-right: 4px;"></i> {{ getFormatExplanation('BON_COMMANDE') }}
+                            <small class="format-hint">
+                                <i class="fas fa-info-circle"></i> {{ getFormatExplanation('BON_COMMANDE') }}
                             </small>
                         </ng-container>
                     </div>
-                    <div class="field-error" *ngIf="errors['numeroCmd']">{{ errors['numeroCmd'] }}</div>
                 </div>
 
 
@@ -183,18 +187,24 @@
                         <tr *ngFor="let ligne of commande.lignes; let i = index">
                             <td>
                                 <div class="searchable-dropdown" (click)="onDropdownClick($event)">
-                                    <div class="search-input-wrapper" [class.has-selection]="ligne.piece && openDropdownIndex !== i">
+                                    <div class="search-input-wrapper"
+                                        [class.has-selection]="ligne.piece && openDropdownIndex !== i">
                                         <ng-container *ngIf="ligne.piece && openDropdownIndex !== i; else searchInput">
-                                            <div class="selected-piece-display" (click)="toggleDropdown(i, $event)" [class.disabled]="!isEditable">
+                                            <div class="selected-piece-display" (click)="toggleDropdown(i, $event)"
+                                                [class.disabled]="!isEditable">
                                                 <span class="piece-root-name">{{ getPieceRootName(ligne) }}</span>
-                                                <div class="piece-variants" *ngIf="getPieceVariantArray(ligne).length > 0">
-                                                    <span class="variant-chip" *ngFor="let attr of getPieceVariantArray(ligne)">{{ attr }}</span>
+                                                <div class="piece-variants"
+                                                    *ngIf="getPieceVariantArray(ligne).length > 0">
+                                                    <span class="variant-chip"
+                                                        *ngFor="let attr of getPieceVariantArray(ligne)">{{ attr
+                                                        }}</span>
                                                 </div>
                                             </div>
                                             <span class="dropdown-arrow">▼</span>
                                         </ng-container>
                                         <ng-template #searchInput>
-                                            <input type="text" [ngModel]="openDropdownIndex === i ? pieceSearchText : getPieceDisplayValue(i, ligne)"
+                                            <input type="text"
+                                                [ngModel]="openDropdownIndex === i ? pieceSearchText : getPieceDisplayValue(i, ligne)"
                                                 (ngModelChange)="onPieceSearchChange($event)"
                                                 (click)="toggleDropdown(i, $event)" placeholder="Ajouter un produit..."
                                                 class="table-input" [disabled]="!isEditable">
@@ -206,8 +216,26 @@
                                         <div class="results-scroll">
                                             <div *ngFor="let p of filteredPieces" (click)="selectPiece(i, p)"
                                                 class="result-item">
-                                                <span class="item-name">{{ p.designation }}</span>
-                                                <span class="item-ref" *ngIf="p.reference">[{{ p.reference }}]</span>
+                                                <div class="result-details">
+                                                    <span class="item-name">{{ p.aggregatedDesignation || p.designation
+                                                        }}</span>
+                                                    <div class="piece-variants"
+                                                        *ngIf="getFilteredVariantsForPiece(p).length > 0">
+                                                        <span class="variant-chip"
+                                                            *ngFor="let attr of getFilteredVariantsForPiece(p)">{{ attr
+                                                            }}</span>
+                                                    </div>
+                                                </div>
+                                                <div class="result-right">
+                                                    <span class="item-ref" *ngIf="p.reference">[{{ p.reference
+                                                        }}]</span>
+                                                    <div class="stock-badges">
+                                                        <span class="badge-rupture"
+                                                            *ngIf="(p.originalPiece?.quantite || p.quantite) <= 0">RUPTURE</span>
+                                                        <span class="badge-alerte"
+                                                            *ngIf="(p.originalPiece?.quantite || p.quantite) > 0 && (p.originalPiece?.quantite || p.quantite) <= (p.originalPiece?.seuilMinimum || 0)">RÉSERVE</span>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div class="no-results" *ngIf="filteredPieces.length === 0">
                                                 Aucun produit trouvé
@@ -249,7 +277,7 @@
                             </td>
                             <td class="text-right">
                                 {{ (ligne.qteCmd * (ligne.prixAchat || 0) * (1 - (ligne.remise || 0)/100)) |
-                                number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT' }}
+                                number:'1.3-3' }} {{ currencySymbol }}
                             </td>
                             <td>
                                 <button (click)="removeLigne(i)" class="btn-icon" *ngIf="isEditable">×</button>
@@ -302,7 +330,7 @@
                                             </div>
                                         </td>
                                         <td class="text-right">{{ pf.prixAchat | number:'1.3-3' }} {{
-                                            entreprise?.devise?.symbole || 'DT' }}</td>
+                                            currencySymbol }}</td>
                                         <td class="text-right">{{ pf.tauxRemise || 0 }}%</td>
                                         <td class="text-right">{{ pf.qteMinACommander || 1 }}</td>
                                         <td class="text-right">{{ pf.nbJoursLivraison || 0 }}</td>
@@ -327,41 +355,50 @@
             <div class="totals-area">
                 <div class="total-row">
                     <span>Montant brut:</span>
-                    <span class="total-value">{{ totalBrut | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT'
+                    <span class="total-value">{{ totalBrut | number:'1.3-3' }} {{ currencySymbol
                         }}</span>
                 </div>
                 <div class="total-row">
                     <span>Remise:</span>
-                    <span class="total-value">- {{ totalRemise | number:'1.3-3' }} {{ entreprise?.devise?.symbole ||
-                        'DT' }}</span>
+                    <span class="total-value">- {{ totalRemise | number:'1.3-3' }} {{ currencySymbol }}</span>
                 </div>
                 <div class="total-row highlight-row">
                     <span>Montant après remise:</span>
-                    <span class="total-value">{{ totalHT | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT'
+                    <span class="total-value">{{ totalHT | number:'1.3-3' }} {{ currencySymbol
                         }}</span>
                 </div>
                 <div class="total-row">
                     <span>Montant taxes:</span>
-                    <span class="total-value">{{ totalTaxe | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT'
+                    <span class="total-value">{{ totalTaxe | number:'1.3-3' }} {{ currencySymbol
                         }}</span>
                 </div>
                 <div class="total-row main-total">
                     <span>Total:</span>
-                    <span class="total-value">{{ totalTTC | number:'1.3-3' }} {{ entreprise?.devise?.symbole || 'DT'
+                    <span class="total-value">{{ totalTTC | number:'1.3-3' }} {{ currencySymbol
                         }}</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="print-only-container" [class.visible-on-screen]="isPrintView">
-        <header class="po-header">
+    <div class="print-only-container" [class.visible-on-screen]="isPrintView"
+        [class]="'layout-' + (docSetting?.layout || 'MODERN')" [class]="'font-' + (docSetting?.fontSize || 'MEDIUM')"
+        [style.--po-primary]="docSetting?.primaryColor || '#0D9488'"
+        [style.--po-secondary]="docSetting?.secondaryColor || '#1e293b'">
+        <header class="po-header" [style.border-bottom-color]="docSetting?.primaryColor || '#0D9488'">
+            <div class="po-logo-container" *ngIf="docSetting?.showLogo">
+                <img [src]="entreprise?.logoUrl || 'assets/images/logo-placeholder.png'" class="po-logo"
+                    *ngIf="entreprise?.logoUrl">
+                <div class="po-logo-placeholder" *ngIf="!entreprise?.logoUrl">LOGO</div>
+            </div>
             <div class="po-company">
-                <strong class="po-company-name">{{ entreprise?.nom || 'Nom de l\'entreprise' }}</strong>
+                <strong class="po-company-name" [style.color]="docSetting?.primaryColor || '#0D9488'">{{ entreprise?.nom
+                    || 'Nom de l\'entreprise' }}</strong>
                 <span class="po-company-line">{{ entreprise?.adresse || 'Spécialiste de la Gestion de Stock' }}</span>
             </div>
             <div class="po-doc-meta">
-                <h1 class="po-doc-title">BON DE COMMANDE</h1>
+                <h1 class="po-doc-title" [style.background-color]="docSetting?.primaryColor || '#0D9488'"
+                    [style.color]="docSetting?.secondaryColor || '#ffffff'">BON DE COMMANDE</h1>
                 <div class="po-ref">
                     <span class="po-ref-label">Réf.</span>
                     <span class="po-ref-value">{{ commande.numeroCmd }}</span>
@@ -391,44 +428,67 @@
         </section>
 
         <table class="po-table">
-            <thead>
-                <tr>
+            <thead [style.background-color]="docSetting?.primaryColor || '#f8fafc'">
+                <tr [style.color]="docSetting?.primaryColor ? '#ffffff' : '#475569'">
                     <th class="po-th-desc">Désignation</th>
                     <th class="po-th-num">Qté</th>
-                    <th class="po-th-num">Prix unit. ({{ entreprise?.devise?.symbole || 'DT' }})</th>
-                    <th class="po-th-num">Remise %</th>
-                    <th class="po-th-num">Montant HT ({{ entreprise?.devise?.symbole || 'DT' }})</th>
+                    <th class="po-th-num" *ngIf="docSetting?.showPriceHT">Prix unit. ({{ currencySymbol }})</th>
+                    <th class="po-th-num" *ngIf="docSetting?.showDiscount">Remise %</th>
+                    <th class="po-th-num">Total HT ({{ currencySymbol }})</th>
                 </tr>
             </thead>
             <tbody>
                 <tr *ngFor="let ligne of commande.lignes">
-                    <td class="po-td-desc">{{ getPieceDesignation(ligne) }}</td>
+                    <td class="po-td-desc">{{ getPieceDisplayValueByLigne(ligne) }}</td>
                     <td class="po-td-num">{{ ligne.qteCmd }}</td>
-                    <td class="po-td-num">{{ (ligne.prixAchat || 0) | number:'1.3-3' }}</td>
-                    <td class="po-td-num">{{ (ligne.remise || 0) }}%</td>
-                    <td class="po-td-num">{{ (ligne.qteCmd * (ligne.prixAchat || 0) * (1 - (ligne.remise || 0)/100)) |
+                    <td class="po-th-num" *ngIf="docSetting?.showPriceHT">{{ (ligne.prixAchat || 0) | number:'1.3-3' }}
+                    </td>
+                    <td class="po-th-num" *ngIf="docSetting?.showDiscount">{{ (ligne.remise || 0) }}%</td>
+                    <td class="po-th-num">{{ (ligne.qteCmd * (ligne.prixAchat || 0) * (1 - (ligne.remise || 0)/100)) |
                         number:'1.3-3' }}</td>
                 </tr>
             </tbody>
         </table>
 
         <footer class="po-footer">
-            <div class="po-signature">
-                <div class="po-signature-label">Cachet et signature du fournisseur</div>
-                <div class="po-signature-line"></div>
+            <div class="po-footer-content-left">
+                <div class="po-footer-text" *ngIf="docSetting?.footerText">
+                    {{ docSetting?.footerText }}
+                </div>
+                <div class="po-signatures">
+                    <div class="po-signature" *ngIf="docSetting?.showSignatureMagasinier">
+                        <div class="po-signature-label">Signature Responsable Magasin</div>
+                        <div class="po-signature-line"></div>
+                    </div>
+                    <div class="po-signature" *ngIf="docSetting?.showSignatureClient">
+                        <div class="po-signature-label">Cachet et signature du fournisseur</div>
+                        <div class="po-signature-line"></div>
+                    </div>
+                </div>
             </div>
             <div class="po-totals">
-                <div class="po-totals-row"><span>Total brut</span><span>{{ totalBrut | number:'1.3-3' }} {{
-                        entreprise?.devise?.symbole || 'DT' }}</span></div>
-                <div class="po-totals-row"><span>Total remise</span><span>-{{ totalRemise | number:'1.3-3' }} {{
-                        entreprise?.devise?.symbole || 'DT' }}</span>
+                <div class="po-totals-row">
+                    <span>Total brut</span>
+                    <span>{{ totalBrut | number:'1.3-3' }} {{ currencySymbol }}</span>
                 </div>
-                <div class="po-totals-row"><span>Total HT</span><span>{{ totalHT | number:'1.3-3' }} {{
-                        entreprise?.devise?.symbole || 'DT' }}</span></div>
-                <div class="po-totals-row"><span>Total TVA</span><span>{{ totalTaxe | number:'1.3-3' }} {{
-                        entreprise?.devise?.symbole || 'DT' }}</span></div>
-                <div class="po-totals-row po-totals-ttc"><span>Total TTC</span><span>{{ totalTTC | number:'1.3-3' }}
-                        {{ entreprise?.devise?.symbole || 'DT' }}</span></div>
+                <div class="po-totals-row" *ngIf="docSetting?.showDiscount && totalRemise > 0">
+                    <span>Total remise</span>
+                    <span>-{{ totalRemise | number:'1.3-3' }} {{ currencySymbol }}</span>
+                </div>
+                <div class="po-totals-row" *ngIf="docSetting?.showTVA || docSetting?.showDiscount">
+                    <span>Total HT</span>
+                    <span>{{ totalHT | number:'1.3-3' }} {{ currencySymbol }}</span>
+                </div>
+                <div class="po-totals-row" *ngIf="docSetting?.showTVA">
+                    <span>Total TVA</span>
+                    <span>{{ totalTaxe | number:'1.3-3' }} {{ currencySymbol }}</span>
+                </div>
+                <div class="po-totals-row po-totals-ttc"
+                    [style.background-color]="docSetting?.primaryColor || '#0D9488'"
+                    [style.color]="docSetting?.secondaryColor || '#ffffff'">
+                    <span>TOTAL TTC</span>
+                    <span>{{ totalTTC | number:'1.3-3' }} {{ currencySymbol }}</span>
+                </div>
             </div>
         </footer>
     </div>

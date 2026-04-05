@@ -18,9 +18,9 @@
             <input type="file" #logoInput accept="image/*" (change)="onLogoChange($event)" hidden>
         </div>
         <div class="title-section">
-            <span class="breadcrumb-text">Nom de la société</span>
+            <span class="breadcrumb-text">Nom de la société <span *ngIf="isEditing" class="required-star">*</span></span>
             <h1 *ngIf="!isEditing">{{ entreprise.nom || 'Nouvelle Société' }}</h1>
-            <input *ngIf="isEditing" [(ngModel)]="entreprise.nom" class="input-title" placeholder="p.ex. Ma Société">
+            <input *ngIf="isEditing" [(ngModel)]="entreprise.nom" class="input-title" [class.input-error]="formErrors['nom']" placeholder="p.ex. Ma Société">
         </div>
         <div class="actions">
             <button class="btn-edit" (click)="toggleEdit()" *ngIf="!isEditing">Modifier</button>
@@ -68,23 +68,22 @@
 
 
             <div class="form-column">
-                <div class="form-group">
-                    <label>Téléphone</label>
-                    <div class="input-wrapper">
-                        <input [(ngModel)]="entreprise.telephone" [readonly]="!isEditing"
-                            placeholder="p.ex. +216 74 ...">
-                    </div>
+                <div class="form-group" [class.has-error]="formErrors['telephone']">
+                    <label>Téléphone <span *ngIf="isEditing" class="required-star">*</span></label>
+                    <app-phone-input [(phoneNumber)]="entreprise.telephone" [isEditing]="isEditing"
+                        (isValid)="isPhoneValid = $event">
+                    </app-phone-input>
                 </div>
-                <div class="form-group">
-                    <label>E-mail</label>
-                    <div class="input-wrapper">
+                <div class="form-group" [class.has-error]="formErrors['email']">
+                    <label>E-mail <span *ngIf="isEditing" class="required-star">*</span></label>
+                    <div class="input-wrapper" [class.input-error-wrapper]="formErrors['email']">
                         <input [(ngModel)]="entreprise.email" [readonly]="!isEditing"
                             placeholder="p.ex. info@societe.com">
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Devise</label>
-                    <div class="input-wrapper">
+                <div class="form-group" [class.has-error]="formErrors['devise']">
+                    <label>Devise <span *ngIf="isEditing" class="required-star">*</span></label>
+                    <div class="input-wrapper" [class.input-error-wrapper]="formErrors['devise']">
                         <select *ngIf="isEditing" [(ngModel)]="entreprise.devise" [compareWith]="compareObjects"
                             class="select-field full-width">
                             <option [ngValue]="undefined" disabled>Choisir une devise</option>
@@ -100,6 +99,8 @@
 
 <div class="notification-toast" *ngIf="notification" [class.success]="notification.type === 'success'"
     [class.error]="notification.type === 'error'">
+    <i class="fas fa-check-circle" *ngIf="notification.type === 'success'"></i>
+    <i class="fas fa-exclamation-triangle" *ngIf="notification.type === 'error'"></i>
     <span class="msg">{{ notification.message }}</span>
     <button class="close-btn" (click)="notification = null">✕</button>
 </div>

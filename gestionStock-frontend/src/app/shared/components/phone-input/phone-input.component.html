@@ -1,0 +1,49 @@
+<div class="phone-container" [class.dropdown-active]="showDropdown">
+    <div class="phone-input-wrapper" [class.editing]="isEditing" [class.invalid-border]="errorMsg && isEditing">
+        <!-- Display for Readonly mode (Flag + Prefix + number) -->
+        <div class="country-preview" *ngIf="!isEditing && selectedCountry"
+            style="display: flex; align-items: center; gap: 8px; margin-right: 8px;">
+            <img [src]="'https://flagcdn.com/24x18/' + selectedCountry.iso + '.png'"
+                style="width: 22px; height: auto; border-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);"
+                [alt]="selectedCountry.name" />
+            <span class="dial-display">{{ selectedCountry.dialCode }}</span>
+        </div>
+
+        <!-- Country Selector (Editing Mode) -->
+        <div class="country-selector" *ngIf="isEditing" (click)="toggleDropdown($event)">
+            <img [src]="'https://flagcdn.com/24x18/' + (selectedCountry?.iso || 'un') + '.png'"
+                style="width: 24px; height: auto; border-radius: 2px;" [alt]="selectedCountry?.name" />
+            <i class="fas fa-chevron-down"></i>
+        </div>
+
+        <!-- Dial Code Display (Editing Mode) -->
+        <span class="dial-display" *ngIf="isEditing && selectedCountry">{{ selectedCountry.dialCode }}</span>
+
+        <!-- Number Input -->
+        <input type="text" class="phone-field" [(ngModel)]="localNumber" (input)="onNumberInput()"
+            [readonly]="!isEditing" [placeholder]="placeholderNumber">
+
+        <!-- Country Dropdown (Moved here for better Stacking Context) -->
+        <div class="country-dropdown" *ngIf="showDropdown" (click)="$event.stopPropagation()">
+            <div class="search-wrapper">
+                <input type="text" class="search-input" [placeholder]="placeholderSearch" [(ngModel)]="searchQuery"
+                    (input)="filterCountries()">
+            </div>
+            <div class="country-options-list">
+                <div class="country-option" *ngFor="let c of filteredCountries"
+                    [class.selected]="c.code === selectedCountry?.code" (click)="onSelectCountry(c)">
+                    <img [src]="'https://flagcdn.com/24x18/' + c.iso + '.png'"
+                        style="width: 24px; height: auto; border-radius: 2px;" [alt]="c.name" />
+                    <span class="country-name">{{ c.name }}</span>
+                    <span class="dial-code">{{ c.dialCode }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Message -->
+    <div class="error-msg" *ngIf="isEditing && errorMsg">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span>{{ errorMsg }}</span>
+    </div>
+</div>

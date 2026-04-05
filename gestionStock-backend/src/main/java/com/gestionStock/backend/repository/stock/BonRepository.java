@@ -16,23 +16,26 @@ public interface BonRepository extends JpaRepository<Bon, Long> {
 
         List<Bon> findByArchivedFalse();
 
-        List<Bon> findByArchivedFalseAndEntreprise(Entreprise entreprise);
+        List<Bon> findByArchivedFalseAndEntrepriseOrderByDateDesc(Entreprise entreprise);
 
-        List<Bon> findByArchivedTrueAndEntreprise(Entreprise entreprise);
+        List<Bon> findByArchivedTrueAndEntrepriseOrderByDateDesc(Entreprise entreprise);
 
-        List<Bon> findByCreateurIdAndArchivedFalseAndEntreprise(String createurId, Entreprise entreprise);
-
-        List<Bon> findByCreateurIdAndArchivedTrueAndEntreprise(String createurId, Entreprise entreprise);
-
-        List<Bon> findByTypeBonAndArchivedFalseAndEntreprise(TypeBon typeBon, Entreprise entreprise);
-
-        List<Bon> findByTypeBonAndCreateurIdAndArchivedFalseAndEntreprise(TypeBon typeBon, String createurId,
+        List<Bon> findByCreateurIdAndArchivedFalseAndEntrepriseOrderByDateDesc(String createurId,
                         Entreprise entreprise);
 
-        List<Bon> findByDateBetweenAndArchivedFalseAndEntreprise(LocalDate startDate, LocalDate endDate,
+        List<Bon> findByCreateurIdAndArchivedTrueAndEntrepriseOrderByDateDesc(String createurId, Entreprise entreprise);
+
+        List<Bon> findByTypeBonAndArchivedFalseAndEntrepriseOrderByDateDesc(TypeBon typeBon, Entreprise entreprise);
+
+        List<Bon> findByTypeBonAndCreateurIdAndArchivedFalseAndEntrepriseOrderByDateDesc(TypeBon typeBon,
+                        String createurId,
                         Entreprise entreprise);
 
-        List<Bon> findByDateBetweenAndCreateurIdAndArchivedFalseAndEntreprise(LocalDate startDate, LocalDate endDate,
+        List<Bon> findByDateBetweenAndArchivedFalseAndEntrepriseOrderByDateDesc(LocalDate startDate, LocalDate endDate,
+                        Entreprise entreprise);
+
+        List<Bon> findByDateBetweenAndCreateurIdAndArchivedFalseAndEntrepriseOrderByDateDesc(LocalDate startDate,
+                        LocalDate endDate,
                         String createurId, Entreprise entreprise);
 
         List<Bon> findByArchivedTrue();

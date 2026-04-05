@@ -30,4 +30,9 @@ public interface PieceDetacheeRepository extends JpaRepository<PieceDetachee, Lo
     public PieceDetachee findFirstByReferenceAndEntrepriseOrderByIdDesc(String reference, Entreprise entreprise);
 
     public java.util.Optional<PieceDetachee> findByCodeBarreAndEntreprise(String codeBarre, Entreprise entreprise);
+
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @Query(value = "UPDATE piece_detachee SET quantite = COALESCE(quantite,0) + :delta WHERE id = :id", nativeQuery = true)
+    int applyQuantityDelta(@Param("id") Long id, @Param("delta") int delta);
 }

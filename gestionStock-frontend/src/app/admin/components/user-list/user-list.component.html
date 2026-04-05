@@ -1,328 +1,382 @@
-<div class="settings-container">
-  <!-- Header -->
-  <header class="settings-header">
-    <div class="header-left">
-      <button class="back-btn" [routerLink]="['/admin/settings']">
-        <i class="fas fa-arrow-left"></i>
-      </button>
-      <div class="header-content">
-        <nav class="breadcrumb">
-          <span>Paramètres</span>
-          <i class="fas fa-chevron-right"></i>
-          <span class="curr">Utilisateurs</span>
-        </nav>
-        <h1>Gestion des Utilisateurs</h1>
-        <p>Administrez les comptes, les rôles et les accès de vos collaborateurs.</p>
-      </div>
-    </div>
-    <div class="header-actions">
-      <button class="btn-save" (click)="openCreateModal()" [disabled]="!hasEntreprise">
-        <i class="fas fa-user-plus"></i>
-        <span>Nouvel Utilisateur</span>
-      </button>
-    </div>
-  </header>
-
-  <!-- Notification Toast -->
-  <div *ngIf="notification" class="notification-toast" [class]="notification.type">
-    <i class="fas" [class.fa-check-circle]="notification.type === 'success'"
-      [class.fa-exclamation-circle]="notification.type === 'error'"></i>
-    <span>{{ notification.message }}</span>
-  </div>
-
-  <!-- Warning Banner -->
-  <div class="warning-banner" *ngIf="hasEntreprise === false">
-    <div class="warning-content">
-      <i class="fas fa-building-circle-exclamation"></i>
-      <div class="msg-block">
-        <strong>Configuration requise</strong>
-        <p>Vous devez créer votre entreprise avant de pouvoir gérer vos collaborateurs.</p>
-      </div>
-    </div>
-    <button class="btn-save" (click)="goToEntrepriseSettings()">
-      <span>Configurer maintenant</span>
-      <i class="fas fa-arrow-right"></i>
-    </button>
-  </div>
-
-  <div class="main-grid">
-    <div class="configs-section">
-      <div class="section-header">
-        <h2>Liste des collaborateurs</h2>
-        <span class="badge">{{ filteredUsers.length }} Utilisateurs</span>
-      </div>
-
-      <!-- Search Bar -->
-      <div class="search-bar-container">
-        <div class="search-input-group">
-          <i class="fas fa-search"></i>
-          <input type="text" [(ngModel)]="searchTerm" placeholder="Rechercher un utilisateur...">
-          <select class="search-category-select" [(ngModel)]="searchCategory">
-            <option value="all">Tout</option>
-            <option value="username">Identifiant</option>
-            <option value="email">Email</option>
-            <option value="name">Nom / Prénom</option>
-          </select>
+<div class="dashboard-container">
+  <!-- Main Content : Left Side -->
+  <main class="content-hub">
+    <!-- Header with Title and Search -->
+    <header class="hub-header">
+      <div class="header-title-container">
+        <button class="back-btn" (click)="goToEntrepriseSettings()" title="Retour à la configuration">
+          <i class="fas fa-arrow-left"></i>
+        </button>
+        <div class="title-group">
+          <h1>Équipe <span>Administration</span></h1>
+          <p>Gérez les accès et les profils de vos collaborateurs en temps réel.</p>
         </div>
       </div>
 
-      <div class="table-container" *ngIf="!loadingUsers; else skeleton">
-        <table class="premium-table">
-          <thead>
-            <tr>
-              <th>Utilisateur</th>
-              <th>Rôle</th>
-              <th style="width: 180px;">Statut</th>
-              <th style="width: 120px; text-align: center;">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let user of filteredUsers">
-              <td data-label="Utilisateur">
-                <div class="user-info-cell">
-                  <div class="user-petrol-icon">
-                    {{ user.firstName?.substring(0,1)?.toUpperCase() || '?' }}{{
-                    user.lastName?.substring(0,1)?.toUpperCase() || '' }}
-                  </div>
-                  <div class="user-identity">
-                    <span class="user-name">{{ user.firstName }} {{ user.lastName }}</span>
-                    <span class="user-email">{{ user.email }}</span>
-                  </div>
-                </div>
-              </td>
-              <td data-label="Rôle">
-                <span class="role-badge" [class]="user.role">
-                  {{ getRoleDisplayName(user.role) }}
-                </span>
-              </td>
-              <td data-label="Statut">
-                <div class="status-segmented" *ngIf="user.role !== 'ADMINISTRATEUR'; else adminStatus">
-                  <button type="button" class="status-btn" [class.active]="user.enabled"
-                    [class.is-enabled]="user.enabled" (click)="toggleStatus(user)">
-                    Actif
-                  </button>
-                  <button type="button" class="status-btn" [class.active]="!user.enabled"
-                    [class.is-disabled]="!user.enabled" (click)="toggleStatus(user)">
-                    Bloqué
-                  </button>
-                </div>
-                <ng-template #adminStatus>
-                  <span class="role-badge protected">PROTÉGÉ</span>
-                </ng-template>
-              </td>
-              <td data-label="Actions">
-                <div class="actions-cell">
-                  <button *ngIf="user.role !== 'ADMINISTRATEUR'" class="btn-tool" (click)="manageRoles(user)"
-                    title="Modifier les rôles">
-                    <i class="fas fa-user-shield"></i>
-                  </button>
-                  <button *ngIf="user.role !== 'ADMINISTRATEUR'" class="btn-tool" (click)="openResetPassword(user)"
-                    title="Réinitialiser le mot de passe">
-                    <i class="fas fa-key"></i>
-                  </button>
-                  <i *ngIf="user.role === 'ADMINISTRATEUR'" class="fas fa-lock"
-                    style="color: var(--text-muted); opacity: 0.5;"></i>
-                </div>
-              </td>
-            </tr>
-            <tr *ngIf="filteredUsers.length === 0">
-              <td colspan="4" style="text-align: center; padding: 4rem; color: var(--text-muted);">
-                <i class="fas fa-users-slash"
-                  style="font-size: 2rem; display: block; margin-bottom: 1rem; opacity: 0.3;"></i>
-                <p>Aucun utilisateur trouvé.</p>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <div class="table-footer">
-          <div class="table-summary">
-            Affichage de <strong>{{ filteredUsers.length }}</strong> collaborateurs actifs
+      <div class="hub-tools">
+        <div class="search-premium">
+          <i class="fas fa-search"></i>
+          <input type="text" [(ngModel)]="searchTerm" placeholder="Rechercher un membre...">
+        </div>
+        <div class="filter-container">
+          <div class="status-filter-wrapper">
+            <button class="btn-filter-premium" (click)="toggleStatusDropdown()" [class.active]="showStatusDropdown">
+              <i class="fas fa-filter"></i>
+              <span>{{ statusFilter === 'All' ? 'Tous' : statusFilter === 'Active' ? 'Actifs' : 'Inactifs' }}</span>
+              <i class="fas fa-chevron-down arrow-icon"></i>
+            </button>
+            <div class="status-dropdown" *ngIf="showStatusDropdown">
+              <div class="dropdown-item" (click)="setStatusFilter('All')" [class.active]="statusFilter === 'All'">
+                <i class="fas fa-users"></i>
+                <span>Tous</span>
+              </div>
+              <div class="dropdown-item" (click)="setStatusFilter('Active')" [class.active]="statusFilter === 'Active'">
+                <i class="fas fa-toggle-on text-success"></i>
+                <span>Actifs</span>
+              </div>
+              <div class="dropdown-item" (click)="setStatusFilter('Inactive')"
+                [class.active]="statusFilter === 'Inactive'">
+                <i class="fas fa-toggle-off text-muted"></i>
+                <span>Inactifs</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Cards Scroll Area -->
+    <div class="cards-scroll-area">
+      <!-- Grid Grid -->
+      <div class="cards-grid" *ngIf="!loadingUsers; else skeletonGrid">
+        <div class="user-card-premium" *ngFor="let user of filteredUsers">
+          <div class="card-hero" [class.enabled]="user.enabled" [class.disabled]="!user.enabled">
+            <div class="avatar-letter">
+              {{ user.firstName?.substring(0,1)?.toUpperCase() }}
+            </div>
+          </div>
+          <div class="card-content">
+            <div class="card-header">
+              <h3 class="user-full-name">{{ user.firstName }} {{ user.lastName }}</h3>
+              <div class="presence-dot" [class.online]="user.enabled"></div>
+            </div>
+            <div class="contact-info">
+              <div class="info-line">
+                <i class="fas fa-envelope"></i>
+                <span>{{ user.email }}</span>
+              </div>
+              <div class="info-line" *ngIf="user.role">
+                <i class="fas fa-briefcase"></i>
+                <span>{{ getRoleDisplayName(user.role) }}</span>
+              </div>
+            </div>
+            <div class="card-actions-row">
+              <button class="btn-action-ghost" (click)="manageRoles(user)" title="Modifier les rôles">
+                <i class="fas fa-user-shield"></i>
+              </button>
+              <button class="btn-action-ghost" (click)="openResetPassword(user)" title="Réinitialiser le mot de passe">
+                <i class="fas fa-key"></i>
+              </button>
+              <button class="btn-action-ghost" [class.block-btn]="user.enabled" [class.unblock-btn]="!user.enabled"
+                (click)="toggleStatus(user)" [title]="user.enabled ? 'Bloquer ce compte' : 'Activer ce compte'">
+                <i class="fas" [class.fa-ban]="user.enabled" [class.fa-check-circle]="!user.enabled"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="empty-grid-state" *ngIf="filteredUsers.length === 0">
+          <div class="empty-state-card">
+            <div class="empty-icon-ring">
+              <div class="empty-icon-inner">
+                <i class="fas fa-user-plus"></i>
+              </div>
+            </div>
+            <div class="empty-state-content">
+              <h3 class="empty-state-title">Aucun membre dans cette catégorie</h3>
+              <p class="empty-state-desc">
+                Ce département ne compte encore aucun collaborateur.<br>
+                Ajoutez un premier membre pour commencer à gérer les accès.
+              </p>
+              <button class="btn-empty-add" (click)="openCreateModal()">
+                <i class="fas fa-plus"></i>
+                <span>Ajouter un membre</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <ng-template #skeleton>
-        <div class="table-container">
-          <div class="skeleton-row" *ngFor="let i of [1,2,3,4,5]"></div>
+      <ng-template #skeletonGrid>
+        <div class="cards-grid">
+          <div class="skeleton-card" *ngFor="let i of [1,2,3,4,5,6]"></div>
         </div>
       </ng-template>
     </div>
-  </div>
+  </main>
+
+  <!-- Sidebar Navigation : Right Side -->
+  <aside class="sidebar-nav">
+    <div class="sidebar-header">
+      <i class="fas fa-users-gear"></i>
+      <span>DÉPARTEMENTS</span>
+    </div>
+
+    <div class="nav-links">
+      <div class="nav-item" [class.active]="selectedRoleFilter === 'All'" (click)="setRoleFilter('All')">
+        <div class="nav-label">
+          <i class="fas fa-th-large"></i>
+          <span>Tous les membres</span>
+        </div>
+        <span class="count-badge">{{ getUserCountByRole('All') }}</span>
+      </div>
+
+      <div class="nav-separator"></div>
+
+      <div *ngFor="let role of valideRoles" class="nav-item" [class.active]="selectedRoleFilter === role"
+        (click)="setRoleFilter(role)">
+        <div class="nav-label">
+          <div class="role-marker" [class]="role"></div>
+          <span>{{ getRoleDisplayName(role) }}</span>
+        </div>
+        <span class="count-badge">{{ getUserCountByRole(role) }}</span>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="btn-sidebar-add" (click)="openCreateModal()" [disabled]="!hasEntreprise">
+        <i class="fas fa-plus"></i>
+        <span>Nouveau Membre</span>
+      </button>
+    </div>
+  </aside>
 </div>
 
-<!-- Modal: Créer Utilisateur -->
+<!-- Modals -->
 <div class="modal-overlay" *ngIf="showCreateModal" (click)="closeCreateModal()">
-  <div class="modal-card" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h2>Nouvel Utilisateur</h2>
-      <button class="back-btn" (click)="closeCreateModal()">
+  <div class="modal-card premium-shadow" (click)="$event.stopPropagation()">
+    <div class="modal-header premium-header">
+      <div class="header-title-group">
+        <div class="icon-badge">
+          <i class="fas fa-user-plus"></i>
+        </div>
+        <div class="title-text">
+          <h2>Nouvel Utilisateur</h2>
+          <p>Créez un accès pour un nouveau collaborateur</p>
+        </div>
+      </div>
+      <button class="close-btn" (click)="closeCreateModal()">
         <i class="fas fa-times"></i>
       </button>
     </div>
-    <form #userForm="ngForm" (ngSubmit)="userForm.form.valid && createUser()">
-      <div class="modal-body">
+
+    <form #userForm="ngForm" (ngSubmit)="createUser()">
+      <div class="modal-body premium-body">
+        <div class="form-section-title">
+          <i class="fas fa-id-card"></i>
+          <span>Informations Personnelles</span>
+        </div>
         <div class="form-row">
           <div class="form-group">
-            <label for="firstName">Prénom*</label>
-            <input type="text" id="firstName" name="firstName" class="input-style" [(ngModel)]="newUser.firstName"
-              placeholder="Prénom" #firstName="ngModel" required>
-            <div class="field-info" [class.error]="firstName.invalid && firstName.touched">
-              <span *ngIf="firstName.invalid && firstName.touched">Le prénom est requis</span>
-              <span *ngIf="!firstName.touched || firstName.valid">Format: Nom propre</span>
+            <label for="firstName">Prénom <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <i class="fas fa-user-pen prefix-icon"></i>
+              <input type="text" id="firstName" name="firstName" class="input-style has-prefix"
+                [(ngModel)]="newUser.firstName" placeholder="Jean" #firstName="ngModel" required>
+            </div>
+            <div class="field-info" [class.error]="firstName?.invalid && (firstName?.touched || userForm.submitted)">
+              <span *ngIf="firstName?.invalid && (firstName?.touched || userForm.submitted)">Le prénom est
+                obligatoire</span>
             </div>
           </div>
           <div class="form-group">
-            <label for="lastName">Nom*</label>
-            <input type="text" id="lastName" name="lastName" class="input-style" [(ngModel)]="newUser.lastName"
-              placeholder="Nom" #lastName="ngModel" required>
-            <div class="field-info" [class.error]="lastName.invalid && lastName.touched">
-              <span *ngIf="lastName.invalid && lastName.touched">Le nom est requis</span>
-              <span *ngIf="!lastName.touched || lastName.valid">Nom de famille officiel</span>
+            <label for="lastName">Nom <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <i class="fas fa-signature prefix-icon"></i>
+              <input type="text" id="lastName" name="lastName" class="input-style has-prefix"
+                [(ngModel)]="newUser.lastName" placeholder="Dupont" #lastName="ngModel" required>
+            </div>
+            <div class="field-info" [class.error]="lastName?.invalid && (lastName?.touched || userForm.submitted)">
+              <span *ngIf="lastName?.invalid && (lastName?.touched || userForm.submitted)">Le nom est obligatoire</span>
             </div>
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="email">Email professionnel*</label>
-          <input type="email" id="email" name="email" class="input-style" [(ngModel)]="newUser.email"
-            placeholder="email@exemple.com" #email="ngModel" required email>
-          <div class="field-info" [class.error]="email.invalid && email.touched">
-            <span *ngIf="email.invalid && email.touched">Veuillez entrer une adresse email valide</span>
-            <span *ngIf="!email.touched || email.valid">L'identifiant sera basé sur cet email</span>
-          </div>
+        <div class="form-section-title">
+          <i class="fas fa-shield-halved"></i>
+          <span>Paramètres d'accès</span>
         </div>
-
-        <div class="form-group">
-          <label for="role">Rôle*</label>
-          <select id="role" name="role" class="input-style" [(ngModel)]="newUser.role" #role="ngModel" required>
-            <option value="" disabled selected>Sélectionnez un rôle</option>
-            <option *ngFor="let role of valideRoles" [value]="role">{{ getRoleDisplayName(role) }}</option>
-          </select>
-          <div class="field-info" [class.error]="role.invalid && role.touched">
-            <span *ngIf="role.invalid && role.touched">Le rôle est requis</span>
-            <span *ngIf="!role.touched || role.valid">Définit les permissions d'accès au système</span>
-          </div>
-        </div>
-
         <div class="form-row">
           <div class="form-group">
-            <label for="password">Mot de passe*</label>
-            <input type="password" id="password" name="password" class="input-style" [(ngModel)]="newUser.password"
-              placeholder="8+ caractères" #pwd="ngModel" required minlength="8">
-            <div class="field-info" [class.error]="pwd.invalid && pwd.touched">
-              <span *ngIf="pwd.invalid && pwd.touched">Minimum 8 caractères requis</span>
-              <span *ngIf="!pwd.touched || pwd.valid">Utilisez un mot de passe robuste</span>
+            <label for="email">Email professionnel <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <i class="fas fa-envelope prefix-icon"></i>
+              <input type="email" id="email" name="email" class="input-style has-prefix" [(ngModel)]="newUser.email"
+                placeholder="email@entreprise.com" #email="ngModel" required email>
+            </div>
+            <div class="field-info" [class.error]="email?.invalid && (email?.touched || userForm.submitted)">
+              <span *ngIf="email?.invalid && (email?.touched || userForm.submitted)">Email valide obligatoire</span>
             </div>
           </div>
           <div class="form-group">
-            <label for="confirmPassword">Confirmation*</label>
-            <input type="password" id="confirmPassword" name="confirmPassword" class="input-style"
-              [(ngModel)]="newUser.confirmPassword" placeholder="Confirmez" #pwdConf="ngModel" required>
-            <div class="field-info" [class.error]="(newUser.password !== newUser.confirmPassword) && pwdConf.touched">
-              <span *ngIf="(newUser.password !== newUser.confirmPassword) && pwdConf.touched">Les mots de passe ne
-                correspondent pas</span>
-              <span *ngIf="!pwdConf.touched || (newUser.password === newUser.confirmPassword)">Répétez le mot de
-                passe</span>
+            <label for="role">Rôle affecté <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <i class="fas fa-briefcase prefix-icon"></i>
+              <select id="role" name="role" class="input-style has-prefix" [(ngModel)]="newUser.role" #role="ngModel"
+                required>
+                <option value="" disabled selected>Choisir un rôle...</option>
+                <option *ngFor="let role of valideRoles" [value]="role">{{ getRoleDisplayName(role) }}</option>
+              </select>
+            </div>
+            <div class="field-info" [class.error]="role?.invalid && (role?.touched || userForm.submitted)">
+              <span *ngIf="role?.invalid && (role?.touched || userForm.submitted)">Le rôle est obligatoire</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section-title">
+          <i class="fas fa-lock"></i>
+          <span>Sécurité</span>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="password">Mot de passe <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <i class="fas fa-key prefix-icon"></i>
+              <input type="password" id="password" name="password" class="input-style has-prefix"
+                [(ngModel)]="newUser.password" placeholder="••••••••" #pwd="ngModel" required minlength="8">
+            </div>
+            <div class="field-info" [class.error]="pwd?.invalid && (pwd?.touched || userForm.submitted)">
+              <span *ngIf="pwd?.errors?.['required'] && (pwd?.touched || userForm.submitted)">Obligatoire</span>
+              <span *ngIf="pwd?.errors?.['minlength'] && (pwd?.touched || userForm.submitted)">Min. 8 caractères</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="confirmPassword">Confirmation <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <i class="fas fa-shield-check prefix-icon"></i>
+              <input type="password" id="confirmPassword" name="confirmPassword" class="input-style has-prefix"
+                [(ngModel)]="newUser.confirmPassword" placeholder="••••••••" #pwdConf="ngModel" required>
+            </div>
+            <div class="field-info"
+              [class.error]="newUser.password !== newUser.confirmPassword && (pwdConf?.touched || userForm.submitted)">
+              <span
+                *ngIf="newUser.password !== newUser.confirmPassword && (pwdConf?.touched || userForm.submitted)">Mots de
+                passe différents</span>
             </div>
           </div>
         </div>
       </div>
-      <div class="modal-actions">
-        <button type="button" class="btn-cancel" (click)="closeCreateModal()">Annuler</button>
-        <button type="submit" class="btn-save"
-          [disabled]="!userForm.valid || (newUser.password !== newUser.confirmPassword)">
-          <i class="fas fa-check"></i>
+      <div class="modal-actions premium-footer">
+        <button type="button" class="btn-cancel-premium" (click)="closeCreateModal()">Annuler</button>
+        <button type="submit" class="btn-primary-premium">
           <span>Créer le compte</span>
+          <i class="fas fa-arrow-right"></i>
         </button>
       </div>
     </form>
   </div>
 </div>
 
+<!-- Confirmation Modal (Block/Unblock) -->
 <div class="modal-overlay" *ngIf="showConfirmStatusModal" (click)="closeConfirmStatus()">
-  <div class="modal-card" style="max-width: 400px;" (click)="$event.stopPropagation()">
-    <div class="modal-body" style="text-align: center; padding-top: 3rem;">
-      <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #f59e0b; margin-bottom: 1.5rem;"></i>
-      <h3>Confirmation</h3>
-      <p>Voulez-vous vraiment {{ pendingStatusUser?.enabled ? 'bloquer' : 'activer' }} l'utilisateur <strong>{{
-          pendingStatusUser?.username }}</strong> ?</p>
+  <div class="modal-card" style="max-width: 440px;" (click)="$event.stopPropagation()">
+    <div class="modal-body premium-body confirm-body-centered">
+      <div class="confirm-icon-pulse" [ngClass]="pendingStatusUser?.enabled ? 'status-danger' : 'status-success'">
+        <i class="fas" [class.fa-ban]="pendingStatusUser?.enabled"
+          [class.fa-check-circle]="!pendingStatusUser?.enabled"></i>
+      </div>
+      <h3 class="confirm-title-large">Confirmation</h3>
+      <p class="confirm-text">
+        Voulez-vous vraiment <strong>{{ pendingStatusUser?.enabled ? 'bloquer' : 'activer' }}</strong>
+        l'utilisateur <strong>{{ pendingStatusUser?.username }}</strong> ?
+      </p>
     </div>
-    <div class="modal-actions" style="justify-content: center;">
-      <button class="btn-cancel" (click)="closeConfirmStatus()">Annuler</button>
-      <button class="btn-save" (click)="confirmStatusChange()"
-        [style.background]="pendingStatusUser?.enabled ? '#dc2626' : ''">
-        <span>Confirmer</span>
+    <div class="modal-actions premium-footer">
+      <button class="btn-cancel-premium" (click)="closeConfirmStatus()">Annuler</button>
+      <button class="btn-primary-premium action-confirm-btn" (click)="confirmStatusChange()"
+        [ngClass]="pendingStatusUser?.enabled ? 'btn-danger-action' : 'btn-success-action'">
+        <span>Confirmer la modification</span>
       </button>
     </div>
   </div>
 </div>
 
-<!-- Reset Password Modal -->
 <div class="modal-overlay" *ngIf="showResetPasswordModal" (click)="closeResetPassword()">
-  <div class="modal-card" style="max-width: 480px;" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h2>Sécuriser le compte</h2>
-      <button class="back-btn" (click)="closeResetPassword()">
+  <div class="modal-card premium-shadow" style="max-width: 480px;" (click)="$event.stopPropagation()">
+    <div class="modal-header premium-header">
+      <div class="header-title-group">
+        <div class="icon-badge">
+          <i class="fas fa-key"></i>
+        </div>
+        <div class="title-text">
+          <h2>Sécuriser le compte</h2>
+          <p>Réinitialisation pour <strong>{{ selectedUser?.username }}</strong></p>
+        </div>
+      </div>
+      <button class="close-btn" (click)="closeResetPassword()">
         <i class="fas fa-times"></i>
       </button>
     </div>
     <form #resetForm="ngForm" (ngSubmit)="confirmResetPassword()">
-        <div class="modal-body">
-            <p style="margin-bottom: 2rem; color: var(--text-muted); font-size: 0.9rem;">
-                Réinitialisation pour <strong>{{ selectedUser?.username }}</strong>
-            </p>
-            
-            <div class="form-group">
-                <label for="newP">Nouveau mot de passe*</label>
-                <input type="password" id="newP" [(ngModel)]="resetPasswordData.newPassword" name="newPassword" class="input-style" required minlength="8" placeholder="Minimum 8 caractères" #newPass="ngModel">
-                <div class="field-info" [class.error]="newPass.invalid && newPass.touched">
-                    <span *ngIf="newPass.invalid && newPass.touched">Le mot de passe doit faire au moins 8 caractères</span>
-                    <span *ngIf="!newPass.touched || newPass.valid">Choisissez un secret complexe</span>
-                </div>
-            </div>
-
-            <div class="form-group" style="margin-top: 1.5rem;">
-                <label for="confP">Confirmer le mot de passe*</label>
-                <input type="password" id="confP" [(ngModel)]="resetPasswordData.confirmPassword" name="confirmPassword" class="input-style" required placeholder="Confirmez" #confPass="ngModel">
-                <div class="field-info" [class.error]="(resetPasswordData.newPassword !== resetPasswordData.confirmPassword) && confPass.touched">
-                    <span *ngIf="(resetPasswordData.newPassword !== resetPasswordData.confirmPassword) && confPass.touched">Les mots de passe ne sont pas identiques</span>
-                    <span *ngIf="!confPass.touched || (resetPasswordData.newPassword === resetPasswordData.confirmPassword)">Répétez le mot de passe</span>
-                </div>
-            </div>
+      <div class="modal-body premium-body">
+        <div class="form-group">
+          <label for="newP">Nouveau mot de passe <span class="required">*</span></label>
+          <div class="input-wrapper">
+            <i class="fas fa-lock prefix-icon"></i>
+            <input type="password" id="newP" [(ngModel)]="resetPasswordData.newPassword" name="newPassword"
+              class="input-style has-prefix" required minlength="8" placeholder="Minimum 8 caractères"
+              #newPass="ngModel">
+          </div>
         </div>
-        <div class="modal-actions">
-            <button type="button" class="btn-cancel" (click)="closeResetPassword()">Annuler</button>
-            <button type="submit" class="btn-save" [disabled]="!resetForm.valid || resetPasswordData.newPassword !== resetPasswordData.confirmPassword">
-                <i class="fas fa-sync-alt"></i>
-                <span>Réinitialiser</span>
-            </button>
+        <div class="form-group" style="margin-top: 1.5rem;">
+          <label for="confP">Confirmer le mot de passe <span class="required">*</span></label>
+          <div class="input-wrapper">
+            <i class="fas fa-shield-check prefix-icon"></i>
+            <input type="password" id="confP" [(ngModel)]="resetPasswordData.confirmPassword" name="confirmPassword"
+              class="input-style has-prefix" required placeholder="Répétez le mot de passe" #confPass="ngModel">
+          </div>
         </div>
+      </div>
+      <div class="modal-actions premium-footer">
+        <button type="button" class="btn-cancel-premium" (click)="closeResetPassword()">Annuler</button>
+        <button type="submit" class="btn-primary-premium"
+          [disabled]="!resetForm.valid || resetPasswordData.newPassword !== resetPasswordData.confirmPassword">
+          <span>Mettre à jour le mot de passe</span>
+          <i class="fas fa-sync-alt"></i>
+        </button>
+      </div>
     </form>
   </div>
 </div>
 
-<!-- Modal: Gérer les Rôles -->
+<!-- Roles Modal -->
 <div class="modal-overlay" *ngIf="showRoleModal" (click)="closeRoleModal()">
-  <div class="modal-card" style="max-width: 450px;" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h2>Rôles de {{ selectedUser?.firstName }} {{ selectedUser?.lastName }}</h2>
-      <button class="back-btn" (click)="closeRoleModal()">
+  <div class="modal-card" style="max-width: 480px;" (click)="$event.stopPropagation()">
+    <div class="modal-header premium-header">
+      <div class="header-title-group">
+        <div class="icon-badge">
+          <i class="fas fa-user-shield"></i>
+        </div>
+        <div class="title-text">
+          <h2>Gestion des Rôles</h2>
+          <p>Définissez les accès pour <strong>{{ selectedUser?.firstName }} {{ selectedUser?.lastName }}</strong></p>
+        </div>
+      </div>
+      <button class="close-btn" (click)="closeRoleModal()">
         <i class="fas fa-times"></i>
       </button>
     </div>
-    <div class="modal-body">
-      <p style="margin-bottom: 2rem; color: var(--text-muted); font-size: 0.9rem;">
-        Sélectionnez le rôle à attribuer à ce collaborateur. Un compte ne peut avoir qu'un seul rôle principal.
-      </p>
-
-      <div class="roles-grid" style="display: grid; gap: 1rem;">
+    <div class="modal-body premium-body">
+      <div class="roles-grid">
         <div *ngFor="let role of availableRoles" class="role-option-card" [class.active]="hasRole(role)"
           (click)="hasRole(role) ? null : addRole(role)">
           <div class="role-dot-label">
             <div class="role-dot" [class]="role"></div>
             <div class="role-info">
               <strong class="role-name-label">{{ getRoleDisplayName(role) }}</strong>
-              <span class="role-desc-label">Accès {{ role.toLowerCase().replace('_', ' ') }}</span>
+              <span class="role-desc-label">Accès complet au pôle {{ getRoleDisplayName(role) }}</span>
             </div>
           </div>
           <div class="role-check">
@@ -331,37 +385,40 @@
         </div>
       </div>
     </div>
-    <div class="modal-actions">
-      <button class="btn-save" (click)="closeRoleModal()">
-        <span>Fermer</span>
+    <div class="modal-actions premium-footer">
+      <button class="btn-primary-premium" (click)="closeRoleModal()">
+        <span>Terminer la gestion</span>
+        <i class="fas fa-check"></i>
       </button>
     </div>
   </div>
 </div>
 
-<!-- Modal: Confirmer Changement de Rôle -->
+<!-- Role Change Confirmation -->
 <div class="modal-overlay" *ngIf="showConfirmRoleModal" (click)="$event.stopPropagation()">
   <div class="modal-card" style="max-width: 440px;">
-    <div class="modal-body" style="text-align: center; padding: 3rem 2rem;">
-      <div class="confirm-icon-badge">
+    <div class="modal-body premium-body confirm-body-centered">
+      <div class="confirm-icon-pulse">
         <i class="fas fa-user-shield"></i>
       </div>
-      <h3 style="margin: 1.5rem 0 0.5rem; font-weight: 800; font-size: 1.4rem;">Confirmer le changement ?</h3>
-      <p style="color: var(--text-muted); line-height: 1.6;">
-        <span *ngIf="pendingRoleChange?.action === 'replace'">
-          Vous allez remplacer le rôle actuel par <strong>{{ getRoleDisplayName(pendingRoleChange?.roleName)
-            }}</strong>.
-        </span>
-        <span *ngIf="pendingRoleChange?.action === 'add'">
-          Attribuer le rôle <strong>{{ getRoleDisplayName(pendingRoleChange?.roleName) }}</strong> à ce collaborateur ?
-        </span>
-      </p>
+      <h3 class="confirm-title-large">Confirmation</h3>
+      <p class="confirm-text">Voulez-vous vraiment changer les droits d'accès de ce collaborateur ? Cette action est
+        immédiate.</p>
     </div>
-    <div class="modal-actions" style="justify-content: center; background: white; border: none;">
-      <button class="btn-cancel" (click)="closeConfirmRole()">Annuler</button>
-      <button class="btn-save" (click)="executeRoleChange()">
-        <span>Confirmer</span>
+    <div class="modal-actions premium-footer">
+      <button class="btn-cancel-premium" (click)="closeConfirmRole()">Annuler</button>
+      <button class="btn-primary-premium" (click)="executeRoleChange()">
+        <span>Confirmer le rôle</span>
+        <i class="fas fa-shield-alt"></i>
       </button>
     </div>
   </div>
+</div>
+
+<div class="notification-toast" *ngIf="notification" [class.success]="notification.type === 'success'"
+  [class.error]="notification.type === 'error'">
+  <i class="fas fa-check-circle" *ngIf="notification.type === 'success'"></i>
+  <i class="fas fa-exclamation-triangle" *ngIf="notification.type === 'error'"></i>
+  <span class="msg">{{ notification.message }}</span>
+  <button class="close-btn" (click)="notification = null">✕</button>
 </div>

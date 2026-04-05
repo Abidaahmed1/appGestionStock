@@ -9,6 +9,8 @@ import com.gestionStock.backend.repository.entreprise.DeviseRepository;
 import com.gestionStock.backend.repository.entreprise.EntrepriseRepository;
 import com.gestionStock.backend.repository.entreprise.PaysRepository;
 
+import com.gestionStock.backend.entity.parametre.ParametreService;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -20,6 +22,7 @@ public class EntrepriseService {
     private final EntrepriseRepository entrepriseRepository;
     private final PaysRepository paysRepository;
     private final DeviseRepository deviseRepository;
+    private final ParametreService parametreService;
 
     public List<Entreprise> getAllEntreprises() {
         return entrepriseRepository.findAll();
@@ -58,7 +61,9 @@ public class EntrepriseService {
 
             return entrepriseRepository.save(existing);
         } else {
-            return entrepriseRepository.save(input);
+            Entreprise saved = entrepriseRepository.save(input);
+            parametreService.initializeDefaultParameters(saved);
+            return saved;
         }
     }
 

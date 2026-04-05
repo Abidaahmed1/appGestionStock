@@ -63,7 +63,6 @@ public class Fournisseur {
 	private String email;
 
 	@NotBlank(message = "Le numéro de téléphone est obligatoire")
-	@Size(min = 8, max = 8, message = "Le numéro de téléphone doit contenir 8 chiffres")
 	private String tel;
 
 	@Builder.Default

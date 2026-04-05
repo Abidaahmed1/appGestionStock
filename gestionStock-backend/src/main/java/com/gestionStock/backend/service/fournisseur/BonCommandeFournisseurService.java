@@ -2,6 +2,7 @@ package com.gestionStock.backend.service.fournisseur;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 
 import org.springframework.security.core.Authentication;
@@ -18,7 +19,7 @@ import com.gestionStock.backend.exceptions.FournisseurException;
 import com.gestionStock.backend.repository.fournisseur.BonCommandeFournisseurRepository;
 import com.gestionStock.backend.service.notification.NotificationService;
 import com.gestionStock.backend.service.user.UserService;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
 
@@ -90,14 +91,7 @@ public class BonCommandeFournisseurService {
     }
 
     private void validateBon(BonCommandeFournisseur bon) {
-        if (bon.getDateArrivee() != null) {
-            LocalDate today = LocalDate.now();
-            if (!bon.getDateArrivee().isAfter(today)) {
-                throw new FournisseurException(
-                        "La date d'arrivée prévue (" + bon.getDateArrivee() +
-                                ") doit être postérieure à aujourd'hui (" + today + ").");
-            }
-        }
+
         if (bon.getLignes() != null) {
             for (int i = 0; i < bon.getLignes().size(); i++) {
                 var ligne = bon.getLignes().get(i);
@@ -222,7 +216,7 @@ public class BonCommandeFournisseurService {
                         "NOUVELLE COMMANDE",
                         msg,
                         NotificationType.INFO,
-                        List.of(Role.AUDITEUR, Role.MAGASINIER, Role.RESPONSABLE_LOGISTIQUE, Role.ADMINISTRATEUR),
+                        Arrays.asList(Role.AUDITEUR, Role.MAGASINIER, Role.RESPONSABLE_LOGISTIQUE, Role.ADMINISTRATEUR),
                         null);
             } catch (Exception e) {
                 System.err.println("Erreur lors de l'envoi de la notification : " + e.getMessage());
@@ -239,17 +233,13 @@ public class BonCommandeFournisseurService {
 
         validateBon(bon);
 
-        bon.setId(id);
-        bon.setNumeroCmd(existing.getNumeroCmd());
-        bon.setDateCmd(existing.getDateCmd());
-        bon.setCreateur(existing.getCreateur());
-        bon.setEntreprise(existing.getEntreprise());
-
-        if (bon.getLignes() != null) {
-            bon.getLignes().forEach(ligne -> ligne.setBonCommandeFournisseur(bon));
+        // Mise à jour de l'objet existant (évite les erreurs de Row updated/deleted)
+        existing.setStatut(bon.getStatut());
+        if (bon.getDateArrivee() != null) {
+            existing.setDateArrivee(bon.getDateArrivee());
         }
 
-        BonCommandeFournisseur savedBon = repository.save(bon);
+        BonCommandeFournisseur savedBon = repository.save(existing);
 
         if (newlyReceived) {
             try {
@@ -260,7 +250,7 @@ public class BonCommandeFournisseurService {
                         "COMMANDE REÇUE",
                         msg,
                         NotificationType.SUCCESS,
-                        List.of(Role.MAGASINIER, Role.RESPONSABLE_LOGISTIQUE, Role.ADMINISTRATEUR),
+                        Arrays.asList(Role.MAGASINIER, Role.RESPONSABLE_LOGISTIQUE, Role.ADMINISTRATEUR),
                         null);
             } catch (Exception e) {
                 System.err.println("Erreur lors de l'envoi de la notification de réception : " + e.getMessage());

@@ -3,20 +3,27 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ParametreService, NumerotationConfig, Parametre } from '../../services/parametre.service';
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { Subject, Observable } from 'rxjs';
+import { CanComponentDeactivate } from '../../../shared/guards/can-deactivate.guard';
 
 @Component({
   selector: 'app-numerotation-gestion',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, ConfirmDialogComponent],
   templateUrl: './numerotation-gestion.component.html',
   styleUrl: './numerotation-gestion.component.css'
 })
-export class NumerotationGestionComponent implements OnInit {
+export class NumerotationGestionComponent implements OnInit, CanComponentDeactivate {
   configs: NumerotationConfig[] = [];
   parametre: Parametre | null = null;
   loading = true;
   saving = false;
   notification: { message: string, type: 'success' | 'alert' } | null = null;
+  
+  initialConfigs: string = '';
+  showConfirmDialog = false;
+  private deactivateSubject = new Subject<boolean>();
 
   modulesMap: { [key: string]: string } = {
     'PIECE': 'Pièce détachée',
@@ -42,19 +49,17 @@ export class NumerotationGestionComponent implements OnInit {
 
   loadData(): void {
     this.loading = true;
-    this.parametreService.getMasterParametre().subscribe({
-      next: (param) => {
-        this.parametre = param;
-        this.configs = param.numerotationConfigs || [];
+    this.parametreService.getNumerotationConfigs().subscribe({
+      next: (configs) => {
+        this.configs = configs || [];
         this.ensureDefaultModules();
+        this.initialConfigs = JSON.stringify(this.configs);
         this.loading = false;
       },
       error: (err) => {
         console.error('Error loading numbering configs', err);
-        // Si aucun paramètre n'existe, on ne peut pas configurer la numérotation via cette route
-        // Il faudrait d'abord créer au moins un attribut
+        this.ensureDefaultModules();
         this.loading = false;
-        this.showNotification('Veuillez d\'abord configurer les attributs des pièces.', 'alert');
       }
     });
   }
@@ -96,13 +101,12 @@ export class NumerotationGestionComponent implements OnInit {
   }
 
   save(): void {
-    if (!this.parametre?.id) return;
-
     this.saving = true;
-    this.parametreService.updateNumerotationConfigs(this.parametre.id, this.configs).subscribe({
+    this.parametreService.updateNumerotationConfigs(this.configs).subscribe({
       next: (data) => {
         this.parametre = data;
         this.configs = data.numerotationConfigs;
+        this.initialConfigs = JSON.stringify(this.configs);
         this.saving = false;
         this.showNotification('Configurations enregistrées avec succès', 'success');
       },
@@ -129,5 +133,34 @@ export class NumerotationGestionComponent implements OnInit {
   insertPlaceholder(config: NumerotationConfig, placeholder: string): void {
     config.prefix = (config.prefix || '') + placeholder;
     config.showMenu = false;
+  }
+
+  isDirty(): boolean {
+    return this.initialConfigs !== JSON.stringify(this.configs);
+  }
+
+  canDeactivate(): Observable<boolean> | boolean {
+    if (!this.isDirty()) {
+      return true;
+    }
+    this.showConfirmDialog = true;
+    return this.deactivateSubject.asObservable();
+  }
+
+  onConfirmDeactivate(): void {
+    this.showConfirmDialog = false;
+    this.deactivateSubject.next(false); // Rester ici
+  }
+
+  onCancelDeactivate(): void {
+    this.showConfirmDialog = false;
+    this.deactivateSubject.next(true); // Quitter
+  }
+
+  @HostListener('window:beforeunload', ['$event'])
+  unloadNotification($event: any) {
+    if (this.isDirty()) {
+      $event.returnValue = true;
+    }
   }
 }

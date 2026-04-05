@@ -1,16 +1,17 @@
-import { Component, OnInit, inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject, PLATFORM_ID, ChangeDetectorRef, ViewChild } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, NgForm } from '@angular/forms';
 import { KeycloakService } from 'keycloak-angular';
 import { MagasinierService } from '../../services/magasinier.service';
 import { ProduitFini, PieceDetachee } from '../../models/magasinier.models';
 import { EntrepriseService } from '../../../admin/services/entreprise.service';
 import { Entreprise } from '../../../admin/models/entreprise.model';
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
     selector: 'app-produit-list',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, ConfirmDialogComponent],
     templateUrl: './produit-list.component.html',
     styleUrl: './produit-list.component.css'
 })
@@ -31,6 +32,9 @@ export class ProduitListComponent implements OnInit {
     itemToDelete: any = null;
     isAutoCode = true;
     lastUpdateTimestamp = Date.now();
+    showSaveConfirm = false;
+    @ViewChild('produitForm') produitForm!: NgForm;
+    submitted = false;
 
 
 
@@ -135,6 +139,10 @@ export class ProduitListComponent implements OnInit {
         };
     }
 
+    get currencySymbol(): string {
+        return this.entrepriseService.getDeviseSymbol(this.entreprise);
+    }
+
     onFileSelected(event: Event): void {
         const input = event.target as HTMLInputElement;
         if (input.files && input.files[0]) {
@@ -224,6 +232,7 @@ export class ProduitListComponent implements OnInit {
         this.newProduit.code = this.isAutoCode ? 'AUTO' : '';
         this.selectedFile = null;
         this.imagePreview = null;
+        this.submitted = false;
         this.showCreateModal = true;
         this.cdr.detectChanges();
     }
@@ -234,6 +243,7 @@ export class ProduitListComponent implements OnInit {
         this.selectedFile = null;
         this.imagePreview = produit.imageUrl || null;
         this.isAutoCode = this.newProduit.code === 'AUTO';
+        this.submitted = false;
         this.showCreateModal = true;
         this.cdr.detectChanges();
     }
@@ -254,6 +264,22 @@ export class ProduitListComponent implements OnInit {
     }
 
     saveProduit(): void {
+        this.submitted = true;
+        if (this.produitForm.invalid) return;
+
+        const isDirty = this.produitForm?.dirty || !!this.selectedFile;
+
+        if (!isDirty && this.selectedProduit) {
+            this.closeCreateModal();
+            return;
+        }
+
+        this.showSaveConfirm = true;
+        this.cdr.detectChanges();
+    }
+
+    onConfirmSave(): void {
+        this.showSaveConfirm = false;
         const payload: any = { ...this.newProduit };
         delete payload.pieces;
         delete payload.entreprise;
@@ -302,6 +328,11 @@ export class ProduitListComponent implements OnInit {
                 error: (err) => this.notify(this.extractErrorMessage(err, 'Erreur de création'), 'error')
             });
         }
+    }
+
+    onCancelSave(): void {
+        this.showSaveConfirm = false;
+        this.cdr.detectChanges();
     }
 
 
@@ -432,6 +463,7 @@ export class ProduitListComponent implements OnInit {
 
 
     showAssociatedPieces(produit: ProduitFini): void {
+        console.log('Ouverture des pièces pour le produit:', produit.designation, 'ID:', produit.id);
         this.selectedProductForPieces = produit;
         this.showAssociatedPiecesModal = true;
         this.cdr.detectChanges();

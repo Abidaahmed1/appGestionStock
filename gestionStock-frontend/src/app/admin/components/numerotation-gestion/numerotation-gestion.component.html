@@ -176,3 +176,9 @@
         </aside>
     </div>
 </div>
+
+<app-confirm-dialog 
+  [show]="showConfirmDialog" 
+  (confirm)="onConfirmDeactivate()" 
+  (cancel)="onCancelDeactivate()">
+</app-confirm-dialog>
