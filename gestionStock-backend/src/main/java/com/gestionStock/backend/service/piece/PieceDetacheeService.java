@@ -39,21 +39,21 @@ public class PieceDetacheeService {
     private final NotificationService notificationService;
     private final UserService userService;
     private final UniteRepository uniteRepo;
+    private final com.gestionStock.backend.repository.fournisseur.PieceFournisseurRepository pieceFournisseurRepo;
     private final com.gestionStock.backend.entity.parametre.NumerotationService numerotationService;
     private final jakarta.persistence.EntityManager entityManager;
 
     public void recordHistory(PieceDetachee piece, String action, String details) {
         try {
-            com.gestionStock.backend.entity.user.User currentUser = userService.getCurrentUser().orElse(null);
-            com.gestionStock.backend.entity.piece.PieceHistorique history = com.gestionStock.backend.entity.piece.PieceHistorique
-                    .builder()
-                    .piece(piece)
-                    .date(java.time.LocalDateTime.now())
-                    .action(action)
-                    .details(details)
-                    .utilisateur(currentUser)
-                    .build();
-            historiqueRepo.save(history);
+            String userId = userService.getCurrentUser()
+                    .map(u -> u.getId().toString())
+                    .orElse(null);
+            historiqueRepo.insertHistoriqueNative(
+                    action,
+                    java.time.LocalDateTime.now(),
+                    details,
+                    piece.getId(),
+                    userId);
         } catch (Exception e) {
             System.err.println("Failed to record history: " + e.getMessage());
         }
@@ -140,14 +140,17 @@ public class PieceDetacheeService {
             com.gestionStock.backend.entity.entreprise.Entreprise entreprise) {
         if (piece.getCodeBarre() != null && !piece.getCodeBarre().trim().isEmpty()) {
             String cleanCode = piece.getCodeBarre().trim();
-            pieceRepo.findByCodeBarreAndEntreprise(cleanCode, entreprise)
-                    .ifPresent(existing -> {
-                        if (piece.getId() == null || !existing.getId().equals(piece.getId())) {
-                            throw new PieceException("Le code barre '" + cleanCode +
-                                    "' est déjà utilisé par la pièce '" + existing.getDesignation()
-                                    + "' dans votre entreprise.");
-                        }
-                    });
+            java.util.List<PieceDetachee> duplicates = pieceRepo.findByCodeBarreAndEntreprise(cleanCode, entreprise);
+
+            for (PieceDetachee existing : duplicates) {
+                // Si l'ID est différent, c'est un vrai doublon (pas la même pièce qu'on est en
+                // train de modifier)
+                if (piece.getId() == null || !existing.getId().equals(piece.getId())) {
+                    throw new PieceException("Impossible d'enregistrer : Le code-barres [" + cleanCode +
+                            "] est déjà utilisé par la pièce [" + existing.getDesignation() +
+                            "] (Référence: " + existing.getReference() + ").");
+                }
+            }
         }
     }
 
@@ -316,7 +319,7 @@ public class PieceDetacheeService {
 
     private void checkStockAlerts(PieceDetachee piece, int previousQty) {
         int newQty = piece.getQuantite() != null ? piece.getQuantite() : 0;
-        int minSeuil = piece.getSeuilMinimum() > 0 ? piece.getSeuilMinimum() : 0;
+        int minSeuil = piece.getSeuilMinimum() != null ? piece.getSeuilMinimum() : 0;
         String designation = piece.getDesignation();
         String ref = piece.getReference();
 
@@ -325,7 +328,7 @@ public class PieceDetacheeService {
             try {
                 String v = piece.getDetails().stream()
                         .filter(d -> d != null && d.getParametre() != null && d.getValeur() != null
-                                && !d.getValeur().trim().isEmpty())
+                                && !d.getValeur().trim().isEmpty() && !d.getValeur().equals("-"))
                         .map(d -> d.getParametre().getNom() + ": " + d.getValeur())
                         .collect(java.util.stream.Collectors.joining(", "));
                 if (!v.isEmpty())
@@ -334,30 +337,30 @@ public class PieceDetacheeService {
             }
         }
 
+        List<Role> targetRoles = List.of(
+                Role.ADMINISTRATEUR,
+                Role.RESPONSABLE_LOGISTIQUE,
+                Role.MAGASINIER,
+                Role.AUDITEUR);
+
         try {
-            if (newQty == 0 && previousQty > 0) {
+            if (newQty <= 0 && previousQty > 0) {
                 notificationService.createNotificationForRoles(
-                        "⚠️ Rupture de Stock",
+                        "Rupture de Stock : " + designation,
                         "ALERTE ! La pièce '" + designation + variantLabel + "' (Réf: " + ref
                                 + ") est en RUPTURE DE STOCK. Réapprovisionnement urgent requis.",
                         NotificationType.RUPTURE_STOCK,
-                        List.of(
-                                Role.ADMINISTRATEUR,
-                                Role.RESPONSABLE_LOGISTIQUE,
-                                Role.MAGASINIER,
-                                Role.AUDITEUR),
+                        targetRoles,
                         piece.getId());
 
-            } else if (newQty > 0 && newQty < minSeuil && previousQty >= minSeuil) {
+            } else if (newQty < minSeuil && previousQty >= minSeuil) {
                 notificationService.createNotificationForRoles(
-                        "⚡ Stock Faible – " + designation,
+                        " Stock Bas (Réserve) : " + designation,
                         "Attention ! La pièce '" + designation + variantLabel + "' (Réf: " + ref
                                 + ") est passée sous son seuil minimum.\nQuantité actuelle: " + newQty
                                 + " / Seuil min: " + minSeuil + ". Pensez à commander.",
                         NotificationType.WARNING,
-                        List.of(
-                                Role.ADMINISTRATEUR,
-                                Role.RESPONSABLE_LOGISTIQUE),
+                        targetRoles,
                         piece.getId());
             }
         } catch (Exception e) {
@@ -373,6 +376,68 @@ public class PieceDetacheeService {
         p.setArchivee(true);
         this.pieceRepo.save(p);
         recordHistory(p, "Archivage", "Pièce archivée par l'utilisateur");
+    }
+
+    @Transactional
+    public void deletePermanently(Long id) {
+        if (id == null) {
+            throw new PieceException("L'ID de la pièce est manquant.");
+        }
+
+        System.out.println("[DEBUG] Suppression définitive de la pièce ID: " + id);
+
+        PieceDetachee p = this.pieceRepo.findById(id)
+                .orElseThrow(() -> new PieceException(
+                        "Impossible de supprimer définitivement cette pièce car elle est encore référencée ailleurs (Historique, Inventaires ou Bons)."));
+
+        try {
+            // 1. Supprimer les associations ManyToMany avec Produits
+            if (p.getProduitsAssocies() != null) {
+                for (ProduitFini pf : p.getProduitsAssocies()) {
+                    pf.getPieces().remove(p);
+                    produitRepo.save(pf);
+                }
+                p.getProduitsAssocies().clear();
+            }
+
+            // 2. Supprimer les associations avec Fournisseurs (PieceFournisseur)
+            // Table "fournisseur_pieces" mentionnée par l'utilisateur
+            pieceFournisseurRepo.deleteByPiece(p);
+
+            // 3. Supprimer tout l'historique lié (optionnel mais conseillé pour suppression
+            // "définitive")
+            historiqueRepo.deleteByPieceId(id);
+
+            // 4. Supprimer la pièce elle-même
+            this.pieceRepo.delete(p);
+            this.pieceRepo.flush();
+
+            System.out.println("[DEBUG] Pièce " + id + " supprimée avec succès.");
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new PieceException(
+                    "Impossible de supprimer définitivement cette pièce car elle est encore référencée ailleurs (Historique, Inventaires ou Bons).");
+        } catch (Exception e) {
+            throw new PieceException("Erreur lors de la suppression définitive : " + e.getMessage());
+        }
+    }
+
+    public List<PieceDetachee> findArchived() {
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
+        if (entreprise == null) {
+            return java.util.List.of();
+        }
+        return this.pieceRepo.findByArchiveeAndEntreprise(true, entreprise);
+    }
+
+    public PieceDetachee restore(Long id) {
+        PieceDetachee p = this.pieceRepo.findById(id).orElse(null);
+        if (p == null)
+            return null;
+
+        p.setArchivee(false);
+        PieceDetachee saved = this.pieceRepo.save(p);
+        recordHistory(saved, "Restauration", "Pièce restaurée de l'archive par l'administrateur");
+        return saved;
     }
 
     public PieceDetachee findByReference(String reference) {
@@ -438,14 +503,20 @@ public class PieceDetacheeService {
                             + "' est déjà utilisée par une autre pièce dans votre entreprise.");
         }
 
-        existingPiece.setDesignation(piece.getDesignation());
-        existingPiece.setReference(piece.getReference());
+        if (piece.getDesignation() != null && !piece.getDesignation().trim().isEmpty()) {
+            existingPiece.setDesignation(piece.getDesignation());
+        }
+        if (piece.getReference() != null && !piece.getReference().trim().isEmpty()) {
+            existingPiece.setReference(piece.getReference());
+        }
         existingPiece.setSeuilMinimum(piece.getSeuilMinimum());
         existingPiece.setSeuilMaximum(piece.getSeuilMaximum());
         existingPiece.setArchivee(piece.isArchivee());
         existingPiece.setDescription(piece.getDescription());
         existingPiece.setImageUrl(piece.getImageUrl());
-        existingPiece.setCodeBarre(piece.getCodeBarre());
+        if (piece.getCodeBarre() != null && !piece.getCodeBarre().trim().isEmpty()) {
+            existingPiece.setCodeBarre(piece.getCodeBarre());
+        }
         existingPiece.setPrixVente(piece.getPrixVente());
         existingPiece.setTauxTVA(piece.getTauxTVA());
 
@@ -456,8 +527,14 @@ public class PieceDetacheeService {
 
         handleCategory(piece);
         handleUnite(piece);
-        existingPiece.setCategorie(piece.getCategorie());
-        existingPiece.setUnite(piece.getUnite());
+        // Only overwrite if the incoming value is non-null to avoid clearing a required
+        // field
+        if (piece.getCategorie() != null) {
+            existingPiece.setCategorie(piece.getCategorie());
+        }
+        if (piece.getUnite() != null) {
+            existingPiece.setUnite(piece.getUnite());
+        }
 
         StringBuilder detailDiff = new StringBuilder();
         if (piece.getDetails() != null) {
@@ -604,8 +681,11 @@ public class PieceDetacheeService {
 
     private void handleUnite(PieceDetachee piece) {
         if (piece.getUnite() != null && piece.getUnite().getId() != null) {
+            // Replace the shell object with the managed entity from DB
             uniteRepo.findById(piece.getUnite().getId()).ifPresent(piece::setUnite);
         }
+        // If unite is still null here, it will be caught by the @NotNull guard
+        // in updateInternal (existing value is kept) or by Bean Validation on create.
     }
 
 }

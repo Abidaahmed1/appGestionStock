@@ -111,7 +111,7 @@
             <div class="catalog-card-sober" *ngFor="let piece of filteredPieces">
                 <div class="card-image">
                     <img [src]="getImageUrl(piece.imageUrl)"
-                        onerror="this.onerror=null;this.src='assets/images/default-piece.svg'">
+                        onerror="this.onerror=null;this.src='/assets/images/default-piece.png'">
                 </div>
                 <div class="card-details">
                     <div class="details-header">
@@ -211,7 +211,7 @@
             <div class="catalog-card-sober" *ngFor="let produit of filteredProduits">
                 <div class="card-image">
                     <img [src]="getImageUrl(produit.imageUrl)"
-                        onerror="this.onerror=null;this.src='assets/images/default-produit.svg'">
+                        onerror="this.onerror=null;this.src='/assets/images/default-produit.png'">
                 </div>
                 <div class="card-details">
                     <div class="details-header">
@@ -364,7 +364,7 @@
             <div class="variant-list">
                 <div class="variant-card" *ngFor="let piece of filteredCompositionList">
                     <div class="composition-piece-img">
-                        <img [src]="getImageUrl(piece.imageUrl)" onerror="this.src='assets/images/default-piece.svg'">
+                        <img [src]="getImageUrl(piece.imageUrl)" onerror="this.src='/assets/images/default-piece.png'">
                     </div>
                     <div class="variant-info">
                         <h4 class="comp-name">{{ piece.designation }}</h4>
@@ -429,7 +429,7 @@
             <div class="usage-grid">
                 <div class="usage-card" *ngFor="let prod of filteredUsageList">
                     <div class="usage-card-img">
-                        <img [src]="getImageUrl(prod.imageUrl)" onerror="this.src='assets/images/default-produit.svg'">
+                        <img [src]="getImageUrl(prod.imageUrl)" onerror="this.src='/assets/images/default-produit.png'">
                         <div class="usage-code-badge">{{ prod.code }}</div>
                     </div>
                     <div class="usage-card-info">

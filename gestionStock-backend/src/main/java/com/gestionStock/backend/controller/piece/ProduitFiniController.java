@@ -27,6 +27,18 @@ public class ProduitFiniController {
         return produitService.getAll();
     }
 
+    @GetMapping("/archived")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'MAGASINIER')")
+    public List<ProduitFini> getArchived() {
+        return produitService.findArchived();
+    }
+
+    @PutMapping("/{id}/restore")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR', 'MAGASINIER')")
+    public ResponseEntity<ProduitFini> restore(@PathVariable Long id) {
+        return ResponseEntity.ok(produitService.restore(id));
+    }
+
     @PostMapping("/upload-image/{id}")
     @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
     public ResponseEntity<?> uploadImage(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
@@ -62,5 +74,21 @@ public class ProduitFiniController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         produitService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/permanent")
+    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    public ResponseEntity<?> deletePermanently(@PathVariable Long id) {
+        try {
+            produitService.deletePermanently(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            String message = e.getMessage();
+            if (e instanceof org.springframework.dao.DataIntegrityViolationException || (message != null && message.contains("constraint"))) {
+                message = "Impossible de supprimer définitivement ce produit car il est lié à d'autres données (Historique, Inventaires, ou Bons). Veuillez d'abord supprimer ces liens.";
+            }
+            return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT)
+                    .body(java.util.Map.of("message", message != null ? message : "Erreur lors de la suppression définitive"));
+        }
     }
 }

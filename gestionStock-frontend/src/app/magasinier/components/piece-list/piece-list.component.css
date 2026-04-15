@@ -2989,3 +2989,9 @@ body.dark-theme .badge-stock {
     background: rgba(245, 158, 11, 0.2);
     color: #fbbf24;
 }
+
+.disabled-visual {
+    opacity: 0.5;
+    filter: grayscale(1);
+    cursor: pointer !important;
+} 

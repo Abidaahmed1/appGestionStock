@@ -7,7 +7,7 @@ import { PieceDetachee, ProduitFini, Categorie, Parametre, Unite } from '../mode
     providedIn: 'root'
 })
 export class MagasinierService {
-    private baseUrl = 'http://localhost:8081/api';
+    private baseUrl = 'http://localhost:8095/api';
 
     constructor(private http: HttpClient) { }
 
@@ -30,6 +30,10 @@ export class MagasinierService {
     deletePiece(id: number): Observable<void> {
         return this.http.delete<void>(`${this.baseUrl}/pieces/${id}`);
     }
+
+    deletePiecePermanently(id: number): Observable<void> {
+        return this.http.delete<void>(`${this.baseUrl}/pieces/${id}/permanent`);
+    }
  
     updatePieceQuantity(id: number, quantity: number): Observable<PieceDetachee> {
         return this.http.patch<PieceDetachee>(`${this.baseUrl}/pieces/${id}/quantity?quantity=${quantity}`, {});
@@ -49,6 +53,10 @@ export class MagasinierService {
 
     deleteProduit(id: number): Observable<void> {
         return this.http.delete<void>(`${this.baseUrl}/produits/${id}`);
+    }
+
+    deleteProduitPermanently(id: number): Observable<void> {
+        return this.http.delete<void>(`${this.baseUrl}/produits/${id}/permanent`);
     }
 
     uploadPieceImage(id: number, formData: FormData): Observable<PieceDetachee> {
@@ -88,5 +96,22 @@ export class MagasinierService {
 
     getUnites(): Observable<Unite[]> {
         return this.http.get<Unite[]>(`${this.baseUrl}/unites`);
+    }
+
+    // Archived Items
+    getArchivedPieces(): Observable<PieceDetachee[]> {
+        return this.http.get<PieceDetachee[]>(`${this.baseUrl}/pieces/archived`);
+    }
+
+    restorePiece(id: number): Observable<PieceDetachee> {
+        return this.http.put<PieceDetachee>(`${this.baseUrl}/pieces/${id}/restore`, {});
+    }
+
+    getArchivedProduits(): Observable<ProduitFini[]> {
+        return this.http.get<ProduitFini[]>(`${this.baseUrl}/produits/archived`);
+    }
+
+    restoreProduit(id: number): Observable<ProduitFini> {
+        return this.http.put<ProduitFini>(`${this.baseUrl}/produits/${id}/restore`, {});
     }
 }

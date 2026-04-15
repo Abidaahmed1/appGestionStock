@@ -1,10 +1,18 @@
-import { Component, OnInit, ViewChild, ElementRef, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, Inject, PLATFORM_ID, HostListener, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Devise, Entreprise, Pays } from '../../models/entreprise.model';
+import { HttpClient } from '@angular/common/http';
+import { Devise, Entreprise } from '../../models/entreprise.model';
 import { EntrepriseService } from '../../services/entreprise.service';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { PhoneInputComponent } from '../../../shared/components/phone-input/phone-input.component';
+import { getCountryCallingCode, CountryCode } from 'libphonenumber-js';
+
+interface CountryItem {
+    name: string;
+    iso2: string;
+    dialCode?: string;
+}
 
 @Component({
     selector: 'app-entreprise-details',
@@ -25,16 +33,31 @@ export class EntrepriseDetailsComponent implements OnInit {
         email: '',
         logoUrl: '',
         codePostal: '',
-        devise: undefined,
-        pays: undefined
+        ville: '',
+        rue: '',
+        pays: '',
+        devise: undefined
     };
+
+    countries: CountryItem[] = [];
+    filteredCountries: CountryItem[] = [];
+    showCountryDropdown = false;
+    countrySearchQuery = '';
+
+    cities: string[] = [];
+    filteredCitiesList: string[] = [];
+    showCityDropdown = false;
+    citySearchQuery = '';
+
+    countryData: any[] = [];
+    loadingCountries = false;
+    loadingCities = false;
 
     isEditing = false;
     loading = true;
     saveError = '';
     logoPreview = '';
     pendingLogoFile: File | null = null;
-    countries: Pays[] = [];
     devises: Devise[] = [];
     isPhoneValid = true;
     notification: { message: string, type: 'success' | 'error' } | null = null;
@@ -44,11 +67,14 @@ export class EntrepriseDetailsComponent implements OnInit {
         private entrepriseService: EntrepriseService,
         private route: ActivatedRoute,
         private router: Router,
+        private http: HttpClient,
+        private cdr: ChangeDetectorRef,
         @Inject(PLATFORM_ID) private platformId: Object
     ) { }
 
     ngOnInit(): void {
         this.loadMetadata();
+        this.loadCountries();
         const id = this.route.snapshot.paramMap.get('id');
 
         if (id) {
@@ -56,6 +82,9 @@ export class EntrepriseDetailsComponent implements OnInit {
                 next: (data) => {
                     this.entreprise = data;
                     this.loading = false;
+                    if (this.entreprise.pays) {
+                        this.onCountryChange(false);
+                    }
                 },
                 error: (err) => {
                     console.error('Error fetching entreprise', err);
@@ -68,8 +97,10 @@ export class EntrepriseDetailsComponent implements OnInit {
                             email: '',
                             logoUrl: '',
                             codePostal: '',
-                            devise: undefined,
-                            pays: undefined
+                            ville: '',
+                            rue: '',
+                            pays: '',
+                            devise: undefined
                         };
                         this.isEditing = true;
                     }
@@ -83,8 +114,143 @@ export class EntrepriseDetailsComponent implements OnInit {
     }
 
     loadMetadata(): void {
-        this.entrepriseService.getAllPays().subscribe(data => this.countries = data);
         this.entrepriseService.getAllDevises().subscribe(data => this.devises = data);
+    }
+
+    loadCountries() {
+        this.loadingCountries = true;
+        this.http.get<any>('https://countriesnow.space/api/v0.1/countries').subscribe({
+            next: (res) => {
+                if (res && res.data) {
+                    this.countryData = res.data;
+                    this.countries = res.data.map((item: any) => {
+                        let dialCode = '';
+                        try {
+                            dialCode = '+' + getCountryCallingCode(item.iso2 as CountryCode);
+                        } catch (e) {
+                            dialCode = '';
+                        }
+                        return {
+                            name: item.country,
+                            iso2: item.iso2 ? item.iso2.toLowerCase() : '',
+                            dialCode: dialCode
+                        };
+                    }).sort((a: CountryItem, b: CountryItem) => a.name.localeCompare(b.name));
+                    
+                    this.filteredCountries = [...this.countries];
+                }
+                this.loadingCountries = false;
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                console.error('Erreur lors du chargement des pays:', err);
+                this.loadingCountries = false;
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    @HostListener('document:click', ['$event'])
+    handleOutsideClick(event: MouseEvent) {
+        this.showCountryDropdown = false;
+        this.showCityDropdown = false;
+    }
+
+    toggleCountryDropdown(event: MouseEvent) {
+        if (!this.isEditing) return;
+        event.stopPropagation();
+        this.showCountryDropdown = !this.showCountryDropdown;
+        this.showCityDropdown = false;
+        if (this.showCountryDropdown) {
+            this.countrySearchQuery = '';
+            this.filteredCountries = [...this.countries];
+        }
+    }
+
+    filterCountriesDropdown() {
+        const q = this.countrySearchQuery.toLowerCase().trim();
+        if (!q) {
+            this.filteredCountries = this.countries;
+            return;
+        }
+        this.filteredCountries = this.countries.filter(c =>
+            c.name.toLowerCase().includes(q)
+        );
+    }
+
+    selectCountry(c: CountryItem) {
+        this.entreprise.pays = c.name;
+        this.showCountryDropdown = false;
+        
+        if (c.dialCode) {
+            const currentTel = this.entreprise.telephone || '';
+            const strippedCurrent = currentTel.replace(/^\+\d+\s*/, '');
+            this.entreprise.telephone = `${c.dialCode} ${strippedCurrent}`;
+        }
+        
+        this.onCountryChange(true);
+    }
+
+    toggleCityDropdown(event: MouseEvent) {
+        if (!this.isEditing || !this.entreprise.pays || this.loadingCities) return;
+        event.stopPropagation();
+        this.showCityDropdown = !this.showCityDropdown;
+        this.showCountryDropdown = false;
+        if (this.showCityDropdown) {
+            this.citySearchQuery = '';
+            this.filteredCitiesList = [...this.cities];
+        }
+    }
+
+    filterCitiesDropdown() {
+        const q = this.citySearchQuery.toLowerCase().trim();
+        if (!q) {
+            this.filteredCitiesList = this.cities;
+            return;
+        }
+        this.filteredCitiesList = this.cities.filter(city =>
+            city.toLowerCase().includes(q)
+        );
+    }
+
+    selectCity(city: string) {
+        this.entreprise.ville = city;
+        this.showCityDropdown = false;
+    }
+
+    getSelectedCountryObj(): CountryItem | undefined {
+        if (!this.entreprise.pays) return undefined;
+        return this.countries.find(c => c.name === this.entreprise.pays);
+    }
+
+    onCountryChange(resetCity: boolean = true) {
+        if (resetCity) {
+            this.entreprise.ville = '';
+        }
+        this.cities = [];
+        this.filteredCitiesList = [];
+        this.showCityDropdown = false;
+        
+        if (this.entreprise.pays) {
+            this.loadingCities = true;
+            this.http.post<any>('https://countriesnow.space/api/v0.1/countries/cities', {
+                country: this.entreprise.pays
+            }).subscribe({
+                next: (res) => {
+                    if (res && res.data) {
+                        this.cities = res.data.sort();
+                        this.filteredCitiesList = [...this.cities];
+                    }
+                    this.loadingCities = false;
+                    this.cdr.detectChanges();
+                },
+                error: (err) => {
+                    console.error('Erreur chargement villes:', err);
+                    this.loadingCities = false;
+                    this.cdr.detectChanges();
+                }
+            });
+        }
     }
 
     compareObjects(o1: any, o2: any): boolean {
@@ -151,12 +317,12 @@ export class EntrepriseDetailsComponent implements OnInit {
         if (url.startsWith('data:image/')) return url;
         if (url.startsWith('http://') || url.startsWith('https://')) return url;
         if (url.startsWith('/api/images') || url.startsWith('/uploads')) {
-            return `http://localhost:8081${url}`;
+            return `http://localhost:8095${url}`;
         }
         if (url.includes('/remote.php/dav/files/')) {
             const parts = url.split('/');
             const filename = parts[parts.length - 1];
-            return `http://localhost:8081/api/images/${filename}`;
+            return `http://localhost:8095/api/images/${filename}`;
         }
         return url;
     }
@@ -185,6 +351,14 @@ export class EntrepriseDetailsComponent implements OnInit {
             this.formErrors['devise'] = true;
             isValid = false;
         }
+        if (!this.entreprise.pays) {
+            this.formErrors['pays'] = true;
+            isValid = false;
+        }
+        if (!this.entreprise.ville) {
+            this.formErrors['ville'] = true;
+            isValid = false;
+        }
 
         return isValid;
     }
@@ -195,6 +369,10 @@ export class EntrepriseDetailsComponent implements OnInit {
             return;
         }
         this.saveError = '';
+
+        // Construct the full address string for backward compatibility
+        this.entreprise.adresse = `${this.entreprise.rue || ''}, ${this.entreprise.codePostal || ''} ${this.entreprise.ville || ''}, ${this.entreprise.pays || ''}`;
+
         if (this.entreprise.id) {
             this.entrepriseService.updateEntreprise(this.entreprise.id, this.entreprise).subscribe({
                 next: (updated) => {

@@ -17,7 +17,7 @@ public interface FournisseurRepository extends JpaRepository<Fournisseur, Long> 
     List<Fournisseur> findByArchiveeFalse();
 
     List<Fournisseur> findByArchiveeFalseAndEntreprise(Entreprise entreprise);
-
+    List<Fournisseur> findByArchiveeTrueAndEntreprise(Entreprise entreprise);
     List<Fournisseur> findByEntreprise(Entreprise entreprise);
 
     boolean existsByCode(String code);

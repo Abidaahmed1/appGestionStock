@@ -151,7 +151,11 @@ export class BonListComponent implements OnInit {
     }
 
     openEditModal(bon: Bon): void {
-        this.router.navigate(['/magasinier/bons', bon.id]);
+        if (this.hasRole('AUDITEUR')) {
+            this.router.navigate(['/auditeur/bons', bon.id]);
+        } else {
+            this.router.navigate(['/magasinier/bons', bon.id]);
+        }
     }
 
     printBon(bon: Bon, event: MouseEvent): void {

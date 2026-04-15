@@ -49,4 +49,23 @@ public class FournisseurController {
         fournisseurService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/archived")
+    @PreAuthorize("hasAnyRole('AUDITEUR', 'ADMINISTRATEUR')")
+    public ResponseEntity<List<Fournisseur>> getArchived() {
+        return ResponseEntity.ok(fournisseurService.findArchived());
+    }
+
+    @PutMapping("/{id}/restore")
+    @PreAuthorize("hasAnyRole('ADMINISTRATEUR')")
+    public ResponseEntity<Fournisseur> restore(@PathVariable Long id) {
+        return ResponseEntity.ok(fournisseurService.restore(id));
+    }
+
+    @DeleteMapping("/{id}/permanent")
+    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    public ResponseEntity<Void> deletePermanently(@PathVariable Long id) {
+        fournisseurService.deletePermanently(id);
+        return ResponseEntity.noContent().build();
+    }
 }

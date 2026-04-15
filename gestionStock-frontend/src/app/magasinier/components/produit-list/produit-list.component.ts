@@ -339,6 +339,10 @@ export class ProduitListComponent implements OnInit {
 
 
     confirmDelete(produit: ProduitFini): void {
+        if (!this.canArchiveProduit(produit)) {
+            this.notify("Impossible de supprimer un produit fini contenant des pièces.", 'error');
+            return;
+        }
         this.itemToDelete = produit;
         this.showDeleteConfirm = true;
         this.cdr.detectChanges();
@@ -405,18 +409,18 @@ export class ProduitListComponent implements OnInit {
 
 
     getImageUrl(url: string | null | undefined): string {
-        if (!url) return 'assets/images/default-produit.svg';
+        if (!url) return '/assets/images/default-produit.png';
 
         // Si c'est une prévisualisation locale (Base64), on la retourne directement
         if (url.startsWith('data:')) return url;
 
         let finalUrl = url;
         if (url.startsWith('/api/images') || url.startsWith('/uploads')) {
-            finalUrl = `http://localhost:8081${url}`;
+            finalUrl = `http://localhost:8095${url}`;
         } else if (url.includes('/remote.php/dav/files/')) {
             const parts = url.split('/');
             const filename = parts[parts.length - 1];
-            finalUrl = `http://localhost:8081/api/images/${filename}`;
+            finalUrl = `http://localhost:8095/api/images/${filename}`;
         }
 
         // Ajout d'un paramètre de version pour forcer le rafraîchissement du cache
@@ -426,8 +430,7 @@ export class ProduitListComponent implements OnInit {
 
 
     canArchiveProduit(produit: ProduitFini): boolean {
-        if (!produit.pieces || produit.pieces.length === 0) return true;
-        return produit.pieces.every(p => p.archivee);
+        return !produit.pieces || produit.pieces.length === 0;
     }
 
 

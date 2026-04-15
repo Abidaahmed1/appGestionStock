@@ -7,7 +7,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.gestionStock.backend.entity.entreprise.Entreprise;
 import com.gestionStock.backend.repository.entreprise.DeviseRepository;
 import com.gestionStock.backend.repository.entreprise.EntrepriseRepository;
-import com.gestionStock.backend.repository.entreprise.PaysRepository;
 
 import com.gestionStock.backend.entity.parametre.ParametreService;
 
@@ -20,7 +19,6 @@ import java.util.Optional;
 public class EntrepriseService {
 
     private final EntrepriseRepository entrepriseRepository;
-    private final PaysRepository paysRepository;
     private final DeviseRepository deviseRepository;
     private final ParametreService parametreService;
 
@@ -44,13 +42,9 @@ public class EntrepriseService {
             existing.setEmail(input.getEmail());
             existing.setLogoUrl(input.getLogoUrl());
             existing.setCodePostal(input.getCodePostal());
-
-            if (input.getPays() != null && input.getPays().getId() != null) {
-                paysRepository.findById(input.getPays().getId())
-                        .ifPresent(existing::setPays);
-            } else {
-                existing.setPays(null);
-            }
+            existing.setVille(input.getVille());
+            existing.setRue(input.getRue());
+            existing.setPays(input.getPays());
 
             if (input.getDevise() != null && input.getDevise().getId() != null) {
                 deviseRepository.findById(input.getDevise().getId())

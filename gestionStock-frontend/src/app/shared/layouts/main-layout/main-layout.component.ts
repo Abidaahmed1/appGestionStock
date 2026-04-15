@@ -185,15 +185,20 @@ export class MainLayoutComponent implements OnInit {
         });
 
         if (this.hasRole('ROLE_RESPONSABLE_LOGISTIQUE') || isAdmin) {
+            const logistiqueItems = [
+                { label: 'Fournisseurs', link: '/logistique/fournisseurs', icon: 'users' },
+                { label: 'Commandes', link: '/logistique/commandes', icon: 'shopping-bag' },
+                { label: 'Suivi des prix', link: '/logistique/tracking', icon: 'trending-up' }
+            ];
+
+            if (!isAdmin) {
+                logistiqueItems.splice(1, 0, { label: 'Catalogue', link: '/magasinier/catalogue', icon: 'grid' });
+            }
+
             menu.push({
                 title: 'GESTION LOGISTIQUE',
                 icon: 'logistique',
-                items: [
-                    { label: 'Fournisseurs', link: '/logistique/fournisseurs', icon: 'users' },
-                    { label: 'Catalogue', link: '/magasinier/catalogue', icon: 'grid' },
-                    { label: 'Commandes', link: '/logistique/commandes', icon: 'shopping-bag' },
-                    { label: 'Suivi des prix', link: '/logistique/tracking', icon: 'trending-up' }
-                ]
+                items: logistiqueItems
             });
         }
 
@@ -221,9 +226,11 @@ export class MainLayoutComponent implements OnInit {
 
             const auditSection = menu[menu.length - 1];
             if (this.hasRole('ROLE_AUDITEUR')) {
-                auditSection.items.push({ label: 'Catalogue Général', link: '/magasinier/catalogue', icon: 'grid' });
+                if (!isAdmin) {
+                    auditSection.items.push({ label: 'Catalogue Général', link: '/magasinier/catalogue', icon: 'grid' });
+                }
                 auditSection.items.push({ label: 'Commandes', link: '/logistique/commandes', icon: 'shopping-bag' });
-                auditSection.items.push({ label: ' mouvements stocks', link: '/magasinier/bons', icon: 'file-text' });
+                auditSection.items.push({ label: ' mouvements stocks', link: '/auditeur/bons', icon: 'file-text' });
             }
         }
 
@@ -232,7 +239,8 @@ export class MainLayoutComponent implements OnInit {
                 title: 'ADMINISTRATION',
                 icon: 'admin',
                 items: [
-                    { label: 'Configuration Système', link: '/admin/settings', icon: 'settings' }
+                    { label: 'Configuration Système', link: '/admin/settings', icon: 'settings' },
+                    { label: 'Centre d\'Archive', link: '/admin/archive', icon: 'rotate-ccw' }
                 ]
             });
         }

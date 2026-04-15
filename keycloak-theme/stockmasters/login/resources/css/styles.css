@@ -7,13 +7,16 @@
     --teal-100: #ccfbf1;
     --teal-600: #0d9488;
     --teal-700: #0f766e;
-    --teal-800: #32656A; /* Dashboard Dark Teal */
-    --gray-50: #fafcff;  /* Dashboard Background */
+    --teal-800: #32656A;
+    /* Dashboard Dark Teal */
+    --gray-50: #fafcff;
+    /* Dashboard Background */
     --gray-100: #f1f5f9;
     --gray-200: #e2e8f0;
     --gray-600: #64748b;
-    --gray-900: #0f172a; /* Dashboard Dark Slate */
-    
+    --gray-900: #0f172a;
+    /* Dashboard Dark Slate */
+
     --primary: var(--teal-600);
     --primary-hover: var(--teal-700);
     --bg-main: var(--gray-50);
@@ -21,39 +24,46 @@
     --text-main: var(--gray-900);
     --text-muted: var(--gray-600);
     --border-main: var(--gray-100);
-    --card-radius: 24px;   /* Match Dashboard Cards */
+    --card-radius: 24px;
+    /* Match Dashboard Cards */
 }
 
-html, body {
+html,
+body,
+.login-pf-page {
     height: 100%;
-    margin: 0;
-    padding: 0;
+    width: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important;
-    background-color: var(--bg-main) !important;
+    background-color: transparent !important;
 }
 
-body {
+body,
+.login-pf-page {
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Subtle premium background matching the dashboard feel */
-    background-image: radial-gradient(circle at 0% 0%, #f0fdfa 0%, transparent 50%),
-                      radial-gradient(circle at 100% 100%, #f1f5f9 0%, transparent 50%) !important;
-    min-height: 100vh;
+    background-image: url('../img/backAuth.png') !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-attachment: fixed !important;
+    min-height: 100vh !important;
 }
 
-#kc-header, #kc-page-title {
+#kc-header,
+#kc-page-title {
     display: none !important;
 }
 
 /* Auth Card */
 .card-pf {
     background: var(--card-bg) !important;
-    border: 1px solid var(--border-main) !important;
-    border-radius: var(--card-radius) !important;
-    /* Exact Dashboard Shadow */
-    box-shadow: 0 10px 30px -4px rgba(15, 23, 42, 0.04) !important;
-    padding: 3rem 2.5rem !important;
+    border: none !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+    padding: 3rem !important;
     width: 100% !important;
     max-width: 440px !important;
     margin: 1.5rem auto !important;
@@ -69,13 +79,7 @@ body {
 
 /* Card Accent Bar */
 .card-pf::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 6px;
-    background: linear-gradient(to right, var(--teal-600), var(--teal-800));
+    display: none !important;
 }
 
 /* Logo Styling */
@@ -86,19 +90,19 @@ body {
     background-size: contain !important;
     background-repeat: no-repeat !important;
     background-position: center !important;
-    height: 60px !important;
+    height: 100px !important;
     width: 100% !important;
     margin-bottom: 2.5rem !important;
 }
 
 /* Labels */
 label {
-    color: var(--gray-600) !important;
-    font-size: 0.75rem !important;
-    font-weight: 700 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.05em !important;
-    margin-bottom: 0.6rem !important;
+    color: var(--gray-900) !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    text-transform: none !important;
+    letter-spacing: normal !important;
+    margin-bottom: 0.4rem !important;
     display: block !important;
 }
 
@@ -107,14 +111,14 @@ label {
 input[type="text"],
 input[type="password"],
 input[type="email"] {
-    background-color: white !important;
-    border: 1.5px solid var(--gray-200) !important;
-    border-radius: 16px !important;
+    background-color: #f7f9fa !important;
+    border: 1px solid var(--gray-200) !important;
+    border-radius: 4px !important;
     color: var(--gray-900) !important;
-    padding: 0.85rem 1.25rem !important;
+    padding: 0.75rem 1rem !important;
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
     width: 100%;
-    font-size: 1rem !important;
+    font-size: 0.95rem !important;
     font-family: inherit !important;
 }
 
@@ -123,7 +127,8 @@ input[type="text"]:focus,
 input[type="password"]:focus,
 input[type="email"]:focus {
     border-color: var(--teal-600) !important;
-    box-shadow: 0 0 0 4px rgba(13, 148, 136, 0.08) !important;
+    box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.1) !important;
+    background-color: #ffffff !important;
     outline: none !important;
 }
 
@@ -153,25 +158,24 @@ input[type="email"]:focus {
 /* Primary Button */
 .btn-primary,
 .pf-c-button.pf-m-primary {
-    background: #0f172a !important; /* Dashboard Dark-Restock look for primary */
+    background: #32656A !important;
     border: none !important;
-    border-radius: 16px !important;
-    padding: 1rem !important;
-    font-weight: 800 !important;
-    font-size: 1rem !important;
+    border-radius: 4px !important;
+    padding: 0.85rem !important;
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
     color: white !important;
     width: 100% !important;
-    margin-top: 2rem !important;
+    margin-top: 1.5rem !important;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15) !important;
 }
 
 .btn-primary:hover,
 .pf-c-button.pf-m-primary:hover {
-    background: #1e293b !important;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(15, 23, 42, 0.2) !important;
+    background: #254a4e !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(50, 101, 106, 0.2) !important;
 }
 
 .btn-primary:active,
@@ -184,15 +188,15 @@ input[type="email"]:focus {
 
 /* Links & Secondary Options */
 a {
-    color: var(--teal-600) !important;
+    color: #32656A !important;
     text-decoration: none !important;
-    font-weight: 700 !important;
+    font-weight: 500 !important;
     font-size: 0.85rem !important;
     transition: all 0.2s ease;
 }
 
 a:hover {
-    color: var(--teal-800) !important;
+    color: #254a4e !important;
     text-decoration: underline !important;
 }
 
@@ -207,13 +211,13 @@ a:hover {
 .checkbox label {
     display: inline-flex !important;
     align-items: center;
-    gap: 0.6rem;
-    font-weight: 600 !important;
+    gap: 0.4rem;
+    font-weight: 400 !important;
     color: var(--gray-600) !important;
     cursor: pointer;
     text-transform: none !important;
     letter-spacing: normal !important;
-    font-size: 0.85rem !important;
+    font-size: 0.8rem !important;
 }
 
 /* Feedback/Alert Boxes */
@@ -261,7 +265,7 @@ a:hover {
 
 /* Keycloak specific cleanups */
 .pf-c-input-group input {
-    border-radius: 16px !important;
+    border-radius: 4px !important;
 }
 
 .login-pf-page .login-pf-header {
@@ -273,7 +277,7 @@ a:hover {
     body {
         background: white !important;
     }
-    
+
     .card-pf {
         padding: 3rem 1.5rem !important;
         border: none !important;
@@ -287,22 +291,22 @@ a:hover {
         flex-direction: column;
         justify-content: center;
     }
-    
+
     .card-pf::after {
         display: none;
     }
-    
+
     .card-pf::before {
         height: 50px !important;
         margin-bottom: 3rem !important;
     }
-    
+
     .btn-primary,
     .pf-c-button.pf-m-primary {
         padding: 1.1rem !important;
         border-radius: 18px !important;
     }
-    
+
     input {
         border-radius: 16px !important;
         padding: 0.95rem 1.25rem !important;

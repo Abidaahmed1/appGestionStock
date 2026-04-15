@@ -23,6 +23,7 @@ import com.gestionStock.backend.entity.user.Role;
 import com.gestionStock.backend.entity.user.User;
 import com.gestionStock.backend.service.user.KeycloakAdminService;
 import com.gestionStock.backend.service.user.UserService;
+import com.gestionStock.backend.service.user.InvitationEmailService;
 import com.gestionStock.backend.entity.entreprise.Entreprise;
 
 @RestController
@@ -31,10 +32,12 @@ public class AdminController {
 
 	private final KeycloakAdminService adminService;
 	private final UserService userService;
+	private final InvitationEmailService invitationEmailService;
 
-	public AdminController(KeycloakAdminService adminService, UserService userService) {
+	public AdminController(KeycloakAdminService adminService, UserService userService, InvitationEmailService invitationEmailService) {
 		this.adminService = adminService;
 		this.userService = userService;
+		this.invitationEmailService = invitationEmailService;
 	}
 
 	@GetMapping
@@ -109,9 +112,31 @@ public class AdminController {
 		String userId;
 
 		try {
+			// Générer un mot de passe provisoire aléatoire
+			String temporaryPassword = java.util.UUID.randomUUID().toString().substring(0, 8);
+			
 			Map<String, Object> keycloakUserMap = new HashMap<>(user);
 			keycloakUserMap.remove("role");
+			
+			// Ajouter le mot de passe provisoire pour Keycloak
+			Map<String, Object> credentials = new HashMap<>();
+			credentials.put("type", "password");
+			credentials.put("value", temporaryPassword);
+			credentials.put("temporary", true); // On marque comme temporaire
+			keycloakUserMap.put("credentials", List.of(credentials));
+			
+			// Action requise pour forcer le changement immédiat
+			keycloakUserMap.put("requiredActions", List.of("UPDATE_PASSWORD"));
+			
 			userId = adminService.createUser(keycloakUserMap);
+			
+			// Envoyer l'email d'invitation personnalisé avec le mot de passe
+			try {
+				invitationEmailService.sendInvitationEmail(email, (String) user.get("firstName"), temporaryPassword);
+				System.out.println("AdminController: Email avec mot de passe provisoire envoyé à " + email);
+			} catch (Exception emailEx) {
+				System.err.println("AdminController: Erreur lors de l'envoi de l'email Backend: " + emailEx.getMessage());
+			}
 		} catch (Exception e) {
 			String errorMsg = e.getMessage();
 			System.err.println("AdminController: Erreur lors de la création Keycloak pour " + email + ": " + errorMsg);
@@ -254,8 +279,8 @@ public class AdminController {
 
 			try {
 				List<Map<String, Object>> currentRoles = adminService.getUserRoles(id);
-				List<String> businessRoles = List.of("Administrateur", "Auditeur", "Magasinier",
-						"Responsable logistique");
+				List<String> businessRoles = List.of("ADMINISTRATEUR", "AUDITEUR", "MAGASINIER",
+						"RESPONSABLE_LOGISTIQUE");
 
 				if (currentRoles != null) {
 					for (Map<String, Object> roleMap : currentRoles) {
@@ -309,15 +334,15 @@ public class AdminController {
 		String upper = roleName.toUpperCase().replace(" ", "_");
 		switch (upper) {
 			case "ADMINISTRATEUR":
-				return "Administrateur";
+				return "ADMINISTRATEUR";
 			case "AUDITEUR":
-				return "Auditeur";
+				return "AUDITEUR";
 			case "MAGASINIER":
-				return "Magasinier";
+				return "MAGASINIER";
 			case "RESPONSABLE_LOGISTIQUE":
-				return "Responsable logistique";
+				return "RESPONSABLE_LOGISTIQUE";
 			default:
-				return roleName;
+				return upper;
 		}
 	}
 }

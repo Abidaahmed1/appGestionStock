@@ -47,8 +47,11 @@ public class Fournisseur {
 	@Builder.Default
 	private Boolean archivee = false;
 
-	@NotBlank(message = "L'adresse est obligatoire")
 	private String adresse;
+	private String pays;
+	private String ville;
+	private String rue;
+	private String codePostal;
 
 	@NotBlank(message = "Le code fournisseur est obligatoire")
 	@Size(min = 2, max = 20, message = "Le code doit contenir entre 2 et 20 caractères")

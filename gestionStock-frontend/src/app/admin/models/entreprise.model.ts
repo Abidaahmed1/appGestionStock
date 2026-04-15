@@ -20,6 +20,8 @@ export interface Entreprise {
     email?: string;
     logoUrl?: string;
     codePostal?: string;
+    ville?: string;
+    rue?: string;
+    pays?: string;
     devise?: Devise;
-    pays?: Pays;
 }

@@ -34,6 +34,7 @@ public class SecurityConfig {
 						.requestMatchers("/api/metadata/**").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/entreprises/**").permitAll()
 						.requestMatchers("/api/entreprises/**").authenticated()
+						.requestMatchers(HttpMethod.GET, "/api/admin/users/**").hasAnyRole("ADMINISTRATEUR", "AUDITEUR", "RESPONSABLE_LOGISTIQUE")
 						.requestMatchers("/api/admin/**").hasRole("ADMINISTRATEUR").requestMatchers("/api/**")
 						.authenticated().anyRequest().permitAll())
 				.oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthConverter)))

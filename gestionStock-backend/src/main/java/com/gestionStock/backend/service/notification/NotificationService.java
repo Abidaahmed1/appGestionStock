@@ -33,19 +33,26 @@ public class NotificationService {
     private final UserService userService;
 
     public List<Notification> getNotificationsForUser(String userId) {
-        return targetRepo.findByUserIdOrderByDateDesc(userId).stream().map(nt -> {
-            Notification n = nt.getNotification();
-            n.setLu(nt.isLu());
-            return n;
-        }).collect(Collectors.toList());
+        return targetRepo.findByUserIdOrderByDateDesc(userId, org.springframework.data.domain.PageRequest.of(0, 50))
+                .stream().map(nt -> {
+                    Notification n = nt.getNotification();
+                    n.setLu(nt.isLu());
+                    return n;
+                }).collect(Collectors.toList());
     }
 
     public List<Notification> getUnreadNotificationsForUser(String userId) {
-        return targetRepo.findByLuFalseAndUserIdOrderByDateDesc(userId).stream().map(nt -> {
-            Notification n = nt.getNotification();
-            n.setLu(nt.isLu());
-            return n;
-        }).collect(Collectors.toList());
+        return targetRepo
+                .findByLuFalseAndUserIdOrderByDateDesc(userId, org.springframework.data.domain.PageRequest.of(0, 50))
+                .stream().map(nt -> {
+                    Notification n = nt.getNotification();
+                    n.setLu(nt.isLu());
+                    return n;
+                }).collect(Collectors.toList());
+    }
+
+    public long getUnreadCount(String userId) {
+        return targetRepo.countUnreadByUserId(userId);
     }
 
     public void markAsRead(Long notificationId, String userId) {
@@ -56,7 +63,8 @@ public class NotificationService {
     }
 
     public void markAllAsRead(String userId) {
-        List<NotificationTarget> unreadTargets = targetRepo.findByLuFalseAndUserIdOrderByDateDesc(userId);
+        List<NotificationTarget> unreadTargets = targetRepo.findByLuFalseAndUserIdOrderByDateDesc(userId,
+                org.springframework.data.domain.PageRequest.of(0, 1000));
         for (NotificationTarget nt : unreadTargets) {
             nt.setLu(true);
         }
@@ -72,7 +80,8 @@ public class NotificationService {
         createNotificationForRolesAndEntreprise(titre, message, type, roles, relatedId, null);
     }
 
-    public void createNotificationForRolesAndEntreprise(String titre, String message, NotificationType type, List<Role> roles,
+    public void createNotificationForRolesAndEntreprise(String titre, String message, NotificationType type,
+            List<Role> roles,
             Long relatedId, com.gestionStock.backend.entity.entreprise.Entreprise providedEntreprise) {
         List<User> users = new ArrayList<>();
         com.gestionStock.backend.entity.entreprise.Entreprise entreprise = providedEntreprise;

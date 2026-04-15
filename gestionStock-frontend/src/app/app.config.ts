@@ -12,7 +12,7 @@ function initializeKeycloak(keycloak: KeycloakService, platformId: object) {
     if (isPlatformBrowser(platformId)) {
       return keycloak.init({
         config: {
-          url: 'http://localhost:8080',
+          url: 'http://localhost:8085',
           realm: 'myrealm',
           clientId: 'myclient'
         },

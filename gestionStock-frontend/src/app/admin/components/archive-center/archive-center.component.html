@@ -1,0 +1,387 @@
+<div class="archive-container">
+    <div class="archive-header">
+        <div class="header-content">
+            <div class="header-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                    <rect x="1" y="3" width="22" height="5"></rect>
+                    <line x1="10" y1="12" x2="14" y2="12"></line>
+                </svg>
+            </div>
+            <div class="header-text">
+                <h1>Centre d'Archive</h1>
+                <p>Gérez et restaurez les éléments obsolètes ou retirés du système.</p>
+            </div>
+        </div>
+        <button class="btn-refresh" (click)="loadAllArchived()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6"></path>
+                <path d="M1 20v-6h6"></path>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            Actualiser
+        </button>
+    </div>
+
+    <div class="archive-tabs">
+        <button [class.active]="activeTab === 'pieces'" (click)="activeTab = 'pieces'">
+            Pièces Détachées
+            <span class="badge">{{ archivedPieces.length }}</span>
+        </button>
+        <button [class.active]="activeTab === 'produits'" (click)="activeTab = 'produits'">
+            Produits Finis
+            <span class="badge">{{ archivedProduits.length }}</span>
+        </button>
+        <button [class.active]="activeTab === 'fournisseurs'" (click)="activeTab = 'fournisseurs'">
+            Fournisseurs
+            <span class="badge">{{ archivedFournisseurs.length }}</span>
+        </button>
+        <button [class.active]="activeTab === 'bons'" (click)="activeTab = 'bons'">
+            Bons
+            <span class="badge">{{ archivedBons.length }}</span>
+        </button>
+
+    </div>
+
+    <div class="archive-body">
+        <!-- PIECES TAB -->
+        <div class="tab-content" *ngIf="activeTab === 'pieces'">
+            <div class="search-box">
+                <input type="text" [(ngModel)]="pieceSearch" placeholder="Rechercher une pièce archivée..."
+                    class="archive-input">
+            </div>
+
+            <div class="items-grid" *ngIf="filteredPieces.length > 0; else emptyPieces">
+                <div class="archive-card" *ngFor="let piece of filteredPieces">
+                    <div class="card-image">
+                        <img [src]="getImageUrl(piece.imageUrl, 'piece')" alt="Piece"
+                            onerror="this.src='assets/images/default-piece.png'">
+                    </div>
+
+                    <div class="card-info">
+                        <div class="title-row">
+                            <h3>{{ piece.designation }}</h3>
+                            <span class="status-badge" [class.rupture]="(piece.quantite || 0) <= 0"
+                                [class.ok]="(piece.quantite || 0) > 0">
+                                {{ (piece.quantite || 0) <= 0 ? 'Rupture' : 'En Stock' }} </span>
+                        </div>
+
+                        <code class="card-ref">{{ piece.reference }}</code>
+
+                        <div class="tag-cloud">
+                            <span class="meta-tag" *ngIf="piece.categorie">{{ piece.categorie.nom }}</span>
+                            <span class="meta-tag" *ngIf="piece.unite">{{ piece.unite.nom }}</span>
+                            <!-- Show variations if any -->
+                            <span class="meta-tag variant-tag" *ngFor="let detail of piece.details">
+                                {{ detail.valeur }}
+                            </span>
+                        </div>
+
+                        <div class="stock-summary">
+                            <div class="summary-item">
+                                <span class="lbl">Stock dispo</span>
+                                <span class="val" [class.critical]="(piece.quantite || 0) < (piece.seuilMinimum || 0)">
+                                    {{ piece.quantite || 0 | number:'1.2-2' }}
+                                </span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="lbl">Seuil</span>
+                                <span class="val">{{ piece.seuilMinimum || 0 | number:'1.2-2' }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer-actions">
+                        <button class="btn-action edit" (click)="openEditPiece(piece)" title="Modifier">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                        </button>
+                        <button class="btn-restore" (click)="confirmRestorePiece(piece)" title="Restaurer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <polyline points="9 21 3 21 3 15"></polyline>
+                                <line x1="21" y1="3" x2="14" y2="10"></line>
+                                <line x1="3" y1="21" x2="10" y2="14"></line>
+                            </svg>
+                        </button>
+                        <div class="spacer"></div>
+                        <button class="btn-delete" (click)="confirmDeletePiece(piece)" title="Supprimer définitivement">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                </path>
+                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <ng-template #emptyPieces>
+                <div class="empty-state">
+                    <p>Aucune pièce archivée trouvée.</p>
+                </div>
+            </ng-template>
+        </div>
+
+        <!-- PRODUITS TAB -->
+        <div class="tab-content" *ngIf="activeTab === 'produits'">
+            <div class="search-box">
+                <input type="text" [(ngModel)]="produitSearch" placeholder="Rechercher un produit archivé..."
+                    class="archive-input">
+            </div>
+
+            <div class="items-grid" *ngIf="filteredProduits.length > 0; else emptyProduits">
+                <div class="archive-card" *ngFor="let prod of filteredProduits">
+                    <div class="card-image">
+                        <img [src]="getImageUrl(prod.imageUrl, 'product')" alt="Product">
+                    </div>
+                    <div class="card-info">
+                        <h3>{{ prod.designation }}</h3>
+                        <span class="card-ref">{{ prod.code }}</span>
+                    </div>
+                    <div class="card-footer-actions">
+                        <button class="btn-action edit" (click)="openEditProduit(prod)" title="Modifier">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                        </button>
+                        <button class="btn-restore" (click)="confirmRestoreProduit(prod)" title="Restaurer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <polyline points="9 21 3 21 3 15"></polyline>
+                                <line x1="21" y1="3" x2="14" y2="10"></line>
+                                <line x1="3" y1="21" x2="10" y2="14"></line>
+                            </svg>
+                        </button>
+                        <div class="spacer"></div>
+                        <button class="btn-delete" (click)="confirmDeleteProduit(prod)"
+                            title="Supprimer définitivement">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                </path>
+                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <ng-template #emptyProduits>
+                <div class="empty-state">
+                    <p>Aucun produit fini archivé trouvé.</p>
+                </div>
+            </ng-template>
+        </div>
+
+        <!-- FOURNISSEURS TAB -->
+        <div class="tab-content" *ngIf="activeTab === 'fournisseurs'">
+            <div class="items-grid" *ngIf="archivedFournisseurs.length > 0; else emptyFournisseurs">
+                <div class="archive-card fournisseur-card" *ngFor="let f of archivedFournisseurs">
+                    <div class="card-image">
+                        <div class="header-icon-rounded">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <polyline points="16 11 18 13 22 9"></polyline>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="card-info compact">
+                        <div class="title-row">
+                            <h3>{{ f.nom }}</h3>
+                            <span class="status-badge rupture">Désactivé</span>
+                        </div>
+                        <code class="card-ref">{{ f.code }}</code>
+
+                        <div class="stock-summary" style="grid-template-columns: 1fr;">
+                            <div class="summary-item">
+                                <span class="lbl">Contact</span>
+                                <span class="val" style="font-size: 0.95rem; font-weight: 500;">
+                                    {{ f.email }}<br>
+                                    {{ f.tel }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer-actions">
+                        <button class="btn-restore" (click)="confirmRestoreFournisseur(f)" title="Restaurer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <polyline points="9 21 3 21 3 15"></polyline>
+                                <line x1="21" y1="3" x2="14" y2="10"></line>
+                                <line x1="3" y1="21" x2="10" y2="14"></line>
+                            </svg>
+                        </button>
+                        <div class="spacer"></div>
+                        <button class="btn-delete" (click)="confirmDeleteFournisseur(f)"
+                            title="Supprimer définitivement">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                </path>
+                                <line x1="10" y1="11" x2="10" y2="17"></line>
+                                <line x1="14" y1="11" x2="14" y2="17"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <ng-template #emptyFournisseurs>
+                <div class="empty-state">
+                    <p>Aucun fournisseur archivé trouvé.</p>
+                </div>
+            </ng-template>
+        </div>
+
+        <!-- BONS TAB -->
+        <div class="tab-content" *ngIf="activeTab === 'bons'">
+            <div class="items-grid" *ngIf="archivedBons.length > 0; else emptyBons">
+                <div class="archive-card" *ngFor="let b of archivedBons">
+                    <div class="card-info compact">
+                        <div class="title-row">
+                            <h3>Bon N° {{ b.numeroBon }}</h3>
+                            <span class="status-badge ok" *ngIf="b.typeBon === 'ENTREE'">Entrée</span>
+                            <span class="status-badge rupture" *ngIf="b.typeBon === 'SORTIE'">Sortie</span>
+                            <span class="status-badge info" *ngIf="b.typeBon === 'RETOUR'">Retour</span>
+                        </div>
+                        <div class="bon-meta">
+                            <span>{{ b.date | date:'dd/MM/yyyy' }}</span>
+                            <span>{{ b.createur?.firstName }} {{ b.createur?.lastName }}</span>
+                        </div>
+                    </div>
+                    <div class="card-footer-actions">
+                        <button class="btn-action edit" (click)="printBon(b)" title="Imprimer">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2">
+                                </path>
+                                <rect x="6" y="14" width="12" height="8"></rect>
+                            </svg>
+                        </button>
+                        <button class="btn-restore" (click)="confirmRestoreBon(b)" title="Réactiver">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5">
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <polyline points="9 21 3 21 3 15"></polyline>
+                                <line x1="21" y1="3" x2="14" y2="10"></line>
+                                <line x1="3" y1="21" x2="10" y2="14"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <ng-template #emptyBons>
+                <div class="empty-state">
+                    <p>Aucun bon archivé trouvé.</p>
+                </div>
+            </ng-template>
+        </div>
+
+
+    </div>
+</div>
+
+<!-- Notification -->
+<div class="ps-notification" *ngIf="notification" [class.success]="notification.type === 'success'"
+    [class.error]="notification.type === 'error'">
+    <div class="notif-content">
+        <svg *ngIf="notification.type === 'success'" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <svg *ngIf="notification.type === 'error'" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span>{{ notification.message }}</span>
+    </div>
+</div>
+
+<!-- Edit Piece Form Modal -->
+<app-piece-form [showModal]="showPieceEditModal" [selectedPiece]="selectedPiece" [categories]="categories"
+    [produitsFinis]="produitsFinis" [unites]="unites" [parametres]="parametres" [devise]="entreprise?.devise"
+    [isSaving]="isSaving" (close)="showPieceEditModal = false" (save)="onSavePiece($event)">
+</app-piece-form>
+
+<!-- Edit Produit Form Modal -->
+<app-produit-form [showModal]="showProduitEditModal" [selectedProduit]="selectedProduit" [parametres]="parametres[0]"
+    [allPieces]="activePieces" [isSaving]="isSaving" (close)="showProduitEditModal = false"
+    (save)="onSaveProduit($event)">
+</app-produit-form>
+
+<!-- Confirm Restore Modal (Shared Component) -->
+<app-confirm-dialog [show]="showRestoreConfirm" title="Confirmer la restauration"
+    [message]="'Voulez-vous restaurer ' + (itemToRestore?.designation || 'cet élément') + ' dans la liste active ?'"
+    type="success" confirmText="Restaurer" cancelText="Annuler" (confirm)="restoreItem()"
+    (cancel)="showRestoreConfirm = false">
+</app-confirm-dialog>
+
+<!-- Confirm Delete Forever Modal -->
+<div class="ps-modal-overlay" *ngIf="showDeleteConfirm">
+    <div class="ps-modal-container mini">
+        <div class="modal-illustration">
+            <div class="circle-bg"
+                style="color: #ef4444; background: rgba(239, 68, 68, 0.1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0.05);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
+                    </path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+            </div>
+        </div>
+        <div class="ps-modal-header centered">
+            <h3>Suppression Définitive</h3>
+        </div>
+        <div class="ps-modal-body centered-text">
+            <p>Voulez-vous vraiment supprimer définitivement <strong>{{ itemToDelete?.designation || itemToDelete?.nom
+                    || itemToDelete?.numeroBon || itemToDelete?.numeroCmd }}</strong> ?</p>
+            <p class="sub-desc">Cette action effacera toutes les données associées de la base de données et est
+                <strong>irréversible</strong>.
+            </p>
+
+            <div class="stock-warning" *ngIf="isStockWarning">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <span>Attention: Cet élément possède encore un stock de {{ itemToDelete?.quantite }} unités.</span>
+            </div>
+        </div>
+        <div class="dual-btns">
+            <button class="btn-confirm" style="background: #ef4444; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);"
+                (click)="deleteItemForever()">
+                Supprimer Définitivement
+            </button>
+            <button class="btn-cancel" (click)="showDeleteConfirm = false">
+                Annuler
+            </button>
+        </div>
+    </div>
+</div>

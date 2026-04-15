@@ -47,21 +47,100 @@
                         <input [(ngModel)]="entreprise.contact" [readonly]="!isEditing" placeholder="Contact principal">
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Adresse</label>
-                    <div class="input-wrapper multiline">
-                        <input [(ngModel)]="entreprise.adresse" [readonly]="!isEditing" placeholder="Rue...">
-                        <div class="address-details">
-                            <input [(ngModel)]="entreprise.codePostal" [readonly]="!isEditing" placeholder="Code Postal"
-                                class="small">
-
-                            <select *ngIf="isEditing" [(ngModel)]="entreprise.pays" [compareWith]="compareObjects"
-                                class="select-field">
-                                <option [ngValue]="undefined" disabled>Choisir un pays</option>
-                                <option *ngFor="let p of countries" [ngValue]="p">{{ p.nom }}</option>
-                            </select>
-                            <input *ngIf="!isEditing" [value]="entreprise.pays?.nom || ''" readonly placeholder="Pays">
+                <!-- Address Section Break Down -->
+                <div class="form-group" [class.has-error]="formErrors['pays']">
+                    <label>Pays <span *ngIf="isEditing" class="required-star">*</span></label>
+                    <div class="custom-dropdown-container" [class.dropdown-active]="showCountryDropdown"
+                         (click)="$event.stopPropagation()">
+                        
+                        <div class="custom-dropdown-select detail-input" [class.input-error]="formErrors['pays']"
+                             (click)="loadingCountries ? null : toggleCountryDropdown($event)"
+                             [style.opacity]="loadingCountries ? '0.7' : '1'"
+                             style="display: flex; align-items: center; cursor: pointer; height: 38px; justify-content: space-between;">
+                             
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <img *ngIf="getSelectedCountryObj()?.iso2"
+                                     [src]="'https://flagcdn.com/24x18/' + getSelectedCountryObj()?.iso2 + '.png'"
+                                     style="width: 20px; height: auto; border-radius: 2px;" alt="flag" />
+                                <span *ngIf="!getSelectedCountryObj()" style="color: #9cb3c9;">Sélectionner un pays</span>
+                                <span *ngIf="getSelectedCountryObj()" style="color: #1e293b;">{{ getSelectedCountryObj()?.name }}</span>
+                            </div>
+                            <i class="fas fa-chevron-down" style="color: #64748b; font-size: 12px;" *ngIf="isEditing"></i>
                         </div>
+
+                        <div class="custom-dropdown-list" *ngIf="showCountryDropdown && isEditing">
+                            <div class="dropdown-search">
+                                <input type="text" placeholder="Rechercher un pays..."
+                                       [(ngModel)]="countrySearchQuery" (input)="filterCountriesDropdown()"
+                                       style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 4px; outline: none; font-size: 13px;" />
+                            </div>
+                            <div class="dropdown-options">
+                                <div class="dropdown-option" *ngFor="let c of filteredCountries"
+                                     (click)="selectCountry(c)"
+                                     [class.selected]="c.name === entreprise.pays"
+                                     style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9;">
+                                    <img *ngIf="c.iso2" [src]="'https://flagcdn.com/24x18/' + c.iso2 + '.png'"
+                                         style="width: 24px; height: auto; border-radius: 3px;" alt="" />
+                                    <span style="flex-grow: 1; font-size: 14px; color: #334155;">{{ c.name }}</span>
+                                    <span *ngIf="c.dialCode" style="font-size: 13px; color: #64748b;">{{ c.dialCode }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" [class.has-error]="formErrors['ville']">
+                    <label>Ville <span *ngIf="isEditing" class="required-star">*</span></label>
+                    <div class="custom-dropdown-container" [class.dropdown-active]="showCityDropdown"
+                         (click)="$event.stopPropagation()">
+                        
+                        <div class="custom-dropdown-select detail-input" [class.input-error]="formErrors['ville']"
+                             (click)="toggleCityDropdown($event)"
+                             [style.opacity]="(!entreprise.pays || loadingCities) ? '0.6' : '1'"
+                             [style.cursor]="(!entreprise.pays || loadingCities || !isEditing) ? 'not-allowed' : 'pointer'"
+                             style="display: flex; align-items: center; height: 38px; justify-content: space-between;">
+                             
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span *ngIf="loadingCities" style="font-size: 12px; color: #64748b;">
+                                    <i class="fas fa-spinner fa-spin"></i> Chargement...
+                                </span>
+                                <span *ngIf="!loadingCities && !entreprise.ville" style="color: #9cb3c9;">
+                                    {{ entreprise.pays ? 'Sélectionner une ville' : 'Choisir un pays d\'abord' }}
+                                </span>
+                                <span *ngIf="!loadingCities && entreprise.ville" style="color: #1e293b;">{{ entreprise.ville }}</span>
+                            </div>
+                            <i class="fas fa-chevron-down" style="color: #64748b; font-size: 12px;" *ngIf="isEditing"></i>
+                        </div>
+
+                        <div class="custom-dropdown-list" *ngIf="showCityDropdown && isEditing">
+                            <div class="dropdown-search">
+                                <input type="text" placeholder="Rechercher une ville..."
+                                       [(ngModel)]="citySearchQuery" (input)="filterCitiesDropdown()"
+                                       style="width: 100%; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 4px; outline: none; font-size: 13px;" />
+                            </div>
+                            <div class="dropdown-options">
+                                <div class="dropdown-option" *ngFor="let city of filteredCitiesList"
+                                     (click)="selectCity(city)"
+                                     [class.selected]="city === entreprise.ville"
+                                     style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9;">
+                                    <span style="flex-grow: 1; font-size: 14px; color: #334155;">{{ city }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Rue</label>
+                    <div class="input-wrapper">
+                        <input [(ngModel)]="entreprise.rue" [readonly]="!isEditing" placeholder="Nom et numéro de rue">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Code Postal</label>
+                    <div class="input-wrapper">
+                        <input [(ngModel)]="entreprise.codePostal" [readonly]="!isEditing" placeholder="Ex: 2000">
                     </div>
                 </div>
             </div>
@@ -71,6 +150,7 @@
                 <div class="form-group" [class.has-error]="formErrors['telephone']">
                     <label>Téléphone <span *ngIf="isEditing" class="required-star">*</span></label>
                     <app-phone-input [(phoneNumber)]="entreprise.telephone" [isEditing]="isEditing"
+                        [hideSelector]="true"
                         (isValid)="isPhoneValid = $event">
                     </app-phone-input>
                 </div>

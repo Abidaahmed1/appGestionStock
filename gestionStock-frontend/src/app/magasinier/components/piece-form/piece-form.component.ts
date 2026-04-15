@@ -51,6 +51,12 @@ export class PieceFormComponent implements OnInit, OnChanges, OnDestroy {
     showQuickAddCategorie: boolean = false;
     newCategory: { nom: string, code: string, description: string } = { nom: '', code: 'AUTO', description: '' };
 
+    // Quick Add Product Form in Selector
+    showProductQuickAddForm: boolean = false;
+    quickAddProductData: { designation: string, code: string } = { designation: '', code: 'AUTO' };
+    quickAddImagePreview: string | null = null;
+    selectedQuickAddFile: File | null = null;
+
     // Search and Dropdown states
     categorySearchTerm: string = '';
     showCategoryDropdown: boolean = false;
@@ -98,6 +104,11 @@ export class PieceFormComponent implements OnInit, OnChanges, OnDestroy {
             if (changes['produitsFinis']) {
                 this.filteredProductsList = [...this.produitsFinis];
             }
+            if (changes['selectedPiece'] && this.selectedPiece) {
+                this.newPiece.produitsAssocies = [...(this.selectedPiece.produitsAssocies || [])];
+                this.filteredProductsList = [...this.produitsFinis];
+                this.cdr.markForCheck();
+            }
         }
     }
 
@@ -111,7 +122,7 @@ export class PieceFormComponent implements OnInit, OnChanges, OnDestroy {
                 categorie: this.selectedPiece.categorie ? { ...this.selectedPiece.categorie } : undefined,
                 unite: this.selectedPiece.unite ? { ...this.selectedPiece.unite } : undefined,
                 details: this.selectedPiece.details ? this.selectedPiece.details.map(d => ({
-                    ...d, 
+                    ...d,
                     parametre: (d.parametre ? { ...d.parametre } : {}) as Parametre
                 })) : [],
                 produitsAssocies: this.selectedPiece.produitsAssocies ? [...this.selectedPiece.produitsAssocies] : []
@@ -154,14 +165,14 @@ export class PieceFormComponent implements OnInit, OnChanges, OnDestroy {
         if (!this.newPiece.details) {
             this.newPiece.details = [];
         }
-        
+
         // Ensure every active parameter has a detail entry
         this.localParametres.forEach(param => {
             if (param.actif) {
-                const existingInfo = this.newPiece.details!.find(d => 
+                const existingInfo = this.newPiece.details!.find(d =>
                     d.parametre?.id === param.id || d.parametreNom === param.nom || d.parametre?.nom === param.nom
                 );
-                
+
                 if (!existingInfo) {
                     this.newPiece.details!.push({
                         parametre: param,
@@ -190,16 +201,16 @@ export class PieceFormComponent implements OnInit, OnChanges, OnDestroy {
     isFormValid(): boolean {
         const isAutoRef = this.isModuleAuto('PIECE');
         const basicOk = !!(
-            this.newPiece.designation.trim() && 
-            this.newPiece.categorie && 
-            this.newPiece.unite && 
+            this.newPiece.designation.trim() &&
+            this.newPiece.categorie &&
+            this.newPiece.unite &&
             (isAutoRef || this.newPiece.reference.trim()) &&
             this.newPiece.codeBarre?.trim() &&
             Number(this.newPiece.prixVente || 0) > 0 &&
             Number(this.newPiece.tauxTVA || 0) > 0 &&
             this.newPiece.seuilMaximum > 0
         );
-        
+
         const sMin = Number(this.newPiece.seuilMinimum || 0);
         const sMax = Number(this.newPiece.seuilMaximum || 0);
         const thresholdsOk = sMin <= sMax;
@@ -324,7 +335,7 @@ export class PieceFormComponent implements OnInit, OnChanges, OnDestroy {
             seuilMaximum: Number(piece.seuilMaximum || 0),
             description: piece.description,
             imageUrl: piece.imageUrl,
-            unite: piece.unite,
+            unite: piece.unite ? { id: piece.unite.id } : null,
             archivee: piece.archivee ?? false,
             details: (piece.details || []).map(d => ({
                 id: d.id,
@@ -336,11 +347,13 @@ export class PieceFormComponent implements OnInit, OnChanges, OnDestroy {
 
         if (piece.categorie) mapped.categorie = { id: piece.categorie.id };
 
-        mapped.produitsAssocies = (piece.produitsAssocies || []).map(p => ({
-            id: p.id,
-            designation: p.designation,
-            code: p.code
-        }));
+        mapped.produitsAssocies = (piece.produitsAssocies || [])
+            .filter(p => p.id !== undefined && p.id !== null)
+            .map(p => ({
+                id: p.id,
+                code: p.code,
+                designation: p.designation
+            }));
 
         mapped.variations = [];
 
@@ -388,7 +401,7 @@ export class PieceFormComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     getImageUrl(path: string | null | undefined): string {
-        if (!path) return 'assets/img/default-piece.png';
+        if (!path) return 'assets/images/default-piece.png';
         if (path.startsWith('data:')) return path;
         return this.entrepriseService.getImageUrl(path);
     }
@@ -517,6 +530,12 @@ export class PieceFormComponent implements OnInit, OnChanges, OnDestroy {
             event.preventDefault();
         }
         this.showProductSelector = !this.showProductSelector;
+        if (!this.showProductSelector) {
+            this.showProductQuickAddForm = false;
+            this.quickAddProductData = { designation: '', code: 'AUTO' };
+            this.quickAddImagePreview = null;
+            this.selectedQuickAddFile = null;
+        }
         this.cdr.detectChanges();
     }
 
@@ -571,18 +590,65 @@ export class PieceFormComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     onQuickAddProduct(): void {
-        const newProduct: ProduitFini = {
+        this.quickAddProductData = {
             designation: this.productSearchTerm,
-            code: 'AUTO',
+            code: this.isModuleAuto('PRODUIT') ? 'AUTO' : ''
+        };
+        this.showProductQuickAddForm = true;
+        this.cdr.detectChanges();
+    }
+
+    submitProductQuickAdd(): void {
+        if (!this.quickAddProductData.designation.trim()) return;
+
+        const newProduct: ProduitFini = {
+            designation: this.quickAddProductData.designation,
+            code: this.quickAddProductData.code,
             estArchivee: false
         };
-        this.quickAddProduct.emit({ product: newProduct, file: null });
-        this.toggleProductSelectorModal();
+        this.quickAddProduct.emit({ product: newProduct, file: this.selectedQuickAddFile });
+
+        // Reset and hide form
+        this.showProductQuickAddForm = false;
+        this.quickAddProductData = { designation: '', code: 'AUTO' };
+        this.quickAddImagePreview = null;
+        this.selectedQuickAddFile = null;
+        this.productSearchTerm = '';
+        this.onProductSearchChange();
+        this.cdr.detectChanges();
+    }
+
+    cancelProductQuickAdd(): void {
+        this.showProductQuickAddForm = false;
+        this.quickAddImagePreview = null;
+        this.selectedQuickAddFile = null;
+        this.cdr.detectChanges();
+    }
+
+    onQuickAddFileSelected(event: Event): void {
+        const input = event.target as HTMLInputElement;
+        if (input.files && input.files[0]) {
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = () => {
+                this.selectedQuickAddFile = file;
+                this.quickAddImagePreview = reader.result as string;
+                this.cdr.detectChanges();
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    removeQuickAddImage(event: Event): void {
+        event.stopPropagation();
+        this.selectedQuickAddFile = null;
+        this.quickAddImagePreview = null;
+        this.cdr.detectChanges();
     }
 
     onProductSearchChange() {
         const term = this.productSearchTerm.toLowerCase().trim();
-        this.filteredProductsList = term 
+        this.filteredProductsList = term
             ? this.produitsFinis.filter(p =>
                 p.designation.toLowerCase().includes(term) ||
                 p.code.toLowerCase().includes(term)
@@ -594,7 +660,7 @@ export class PieceFormComponent implements OnInit, OnChanges, OnDestroy {
     getSelectedProductsCount(): number {
         return this.newPiece.produitsAssocies?.length ?? 0;
     }
-    
+
     generateBarcode(): void {
         const timestamp = Date.now().toString().slice(-10);
         const random = Math.floor(Math.random() * 100).toString().padStart(2, '0');

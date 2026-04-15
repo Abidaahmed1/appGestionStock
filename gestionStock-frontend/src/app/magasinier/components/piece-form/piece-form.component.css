@@ -1694,3 +1694,215 @@ input[type="date"].input-premium {
     font-weight: 600;
     color: var(--text-secondary);
 }
+
+/* --- INLINE PRODUCT QUICK ADD FORM --- */
+.ps-quick-add-form {
+    padding: 24px;
+    background: var(--bg-main);
+    border-radius: 16px;
+    margin: 12px 24px;
+    border: 1.5px solid var(--border-color);
+    animation: slideInDown 0.3s ease-out;
+}
+
+.form-header-minor {
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 12px;
+}
+
+.form-header-minor h4 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 800;
+}
+
+.form-header-minor p {
+    margin: 4px 0 0 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.field-item {
+    margin-bottom: 16px;
+}
+
+.field-item label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.ps-input-minor {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.ps-input-minor:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.auto-badge-mini {
+    background: var(--primary-light);
+    color: var(--primary);
+    padding: 6px 14px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px dashed var(--primary);
+    margin-bottom: 8px;
+}
+
+.form-actions-minor {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.btn-cancel-minor {
+    padding: 10px 18px;
+    background: transparent;
+    border: 1.5px solid var(--border-color);
+    color: var(--text-secondary);
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-confirm-minor {
+    padding: 10px 24px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-confirm-minor:hover:not(:disabled) {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--primary-light);
+}
+
+.btn-confirm-minor:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: var(--text-muted);
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+} 
+
+
+.quick-add-grid {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+.field-label-mini {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+
+.qa-upload-box {
+    width: 120px;
+    height: 120px;
+    border: 2px dashed var(--border-color);
+    border-radius: 12px;
+    position: relative;
+    cursor: pointer;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    transition: all 0.2s;
+}
+
+.qa-upload-box:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.qa-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.qa-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-muted);
+}
+
+.qa-placeholder span {
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.btn-qa-remove {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    z-index: 5;
+}
+
+.qa-fields-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+} 

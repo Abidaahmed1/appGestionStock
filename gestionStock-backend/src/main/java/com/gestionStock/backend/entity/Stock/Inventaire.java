@@ -4,21 +4,12 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.gestionStock.backend.entity.entreprise.Entreprise;
 import com.gestionStock.backend.entity.user.User;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -46,19 +37,28 @@ public class Inventaire {
 
     private String motifRefus;
 
+    @ManyToMany
+    @JoinTable(
+        name = "inventaire_responsables",
+        joinColumns = @JoinColumn(name = "inventaire_id"),
+        inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
     @Builder.Default
-    @jakarta.persistence.ManyToMany
     private List<User> responsables = new ArrayList<>();
 
     private boolean estValide;
     private boolean estTermine;
 
+    @JsonIgnore
     @ManyToOne
     @JoinColumn(name = "entreprise_id")
     private Entreprise entreprise;
 
     @ManyToOne
     private User createur;
+
+    @ManyToOne
+    private User auditeur; // Auditeur responsable du traitement
 
     @OneToMany(mappedBy = "inventaire", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
@@ -68,4 +68,12 @@ public class Inventaire {
     // New timing fields added by user
     private LocalDateTime heureDebutEffective;
     private LocalDateTime heureFinEffective;
+
+    public User getAuditeur() {
+        return auditeur;
+    }
+
+    public void setAuditeur(User auditeur) {
+        this.auditeur = auditeur;
+    }
 }

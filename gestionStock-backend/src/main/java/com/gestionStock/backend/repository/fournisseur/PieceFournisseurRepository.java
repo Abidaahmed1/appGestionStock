@@ -14,4 +14,6 @@ public interface PieceFournisseurRepository extends JpaRepository<PieceFournisse
     List<PieceFournisseur> findByPieceIdIn(List<Long> pieceIds);
 
     Optional<PieceFournisseur> findByPieceIdAndFournisseurId(Long pieceId, Long fournisseurId);
+
+    void deleteByPiece(com.gestionStock.backend.entity.piece.PieceDetachee piece);
 }

@@ -405,7 +405,13 @@ export class PieceListComponent implements OnInit {
             next: (prod) => {
                 const finalize = (finalProd: ProduitFini) => {
                     this.produitsFinis = [...this.produitsFinis, finalProd];
-                    this.notify('Produit ajouté', 'success');
+
+                    if (this.selectedPiece) {
+                        if (!this.selectedPiece.produitsAssocies) this.selectedPiece.produitsAssocies = [];
+                        this.selectedPiece.produitsAssocies = [...this.selectedPiece.produitsAssocies, finalProd];
+                    }
+
+                    this.notify('Produit ajouté et associé', 'success');
                     this.cdr.detectChanges();
                 };
 
@@ -540,6 +546,18 @@ export class PieceListComponent implements OnInit {
     }
 
     confirmDelete(piece: PieceDetachee): void {
+        const hasProducts = piece.produitsAssocies && piece.produitsAssocies.length > 0;
+        const hasStock = this.getTotalStock(piece) > 0;
+
+        if (hasProducts) {
+            this.notify("Impossible de supprimer une pièce associée à des produits finis.", 'error');
+            return;
+        }
+        if (hasStock) {
+            this.notify("Impossible de supprimer une pièce ayant un stock positif.", 'error');
+            return;
+        }
+
         this.isBulkDelete = false;
         this.itemToDelete = piece;
         this.showDeleteConfirm = true;
@@ -583,6 +601,12 @@ export class PieceListComponent implements OnInit {
                 this.cdr.detectChanges();
             }
         });
+    }
+
+    canArchivePiece(piece: PieceDetachee): boolean {
+        const hasProducts = piece.produitsAssocies && piece.produitsAssocies.length > 0;
+        const hasStock = this.getTotalStock(piece) > 0;
+        return !hasProducts && !hasStock;
     }
 
     /**
@@ -649,16 +673,16 @@ export class PieceListComponent implements OnInit {
     }
 
     getImageUrl(url: string | null | undefined): string {
-        if (!url) return 'assets/images/default-piece.svg';
+        if (!url) return '/assets/images/default-piece.png';
         if (this.imageCache.has(url)) return this.imageCache.get(url)!;
 
         let result = url;
         if (url.startsWith('/api/images') || url.startsWith('/uploads')) {
-            result = `http://localhost:8081${url}`;
+            result = `http://localhost:8095${url}`;
         } else if (url.includes('/remote.php/dav/files/')) {
             const parts = url.split('/');
             const filename = parts[parts.length - 1];
-            result = `http://localhost:8081/api/images/${filename}`;
+            result = `http://localhost:8095/api/images/${filename}`;
         }
 
         this.imageCache.set(url, result);

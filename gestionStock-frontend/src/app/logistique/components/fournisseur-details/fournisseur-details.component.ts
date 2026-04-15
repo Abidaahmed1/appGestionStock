@@ -1,7 +1,8 @@
-import { Component, OnInit, inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject, PLATFORM_ID, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { LogistiqueService } from '../../services/logistique.service';
 import { MagasinierService } from '../../../magasinier/services/magasinier.service';
 import { Fournisseur } from '../../models/logistique.models';
@@ -9,6 +10,13 @@ import { SupplierCatalogComponent } from '../supplier-catalog/supplier-catalog.c
 import { PhoneInputComponent } from '../../../shared/components/phone-input/phone-input.component';
 import { forkJoin, of } from 'rxjs';
 import { ViewChild } from '@angular/core';
+import { getCountryCallingCode, CountryCode } from 'libphonenumber-js';
+
+export interface CountryItem {
+    name: string;
+    iso2: string;
+    dialCode?: string;
+}
 
 @Component({
     selector: 'app-fournisseur-details',
@@ -28,7 +36,19 @@ export class FournisseurDetailsComponent implements OnInit {
     isPhoneValid = true;
     parametres: any = null;
 
+    countries: CountryItem[] = [];
+    filteredCountries: CountryItem[] = [];
+    showCountryDropdown = false;
+    countrySearchQuery = '';
+    
+    cities: string[] = [];
+    filteredCitiesList: string[] = [];
+    showCityDropdown = false;
+    citySearchQuery = '';
 
+    countryData: any[] = [];
+    loadingCountries = false;
+    loadingCities = false;
 
     @ViewChild('catalog') catalog!: SupplierCatalogComponent;
 
@@ -38,6 +58,7 @@ export class FournisseurDetailsComponent implements OnInit {
     private magasinierService = inject(MagasinierService);
     private platformId = inject(PLATFORM_ID);
     private cdr = inject(ChangeDetectorRef);
+    private http = inject(HttpClient);
 
     ngOnInit() {
         if (isPlatformBrowser(this.platformId)) {
@@ -55,6 +76,154 @@ export class FournisseurDetailsComponent implements OnInit {
                 }, 100);
             }
             this.loadParametres();
+            this.loadCountries();
+        }
+    }
+
+    loadCountries() {
+        this.loadingCountries = true;
+        this.http.get<any>('https://countriesnow.space/api/v0.1/countries').subscribe({
+            next: (res) => {
+                if (res && res.data) {
+                    this.countryData = res.data;
+                    this.countries = res.data.map((item: any) => {
+                        let dialCode = '';
+                        try {
+                            dialCode = '+' + getCountryCallingCode(item.iso2 as CountryCode);
+                        } catch (e) {
+                            dialCode = '';
+                        }
+                        return {
+                            name: item.country,
+                            iso2: item.iso2 ? item.iso2.toLowerCase() : '',
+                            dialCode: dialCode
+                        };
+                    }).sort((a: CountryItem, b: CountryItem) => a.name.localeCompare(b.name));
+                    
+                    this.filteredCountries = [...this.countries];
+
+                    // If a country is already selected (edit mode), load its cities
+                    if (this.fournisseur.pays) {
+                        this.onCountryChange(false);
+                    }
+                }
+                this.loadingCountries = false;
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                console.error('Erreur lors du chargement des pays:', err);
+                this.loadingCountries = false;
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    @HostListener('document:click', ['$event'])
+    handleOutsideClick(event: MouseEvent) {
+        this.showCountryDropdown = false;
+        this.showCityDropdown = false;
+    }
+
+    toggleCountryDropdown(event: MouseEvent) {
+        event.stopPropagation();
+        this.showCountryDropdown = !this.showCountryDropdown;
+        this.showCityDropdown = false;
+        if (this.showCountryDropdown) {
+            this.countrySearchQuery = '';
+            this.filteredCountries = [...this.countries];
+        }
+    }
+
+    filterCountriesDropdown() {
+        const q = this.countrySearchQuery.toLowerCase().trim();
+        if (!q) {
+            this.filteredCountries = this.countries;
+            return;
+        }
+        this.filteredCountries = this.countries.filter(c =>
+            c.name.toLowerCase().includes(q)
+        );
+    }
+
+    selectCountry(c: CountryItem) {
+        this.fournisseur.pays = c.name;
+        this.showCountryDropdown = false;
+        
+        if (c.dialCode) {
+            const currentTel = this.fournisseur.tel || '';
+            const strippedCurrent = currentTel.replace(/^\+\d+\s*/, '');
+            this.fournisseur.tel = `${c.dialCode} ${strippedCurrent}`;
+        }
+        
+        this.onCountryChange(true);
+    }
+
+    toggleCityDropdown(event: MouseEvent) {
+        event.stopPropagation();
+        if (!this.fournisseur.pays || this.loadingCities) return;
+        this.showCityDropdown = !this.showCityDropdown;
+        this.showCountryDropdown = false;
+        if (this.showCityDropdown) {
+            this.citySearchQuery = '';
+            this.filteredCitiesList = [...this.cities];
+        }
+    }
+
+    filterCitiesDropdown() {
+        const q = this.citySearchQuery.toLowerCase().trim();
+        if (!q) {
+            this.filteredCitiesList = this.cities;
+            return;
+        }
+        this.filteredCitiesList = this.cities.filter(city =>
+            city.toLowerCase().includes(q)
+        );
+    }
+
+    selectCity(city: string) {
+        this.fournisseur.ville = city;
+        this.showCityDropdown = false;
+    }
+
+    getSelectedCountryObj(): CountryItem | undefined {
+        if (!this.fournisseur.pays) return undefined;
+        return this.countries.find(c => c.name === this.fournisseur.pays);
+    }
+
+    onCountryChange(resetCity: boolean = true) {
+        if (resetCity) {
+            this.fournisseur.ville = '';
+        }
+        this.cities = [];
+        this.filteredCitiesList = [];
+        this.showCityDropdown = false;
+        
+        if (this.fournisseur.pays) {
+            this.loadingCities = true;
+            // Always use the dedicated endpoint for FULL lists of cities
+            this.http.post<any>('https://countriesnow.space/api/v0.1/countries/cities', {
+                country: this.fournisseur.pays
+            }).subscribe({
+                next: (res) => {
+                    if (res && res.data) {
+                        this.cities = res.data.sort();
+                        this.filteredCitiesList = [...this.cities];
+                    }
+                    this.loadingCities = false;
+                    this.cdr.detectChanges();
+                },
+                error: (err) => {
+                    console.error('Erreur chargement villes:', err);
+                    // Fallback to local data if API fails
+                    const selectedCountryData = this.countryData.find((item: any) => item.country === this.fournisseur.pays);
+                    if (selectedCountryData && selectedCountryData.cities) {
+                        this.cities = selectedCountryData.cities.sort();
+                        this.filteredCitiesList = [...this.cities];
+                    }
+                    this.loadingCities = false;
+                    this.cdr.detectChanges();
+                }
+            });
         }
     }
 
@@ -63,8 +232,8 @@ export class FournisseurDetailsComponent implements OnInit {
             next: (data) => {
                 if (data && data.length > 0) {
                     this.parametres = data[0];
+                    this.isAutoCode = this.isModuleAuto('FOURNISSEUR');
                     if (!this.isEdit) {
-                        this.isAutoCode = this.isModuleAuto('FOURNISSEUR');
                         this.fournisseur.code = this.isAutoCode ? 'AUTO' : '';
                     }
                     this.cdr.detectChanges();
@@ -130,7 +299,9 @@ export class FournisseurDetailsComponent implements OnInit {
         this.logistiqueService.getFournisseurById(id).subscribe({
             next: (data) => {
                 this.fournisseur = data;
-                this.isAutoCode = this.fournisseur.code === 'AUTO';
+                if (this.fournisseur.pays && this.countryData.length > 0) {
+                    this.onCountryChange(false);
+                }
             },
             error: () => this.notify('Erreur lors du chargement', 'error')
         });
@@ -170,10 +341,17 @@ export class FournisseurDetailsComponent implements OnInit {
             return;
         }
 
-        if (!this.fournisseur.adresse) {
-            this.validationErrors.adresse = true;
+        if (!this.fournisseur.pays) {
+            this.validationErrors.pays = true;
             hasErrors = true;
         }
+        if (!this.fournisseur.ville) {
+            this.validationErrors.ville = true;
+            hasErrors = true;
+        }
+
+        // Keep a generic string in adresse to avoid backend error strictly for optional checks if any
+        this.fournisseur.adresse = `${this.fournisseur.rue || ''}, ${this.fournisseur.codePostal || ''} ${this.fournisseur.ville || ''}, ${this.fournisseur.pays || ''}`;
 
         if (hasErrors) {
             let errorMsg = 'Veuillez remplir les champs obligatoires.';

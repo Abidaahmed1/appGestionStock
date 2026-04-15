@@ -42,10 +42,22 @@
     box-shadow: 0 2px 6px rgba(61, 122, 127, 0.2);
 }
 
-.btn-new:hover {
+.btn-new:hover:not(:disabled) {
     transform: translateY(-1px);
     box-shadow: 0 4px 10px rgba(61, 122, 127, 0.3);
     background: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary) 100%);
+}
+
+.btn-new:disabled,
+.btn-danger:disabled,
+.btn-disabled,
+.btn-icon-action:disabled,
+.btn-icon-action.disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none !important;
+    transform: none !important;
+    pointer-events: none;
 }
 
 .toolbar {
@@ -660,7 +672,7 @@ tr:hover td {
     transition: all 0.2s;
 }
 
-.btn-danger:hover {
+.btn-danger:hover:not(:disabled) {
     transform: translateY(-1px);
     box-shadow: 0 6px 12px rgba(239, 68, 68, 0.3);
     background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);

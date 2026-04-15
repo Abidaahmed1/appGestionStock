@@ -24,22 +24,27 @@ public class PieceDetacheeController {
     @GetMapping
     @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR', 'ADMINISTRATEUR')")
     public List<PieceDetachee> getAll() {
-        List<PieceDetachee> pieces = pieceService.findByActive();
-        for (PieceDetachee p : pieces) {
-            if (p.getDetails() != null) {
-                p.getDetails().size();
-            }
-            if (p.getProduitsAssocies() != null) {
-                p.getProduitsAssocies().size();
-            }
-        }
-        return pieces;
+        return pieceService.findByActive();
     }
 
     @GetMapping("/low-stock")
     @PreAuthorize("hasAnyRole('MAGASINIER', 'RESPONSABLE_LOGISTIQUE', 'AUDITEUR', 'ADMINISTRATEUR')")
     public List<PieceDetachee> getLowStock() {
         return pieceService.findLowStockPieces();
+    }
+
+    @GetMapping("/archived")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
+    public List<PieceDetachee> getArchived() {
+        return pieceService.findArchived();
+    }
+
+    @PutMapping("/{id}/restore")
+    @PreAuthorize("hasAnyRole('MAGASINIER', 'ADMINISTRATEUR')")
+    public ResponseEntity<PieceDetachee> restore(@PathVariable Long id) {
+        PieceDetachee restored = pieceService.restore(id);
+        if (restored == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(restored);
     }
 
     @PostMapping("/upload-image-front/{id}")
@@ -99,6 +104,28 @@ public class PieceDetacheeController {
             }
             return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT)
                     .body(java.util.Map.of("message", message != null ? message : "Erreur lors de la suppression"));
+        }
+    }
+
+    @DeleteMapping("/{id}/permanent")
+    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    public ResponseEntity<?> deletePermanently(@PathVariable Long id) {
+        try {
+            pieceService.deletePermanently(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            String message = e.getMessage();
+            // Si c'est déjà une PieceException personnalisée venant du service, on garde son message
+            if (e instanceof com.gestionStock.backend.exceptions.PieceException) {
+                return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT)
+                        .body(java.util.Map.of("message", message));
+            }
+            // Sinon, on traite les violations d'intégrité génériques
+            if (e instanceof org.springframework.dao.DataIntegrityViolationException || (message != null && (message.contains("constraint") || message.contains("referenced")))) {
+                message = "Impossible de supprimer définitivement cette pièce car elle est liée à d'autres données (Fournisseurs, Historique ou Inventaires).";
+            }
+            return ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT)
+                    .body(java.util.Map.of("message", message != null ? message : "Erreur lors de la suppression définitive"));
         }
     }
 

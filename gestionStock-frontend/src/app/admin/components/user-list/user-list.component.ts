@@ -33,12 +33,10 @@ export class UserListComponent implements OnInit {
 
     showConfirmStatusModal = false;
     showConfirmRoleModal = false;
-    showResetPasswordModal = false;
     activeTab: 'details' | 'activities' = 'details';
     selectedUser: UserRepresentation | null = null;
     pendingStatusUser: UserRepresentation | null = null;
     pendingRoleChange: { roleName: string, action: 'add' | 'remove' | 'replace', oldRole?: string } | null = null;
-    resetPasswordData = { newPassword: '', confirmPassword: '' };
 
     get availableRoles() {
         return this.valideRoles;
@@ -48,19 +46,25 @@ export class UserListComponent implements OnInit {
         const term = this.searchTerm.toLowerCase().trim();
         return this.users.filter(user => {
             const matchesRole = this.selectedRoleFilter === 'All' || user.role === this.selectedRoleFilter;
-            
-            const matchesStatus = this.statusFilter === 'All' || 
-                                (this.statusFilter === 'Active' && user.enabled) || 
-                                (this.statusFilter === 'Inactive' && !user.enabled);
+
+            const matchesStatus = this.statusFilter === 'All' ||
+                (this.statusFilter === 'Active' && user.enabled) ||
+                (this.statusFilter === 'Inactive' && !user.enabled);
 
             const matchesSearch = !term ||
                 (user.username?.toLowerCase().includes(term) ||
                     user.email?.toLowerCase().includes(term) ||
                     user.firstName?.toLowerCase().includes(term) ||
                     user.lastName?.toLowerCase().includes(term));
-            
+
             return matchesRole && matchesStatus && matchesSearch;
         });
+    }
+
+    isUserAdmin(user: UserRepresentation): boolean {
+        if (!user || !user.role) return false;
+        const cleanRole = user.role.toUpperCase().replace('ROLE_', '');
+        return cleanRole === 'ADMINISTRATEUR';
     }
 
     getUserCountByRole(role: string): number {
@@ -163,7 +167,7 @@ export class UserListComponent implements OnInit {
             );
             return;
         }
-        this.newUser = { role: 'MAGASINIER', password: '', confirmPassword: '' };
+        this.newUser = { role: 'MAGASINIER' };
         this.showCreateModal = true;
     }
 
@@ -179,17 +183,8 @@ export class UserListComponent implements OnInit {
         if (!this.newUser.firstName || !this.newUser.firstName.trim() ||
             !this.newUser.lastName || !this.newUser.lastName.trim() ||
             !this.newUser.email || !this.newUser.email.trim() ||
-            !this.newUser.password || !this.newUser.role) {
+            !this.newUser.role) {
             this.notify('Veuillez remplir correctement tous les champs obligatoires.', 'error');
-            return;
-        }
-
-        if (this.newUser.password.length < 8) {
-            this.notify('Le mot de passe doit contenir au moins 8 caractères', 'error');
-            return;
-        }
-        if (this.newUser.password !== this.newUser.confirmPassword) {
-            this.notify('Les mots de passe ne correspondent pas', 'error');
             return;
         }
 
@@ -201,8 +196,7 @@ export class UserListComponent implements OnInit {
             firstName: this.newUser.firstName,
             lastName: this.newUser.lastName,
             enabled: true,
-            role: this.newUser.role,
-            credentials: [{ type: 'password', value: this.newUser.password, temporary: false }]
+            role: this.newUser.role
         };
 
         this.adminService.createUser(userToCreate).subscribe({
@@ -379,16 +373,6 @@ export class UserListComponent implements OnInit {
         this.pendingStatusUser = null;
     }
 
-    openResetPassword(user: UserRepresentation) {
-        this.selectedUser = user;
-        this.resetPasswordData = { newPassword: '', confirmPassword: '' };
-        this.showResetPasswordModal = true;
-    }
-
-    closeResetPassword() {
-        this.showResetPasswordModal = false;
-        this.selectedUser = null;
-    }
 
     getRoleDisplayName(role: string | undefined): string {
         if (!role || role === 'AUCUN' || role === 'Aucun') return 'Aucun';
@@ -413,28 +397,4 @@ export class UserListComponent implements OnInit {
         }
     }
 
-    confirmResetPassword() {
-        if (!this.selectedUser?.id || !this.resetPasswordData.newPassword) return;
-
-        if (this.resetPasswordData.newPassword !== this.resetPasswordData.confirmPassword) {
-            this.notify('Les mots de passe ne correspondent pas', 'error');
-            return;
-        }
-
-        if (this.resetPasswordData.newPassword.length < 8) {
-            this.notify('Le mot de passe doit contenir au moins 8 caractères', 'error');
-            return;
-        }
-
-        this.adminService.resetUserPassword(this.selectedUser.id, this.resetPasswordData.newPassword).subscribe({
-            next: () => {
-                this.notify('Mot de passe réinitialisé avec succès', 'success');
-                this.closeResetPassword();
-            },
-            error: (err) => {
-                console.error('Erreur reset password:', err);
-                this.notify('Erreur lors de la réinitialisation du mot de passe', 'error');
-            }
-        });
-    }
 }

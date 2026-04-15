@@ -65,6 +65,41 @@ public class ProduitFiniService {
         produitRepo.save(produit);
     }
 
+    @Transactional
+    public void deletePermanently(Long id) {
+        if (id == null) {
+            throw new ProduitException("L'ID du produit est manquant.");
+        }
+
+        System.out.println("[DEBUG] Suppression définitive du produit ID: " + id);
+
+        ProduitFini produit = produitRepo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Produit introuvable en base (ID: " + id + "). Veuillez actualiser."));
+        
+        // Decouple pieces to avoid constraint issues if necessary
+        if (produit.getPieces() != null) {
+            produit.getPieces().clear();
+        }
+        
+        produitRepo.delete(produit);
+        System.out.println("[DEBUG] Produit " + id + " supprimé avec succès.");
+    }
+
+    public List<ProduitFini> findArchived() {
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
+        if (entreprise == null) {
+            return java.util.List.of();
+        }
+        return produitRepo.findByEstArchiveeTrueAndEntreprise(entreprise);
+    }
+
+    public ProduitFini restore(Long id) {
+        ProduitFini produit = produitRepo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Produit non trouvé"));
+        produit.setEstArchivee(false);
+        return produitRepo.save(produit);
+    }
+
     public ProduitFini update(Long id, ProduitFini produit) {
         ProduitFini existing = produitRepo.findById(id).orElseThrow(() -> new ProduitException("Produit non trouvé"));
 

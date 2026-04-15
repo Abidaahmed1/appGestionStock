@@ -10,14 +10,22 @@
         </div>
 
         <!-- Country Selector (Editing Mode) -->
-        <div class="country-selector" *ngIf="isEditing" (click)="toggleDropdown($event)">
+        <div class="country-selector" *ngIf="isEditing && !hideSelector" (click)="toggleDropdown($event)">
             <img [src]="'https://flagcdn.com/24x18/' + (selectedCountry?.iso || 'un') + '.png'"
                 style="width: 24px; height: auto; border-radius: 2px;" [alt]="selectedCountry?.name" />
             <i class="fas fa-chevron-down"></i>
         </div>
 
         <!-- Dial Code Display (Editing Mode) -->
-        <span class="dial-display" *ngIf="isEditing && selectedCountry">{{ selectedCountry.dialCode }}</span>
+        <span class="dial-display" *ngIf="isEditing && !hideSelector && selectedCountry">{{ selectedCountry.dialCode }}</span>
+        
+        <!-- Case where selector is hidden but we want to show the current flag/dial anyway -->
+        <div class="country-preview" *ngIf="isEditing && hideSelector && selectedCountry"
+            style="display: flex; align-items: center; gap: 8px; padding-left: 8px;">
+            <img [src]="'https://flagcdn.com/24x18/' + (selectedCountry.iso || 'un') + '.png'"
+                style="width: 20px; height: auto; border-radius: 2px;" [alt]="selectedCountry.name" />
+            <span class="dial-display" style="font-weight: 500; color: #64748b;">{{ selectedCountry.dialCode }}</span>
+        </div>
 
         <!-- Number Input -->
         <input type="text" class="phone-field" [(ngModel)]="localNumber" (input)="onNumberInput()"

@@ -7,7 +7,7 @@ import { Notification } from '../models/notification.model';
     providedIn: 'root'
 })
 export class NotificationService {
-    private apiUrl = 'http://localhost:8081/api/notifications';
+    private apiUrl = 'http://localhost:8095/api/notifications';
 
     constructor(private http: HttpClient) { }
 

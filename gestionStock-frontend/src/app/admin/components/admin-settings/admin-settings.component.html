@@ -62,7 +62,7 @@
                                         <i class="fas fa-map-marker-alt"></i>
                                         {{ entreprise.adresse }}
                                         <span *ngIf="entreprise.codePostal">, {{ entreprise.codePostal }}</span>
-                                        <span *ngIf="entreprise.pays"> — {{ entreprise.pays.nom }}</span>
+                                        <span *ngIf="entreprise.pays"> — {{ entreprise.pays }}</span>
                                     </p>
                                     <p *ngIf="entreprise.email">
                                         <i class="fas fa-envelope"></i> {{ entreprise.email }}

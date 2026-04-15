@@ -16,7 +16,8 @@ public interface BonRepository extends JpaRepository<Bon, Long> {
 
         List<Bon> findByArchivedFalse();
 
-        List<Bon> findByArchivedFalseAndEntrepriseOrderByDateDesc(Entreprise entreprise);
+        @org.springframework.data.jpa.repository.Query("SELECT DISTINCT b FROM Bon b LEFT JOIN FETCH b.mouvement m LEFT JOIN FETCH m.ligneMouvement l WHERE b.archived = false AND b.entreprise = :entreprise ORDER BY b.date DESC, b.id DESC")
+        List<Bon> findByArchivedFalseAndEntrepriseOrderByDateDesc(@org.springframework.data.repository.query.Param("entreprise") Entreprise entreprise);
 
         List<Bon> findByArchivedTrueAndEntrepriseOrderByDateDesc(Entreprise entreprise);
 

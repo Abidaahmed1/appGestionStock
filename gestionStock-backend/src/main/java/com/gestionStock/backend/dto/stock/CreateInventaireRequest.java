@@ -11,6 +11,7 @@ public class CreateInventaireRequest {
     private String nom;
     private LocalDateTime date;
     private TypeInventaire type;
+    private List<Long> categoryIds;
     private List<LigneAffectation> affectations;
 
     @Data

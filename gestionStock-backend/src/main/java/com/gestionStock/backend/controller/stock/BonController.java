@@ -84,4 +84,11 @@ public class BonController {
     public ResponseEntity<Bon> reactivate(@PathVariable Long id) {
         return ResponseEntity.ok(bonService.reactivate(id));
     }
+
+    @DeleteMapping("/{id}/permanent")
+    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    public ResponseEntity<Void> deletePermanently(@PathVariable Long id) {
+        bonService.deletePermanently(id);
+        return ResponseEntity.noContent().build();
+    }
 }

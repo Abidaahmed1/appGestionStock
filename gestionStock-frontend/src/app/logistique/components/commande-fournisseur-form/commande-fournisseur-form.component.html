@@ -153,7 +153,7 @@
                     <label>Arrivée prévue</label>
                     <div class="input-wrapper">
                         <input type="date" [(ngModel)]="commande.dateArrivee" name="dateArrivee"
-                            [min]="commande.dateCmd ? commande.dateCmd.substring(0, 10) : ''"
+                            [min]="getMinDateArrivee()"
                             [class.input-error]="errors['dateArrivee']" class="form-control" [disabled]="!isEditable">
                         <i class="icon-help">?</i>
                     </div>

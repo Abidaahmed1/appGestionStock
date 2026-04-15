@@ -14,6 +14,7 @@ export class ConfirmDialogComponent {
   @Input() message: string = 'Si vous quittez, vos changements non sauvegardés seront annulés.';
   @Input() confirmText: string = 'Rester ici';
   @Input() cancelText: string = 'Quitter et annuler les changements';
+  @Input() type: 'warning' | 'info' | 'success' = 'warning';
   
   @Output() confirm = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();

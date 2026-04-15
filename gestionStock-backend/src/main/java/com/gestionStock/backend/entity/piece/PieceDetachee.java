@@ -78,11 +78,11 @@ public class PieceDetachee {
 	@Min(value = 0, message = "Le taux TVA ne peut pas être négatif")
 	private Double tauxTVA = 0.0;
 
-	@JsonIgnore
 	@JsonIgnoreProperties("pieces")
 	@ManyToMany(mappedBy = "pieces", fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.MERGE })
 	@Builder.Default
 	private Set<ProduitFini> produitsAssocies = new HashSet<>();
+
 	@NotNull(message = "La catégorie est obligatoire")
 	@ManyToOne(cascade = { CascadeType.PERSIST, CascadeType.MERGE })
 	@JoinColumn(name = "categorie_id")
@@ -91,19 +91,18 @@ public class PieceDetachee {
 	@Column(columnDefinition = "TEXT")
 	private String description;
 
-	@JsonIgnore
 	@JsonManagedReference("piece_details")
-	@OneToMany(mappedBy = "piece", cascade = CascadeType.ALL, orphanRemoval = true)
+	@OneToMany(mappedBy = "piece", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
 	@Builder.Default
 	private List<DetailPiece> details = new ArrayList<>();
 
-	@JsonIgnore
-	@JsonManagedReference("piece_historiques")
-	@OneToMany(mappedBy = "piece", cascade = CascadeType.ALL, orphanRemoval = true)
+	@JsonIgnoreProperties("piece")
+	@OneToMany(mappedBy = "piece", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
 	@OrderBy("date DESC")
 	@Builder.Default
 	private List<PieceHistorique> historiques = new java.util.ArrayList<>();
 
+	@JsonIgnore
 	@Transient
 	@Builder.Default
 	private List<PieceDetachee> variations = new ArrayList<>();

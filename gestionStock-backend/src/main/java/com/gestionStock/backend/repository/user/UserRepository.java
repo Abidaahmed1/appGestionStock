@@ -10,15 +10,15 @@ import com.gestionStock.backend.entity.user.User;
 import com.gestionStock.backend.entity.entreprise.Entreprise;
 
 public interface UserRepository extends JpaRepository<User, String> {
-	List<User> findByActiveTrue();
+    List<User> findByActiveTrue();
 
-	List<User> findByActiveTrueAndEntreprise(Entreprise entreprise);
+    List<User> findByActiveTrueAndEntreprise(Entreprise entreprise);
 
-	List<User> findAllByEntreprise(Entreprise entreprise);
+    List<User> findAllByEntreprise(Entreprise entreprise);
 
-	java.util.Optional<User> findByEmail(String email);
+    java.util.Optional<User> findByEmail(String email);
 
-	List<User> findByRoleIn(List<Role> roles);
+    List<User> findByRoleIn(List<Role> roles);
 
-	List<User> findByRoleInAndEntreprise(List<Role> roles, Entreprise entreprise);
+    List<User> findByRoleInAndEntreprise(List<Role> roles, Entreprise entreprise);
 }

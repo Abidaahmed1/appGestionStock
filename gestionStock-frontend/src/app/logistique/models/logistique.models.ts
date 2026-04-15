@@ -3,7 +3,11 @@ export interface Fournisseur {
     id?: number;
     code: string;
     nom: string;
-    adresse: string;
+    adresse?: string;
+    rue?: string;
+    ville?: string;
+    codePostal?: string;
+    pays?: string;
     email: string;
     tel: string;
     archivee?: boolean;

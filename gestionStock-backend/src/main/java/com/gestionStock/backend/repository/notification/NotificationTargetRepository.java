@@ -13,12 +13,15 @@ import java.util.Optional;
 public interface NotificationTargetRepository extends JpaRepository<NotificationTarget, Long> {
 
     @Query("SELECT nt FROM NotificationTarget nt WHERE nt.user.id = :userId ORDER BY nt.notification.date DESC")
-    List<NotificationTarget> findByUserIdOrderByDateDesc(@Param("userId") String userId);
+    List<NotificationTarget> findByUserIdOrderByDateDesc(@Param("userId") String userId, org.springframework.data.domain.Pageable pageable);
 
     @Query("SELECT nt FROM NotificationTarget nt WHERE nt.lu = false AND nt.user.id = :userId ORDER BY nt.notification.date DESC")
-    List<NotificationTarget> findByLuFalseAndUserIdOrderByDateDesc(@Param("userId") String userId);
+    List<NotificationTarget> findByLuFalseAndUserIdOrderByDateDesc(@Param("userId") String userId, org.springframework.data.domain.Pageable pageable);
 
     @Query("SELECT nt FROM NotificationTarget nt WHERE nt.notification.id = :notificationId AND nt.user.id = :userId")
     Optional<NotificationTarget> findByNotificationIdAndUserId(@Param("notificationId") Long notificationId,
             @Param("userId") String userId);
+
+    @Query("SELECT COUNT(nt) FROM NotificationTarget nt WHERE nt.lu = false AND nt.user.id = :userId")
+    long countUnreadByUserId(@Param("userId") String userId);
 }

@@ -20,4 +20,10 @@ public interface BonCommandeFournisseurRepository extends JpaRepository<BonComma
 
     List<BonCommandeFournisseur> findByEntreprise(
             com.gestionStock.backend.entity.entreprise.Entreprise entreprise);
+
+    List<BonCommandeFournisseur> findByArchivedFalseAndEntreprise(
+            com.gestionStock.backend.entity.entreprise.Entreprise entreprise);
+
+    List<BonCommandeFournisseur> findByArchivedTrueAndEntreprise(
+            com.gestionStock.backend.entity.entreprise.Entreprise entreprise);
 }

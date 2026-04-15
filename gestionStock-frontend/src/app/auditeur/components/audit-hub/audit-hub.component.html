@@ -24,6 +24,18 @@
           <div class="stat-pill"><strong>{{ localStats.active }}</strong> actifs</div>
           <div class="stat-pill"><strong>{{ localStats.accuracy }}%</strong> précision</div>
         </div>
+
+        <button class="btn-neo-compact"
+          style="background: rgba(30,41,59,0.8); border: 1px solid rgba(255,255,255,0.1); color: #FFF; margin-right: 0.5rem;"
+          (click)="ouvrirHistorique()">
+          <svg class="hi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <polyline points="23 20 23 14 17 14"></polyline>
+            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
+          </svg>
+          <span>Historique des corrections</span>
+        </button>
+
         <button class="btn-neo-compact" (click)="openWizard()">
           <svg class="hi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -95,26 +107,31 @@
           <tr *ngFor="let inv of inventaires" class="list-row" (click)="selectAudit(inv)">
             <td>
               <div class="list-audit-name-cell">
-                <div class="list-audit-icon" [class.valide]="inv.estValide">
-                  <svg *ngIf="!inv.estValide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                    </path>
+                <div class="list-audit-icon" [class.valide-icon]="inv.estValide || inv.estTermine">
+                  <svg *ngIf="!inv.estValide && !inv.estTermine" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2.2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
                   </svg>
-                  <svg *ngIf="inv.estValide" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <polyline points="20 6 9 17 4 12"></polyline>
+                  <svg *ngIf="inv.estValide || inv.estTermine" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <path d="M21 8v13H3V8"></path>
+                    <path d="M1 3h22v5H1z"></path>
+                    <path d="M10 12h4"></path>
                   </svg>
                 </div>
                 <span class="list-audit-name">{{ inv.nom }}</span>
               </div>
             </td>
-            <td><span class="type-pill">{{ inv.type }}</span></td>
+            <td><span class="type-pill">{{ inv.type || 'Standard' }}</span></td>
             <td><span class="date-lbl">{{ inv.date | date:'dd/MM/yyyy' }}</span></td>
-            <td><strong>{{ inv.lignes.length }}</strong> <span class="list-sub">produits</span></td>
+            <td><span class="ligne-count"><strong>{{ inv.lignes.length }}</strong></span> <span
+                class="list-sub">produits</span></td>
             <td>
-              <span class="list-status" [class.actif]="!inv.estValide" [class.archive]="inv.estValide">
+              <span class="list-status" [class.actif-badge]="!inv.estValide && !inv.estTermine"
+                [class.archive-badge]="inv.estValide || inv.estTermine">
                 <span class="status-dot"></span>
-                {{ inv.estValide ? 'Archivé' : 'En cours' }}
+                {{ (inv.estValide || inv.estTermine) ? 'Archivé' : 'En cours' }}
               </span>
             </td>
             <td>
@@ -137,7 +154,7 @@
     <div class="detail-bar">
       <div class="detail-bar-left">
         <div class="detail-breadcrumb">
-          <span class="bc-link" (click)="currentAudit = null">
+          <span class="bc-link" (click)="backToList()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <polyline points="15 18 9 12 15 6"></polyline>
             </svg>
@@ -150,7 +167,8 @@
         </div>
         <div class="detail-bar-badges">
           <span class="ws-type-pill">{{ currentAudit.type }}</span>
-          <span class="ws-status-badge" [class.valide]="currentAudit.estValide">{{ currentAudit.estValide ? 'ARCHIVÉ' :
+          <span class="ws-status-badge" [class.valide]="currentAudit.estValide || currentAudit.estTermine">{{
+            (currentAudit.estValide || currentAudit.estTermine) ? 'ARCHIVÉ' :
             'OPÉRATIONNEL' }}</span>
           <span class="ws-count-bubble">{{ currentAudit.lignes.length }}&nbsp;lignes</span>
         </div>
@@ -174,12 +192,27 @@
 
         <div class="bar-divider"></div>
 
-        <div class="ws-autosave" *ngIf="!currentAudit.estValide">
+        <div class="ws-autosave" *ngIf="!currentAudit.estValide && !currentAudit.estTermine">
           <div class="save-dot" [class.saving]="isSaving"></div>
           <span>{{ isSaving ? 'Sauvegarde...' : 'Sauvegardé' }}</span>
         </div>
 
-        <button class="btn-reconcile-compact" *ngIf="!currentAudit.estValide" (click)="validateAudit()">
+        <!-- Indicateur de synchronisation auto (scan mobile) -->
+        <div class="ws-autosync" title="Synchronisation automatique toutes les 8 secondes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+               [class.sync-spin]="syncPulse">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <polyline points="23 20 23 14 17 14"></polyline>
+            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
+          </svg>
+          <span *ngIf="lastSyncedAt">{{ lastSyncedAt | date:'HH:mm:ss' }}</span>
+          <span *ngIf="!lastSyncedAt">Sync auto</span>
+        </div>
+
+        <div class="bar-divider"></div>
+
+        <button class="btn-reconcile-compact" *ngIf="!currentAudit.estValide && !currentAudit.estTermine"
+          (click)="validateAudit()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
@@ -193,6 +226,15 @@
             <rect x="6" y="14" width="12" height="8"></rect>
           </svg>
         </button>
+
+        <button class="btn-export-detail" (click)="ouvrirHistorique()" title="Journal Historique des Corrections"
+          style="background: transparent; color: var(--text-muted); border-radius: 8px; margin-left: 0.25rem;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="1 4 1 10 7 10"></polyline>
+            <polyline points="23 20 23 14 17 14"></polyline>
+            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 0 1 3.51 15"></path>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -201,14 +243,13 @@
         <table class="hub-premium-table">
           <thead>
             <tr>
-              <th>Produit / Famille</th>
-              <th>Référence</th>
-              <th>Responsable</th>
-              <th>Théorique</th>
-              <th>Physique (Réel)</th>
-              <th>Écart</th>
-              <th>Commentaires</th>
-              <th class="text-right">Actions</th>
+              <th style="width: 21%;">Produit / Référence</th>
+              <th style="width: 12%;">Responsable</th>
+              <th style="width: 10%; text-align: center;">Théorique</th>
+              <th style="width: 10%; text-align: center;">Physique</th>
+              <th style="width: 7%; text-align: center;">Écart</th>
+              <th style="width: 18%;">Commentaires</th>
+              <th style="width: 22%; text-align: right;">Actions & Statut</th>
             </tr>
           </thead>
           <tbody>
@@ -216,123 +257,152 @@
               <td>
                 <div class="product-info-cell">
                   <span class="p-name">{{ l.piece?.designation }}</span>
-                  <span class="p-cat">{{ l.piece?.categorie?.nom }}</span>
+                  <div class="p-meta-row">
+                    <span class="p-cat">{{ l.piece?.categorie?.nom }}</span>
+                    <span class="p-ref-tag">{{ l.piece?.reference }}</span>
+                  </div>
                 </div>
               </td>
-              <td><code>{{ l.piece?.reference }}</code></td>
               <td>
-                <div class="user-audit-pill collaborative" *ngIf="!l.responsableLogistique">
-                  <div class="u-initials team-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                      <circle cx="9" cy="7" r="4"></circle>
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
+                <div class="user-audit-info-stack">
+                  <!-- Scanneur (Logistique) -->
+                  <div class="user-audit-pill collaborative" *ngIf="!l.responsableLogistique">
+                    <div class="u-initials team-icon">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                      </svg>
+                    </div>
+                    <div class="u-meta">
+                      <span class="u-label">Scanné par</span>
+                      <span class="u-full">Collaboratif</span>
+                    </div>
                   </div>
-                  <div class="u-meta">
-                    <span class="u-full">Collaboratif</span>
-                    <span class="u-line-status">Ouvert à tous</span>
+                  <div class="user-audit-pill" *ngIf="l.responsableLogistique">
+                    <div class="u-initials">{{ l.responsableLogistique.firstName?.[0] }}{{
+                      l.responsableLogistique.lastName?.[0] }}</div>
+                    <div class="u-meta">
+                      <span class="u-label">Scanné par</span>
+                      <span class="u-full">
+                        {{ (l.responsableLogistique.firstName || l.responsableLogistique.lastName) ?
+                        (l.responsableLogistique.firstName + ' ' + l.responsableLogistique.lastName) :
+                        (l.responsableLogistique.email || 'Auditeur #' + (l.responsableLogistique.id?.substring(0,6) ||
+                        '')) }}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <div class="user-audit-pill" *ngIf="l.responsableLogistique">
-                  <div class="u-initials">{{ l.responsableLogistique.firstName?.[0] }}{{
-                    l.responsableLogistique.lastName?.[0] }}</div>
-                  <div class="u-meta">
-                    <span class="u-full" style="font-weight: 800; color: #0F172A; display: block; margin-bottom: 2px;">
-                      {{ (l.responsableLogistique.firstName || l.responsableLogistique.lastName) ?
-                      (l.responsableLogistique.firstName + ' ' + l.responsableLogistique.lastName) :
-                      (l.responsableLogistique.email || 'Auditeur #' + l.responsableLogistique.id.substring(0,6)) }}
-                    </span>
-                    <span class="u-line-status"
-                      [ngClass]="{'en-attente-valide': l.stockPhysique !== null, 'en-attente': l.stockPhysique === null && l.statutLigne === 'EN_ATTENTE_AUDIT', 'recompter': l.statutLigne === 'A_RECOMPTER', 'refuse': l.statutLigne === 'REFUSE', 'valide': l.statutLigne === 'VALIDE'}">
-                      {{ (l.stockPhysique !== null) ? 'SCANNIER' : (l.statutLigne === 'EN_ATTENTE_AUDIT' ? 'Prêt pour
-                      contrôle' : l.statutLigne === 'A_RECOMPTER' ?
-                      'Re-comptage' : l.statutLigne === 'REFUSE' ? 'Refusé' : l.statutLigne === 'VALIDE' ? 'Validé' :
-                      'Assigné') }}
-                    </span>
+
+                  <!-- Auditeur (Traitement) -->
+                  <div class="user-audit-pill auditor-pill" *ngIf="l.auditeur">
+                    <div class="u-initials tiny auditor-icon">{{ l.auditeur.firstName?.[0] }}{{ l.auditeur.lastName?.[0]
+                      }}</div>
+                    <div class="u-meta">
+                      <span class="u-label">Traité par</span>
+                      <span class="u-name-tiny">{{ l.auditeur.firstName }} {{ l.auditeur.lastName }}</span>
+                    </div>
                   </div>
-                </div>
-              </td>
-              <td class="text-center"><strong>{{ l.stockTheorique }}</strong></td>
-              <td class="text-center">
-                <div class="physique-container">
-                  <input type="number" [(ngModel)]="l.stockPhysique" (change)="updateLigne(l)"
-                    [disabled]="currentAudit.estValide" class="audit-input"
-                    [placeholder]="l.stockPhysique === null ? '...' : ''">
-                  <span class="tentative-lbl"
-                    *ngIf="l.tentativePrecedente !== undefined && l.tentativePrecedente !== null">
-                    Prev: {{ l.tentativePrecedente }}
-                  </span>
                 </div>
               </td>
               <td class="text-center">
-                <div class="ecart-pill" [class.danger]="getEffectiveEcart(l) < 0"
-                  [class.warning]="getEffectiveEcart(l) > 0"
-                  [class.success]="getEffectiveEcart(l) === 0 && l.stockPhysique !== null">
+                <span class="s-theo-cell">{{ l.stockTheorique }}</span>
+              </td>
+              <td class="text-center">
+                <span class="s-phys-cell" [class.not-scanned]="l.stockPhysique === null">{{ l.stockPhysique ?? '—'
+                  }}</span>
+              </td>
+              <td class="text-center">
+                <div class="ecart-pill mini" *ngIf="l.stockPhysique !== null" [class.danger]="getEffectiveEcart(l) < 0"
+                  [class.warning]="getEffectiveEcart(l) > 0" [class.success]="getEffectiveEcart(l) === 0">
                   {{ getEffectiveEcart(l) > 0 ? '+' : '' }}{{ getEffectiveEcart(l) }}
                 </div>
+                <span *ngIf="l.stockPhysique === null" style="color: #cbd5e1;">—</span>
               </td>
               <td>
-                <div class="analysis-box">
-                  <!-- Justification du responsable logistique -->
-                  <div class="justification-block" *ngIf="l.justification">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hi-icon-inline">
+                <div class="notes-thread-mini">
+                  <!-- Justification Logistique Compacte -->
+                  <div class="mini-note-justification" *ngIf="l.justification" [title]="l.justification">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                     </svg>
                     <span>{{ l.justification }}</span>
                   </div>
-                  <!-- Motif de re-comptage demandé par l'auditeur -->
-                  <span class="recount-motif" *ngIf="l.statutLigne === 'A_RECOMPTER' && l.motifRecomptage">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                      class="hi-icon-inline">
+
+                  <!-- Motif Recomptage Compact -->
+                  <div class="mini-note-recount" *ngIf="l.statutLigne === 'A_RECOMPTER' && l.motifRecomptage"
+                    [title]="l.motifRecomptage">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <path
                         d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                      <line x1="12" y1="9" x2="12" y2="13" />
-                      <line x1="12" y1="17" x2="12.01" y2="17" />
                     </svg>
-                    Audit: <strong>{{ l.motifRecomptage }}</strong>
-                  </span>
-                  <span class="analysis-none"
-                    *ngIf="!l.justification && hasEcart(l) && l.statutLigne !== 'A_RECOMPTER'">En attente
-                    d'analyse...</span>
+                    <span>{{ l.motifRecomptage }}</span>
+                  </div>
+
+                  <input type="text" [(ngModel)]="l.commentaire" (change)="saveComment(l)"
+                    (keyup.enter)="saveComment(l)" [class.saved-glow]="recentlySavedLigneId === l.id"
+                    [disabled]="currentAudit.estValide || currentAudit.estTermine" class="comment-input-inline"
+                    placeholder="Note auditeur...">
                 </div>
-                <input type="text" [(ngModel)]="l.commentaire" (change)="autoSave()" [disabled]="currentAudit.estValide"
-                  placeholder="Note auditeur..." class="comment-input">
               </td>
               <td class="text-right">
-                <span class="empty-dots"
-                  *ngIf="l.statutLigne !== 'EN_ATTENTE_AUDIT' && l.statutLigne !== 'VALIDE' && l.statutLigne !== 'REFUSE' && l.statutLigne !== 'A_RECOMPTER'">...</span>
+                <div class="cell-actions-column-ultra">
+                  <div class="line-status-badges">
+                    <span class="badge-valide-inline" *ngIf="l.statutLigne === 'VALIDE'">Validé</span>
+                    <span class="badge-refuse-inline" *ngIf="l.statutLigne === 'REFUSE'">Refusé</span>
+                    <span class="badge-recompte-inline" *ngIf="l.statutLigne === 'A_RECOMPTER'">Re-comptage</span>
 
-                <div class="line-actions"
-                  *ngIf="l.statutLigne === 'EN_ATTENTE_AUDIT' || l.statutLigne === 'REFUSE' || l.statutLigne === 'A_RECOMPTER'">
-                  <button class="btn-action-icon success" (click)="validerLigne(l)" title="Tout est logique - Valider">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                  </button>
+                    <button class="btn-line-history" (click)="ouvrirHistoriqueLigne(l)"
+                      title="Voir l'historique de cette ligne">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                    </button>
+                  </div>
 
-                  <button class="btn-action-icon warning" (click)="refaireLigne(l)" title="Doute - Re-compter">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                      <path d="M3 3v5h5"></path>
-                    </svg>
-                  </button>
+                  <div class="line-actions-compact"
+                    *ngIf="(!currentAudit.estValide && !currentAudit.estTermine) && (l.statutLigne === 'EN_ATTENTE_AUDIT' || l.statutLigne === 'REFUSE' || l.statutLigne === 'A_RECOMPTER' || l.statutLigne === 'VALIDE' || l.stockPhysique !== null)">
 
-                  <button class="btn-action-icon danger" (click)="refuserLigne(l)" title="Incohérent - Refuser">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                  </button>
+                    <button *ngIf="l.statutLigne !== 'VALIDE' && l.statutLigne !== 'REFUSE' && l.stockPhysique !== null"
+                      class="btn-action-icon success" (click)="validerLigne(l)" title="Valider">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </button>
+
+                    <button *ngIf="l.statutLigne !== 'VALIDE'" class="btn-action-icon primary"
+                      (click)="ouvrirCorrection(l)" title="Correction">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                      </svg>
+                    </button>
+
+                    <button
+                      *ngIf="l.statutLigne !== 'VALIDE' && l.statutLigne !== 'REFUSE' && l.statutLigne !== 'A_RECOMPTER'"
+                      class="btn-action-icon warning" (click)="refaireLigne(l)" title="Re-comptage">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                      </svg>
+                    </button>
+
+                    <button *ngIf="l.statutLigne !== 'VALIDE' && l.statutLigne !== 'REFUSE' && l.stockPhysique !== null"
+                      class="btn-action-icon danger" (click)="refuserLigne(l)" title="Refuser">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+
+                    <button
+                      *ngIf="l.statutLigne === 'VALIDE' || l.statutLigne === 'REFUSE' || l.statutLigne === 'A_RECOMPTER'"
+                      class="btn-action-icon reset" (click)="reinitialiserLigne(l)" title="Réinitialiser">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M2.5 2v6h6M21.5 22v-6h-6" />
+                        <path d="M22 11.5A10 10 0 0 0 3.2 7.2M2 12.5a10 10 0 0 0 18.8 4.2" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-
-                <span class="badge-valide-inline" *ngIf="l.statutLigne === 'VALIDE'">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                  Validé
-                </span>
               </td>
             </tr>
             <tr *ngIf="filteredRows.length === 0">
@@ -396,10 +466,71 @@
           </div>
           <div class="w-form-group animate-slide-in" *ngIf="newReq.type === 'PARTIEL_CATEGORIE'">
             <label>Sélectionnez la catégorie cible</label>
-            <select class="w-pill-select" [(ngModel)]="targetCatId">
-              <option value="0">Toutes les catégories disponibles...</option>
-              <option *ngFor="let cat of availableCategories" [value]="cat.id">{{ cat.nom }}</option>
-            </select>
+
+            <div class="neo-multi-select" [class.opened]="isCatSelectOpened">
+              <div class="neo-select-header" (click)="toggleCatSelect()">
+                <div class="header-left">
+                  <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                  <span class="selected-label">{{ getSelectedCatName() }}</span>
+                </div>
+                <svg class="chevron-icon" [class.rotate]="isCatSelectOpened" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </div>
+
+              <div class="neo-select-dropdown animate-slide-up" *ngIf="isCatSelectOpened"
+                (click)="$event.stopPropagation()">
+                <!-- Barre de recherche -->
+                <div class="dropdown-filter-bar">
+                  <div class="filter-input-wrapper">
+                    <input type="text" placeholder="Rechercher une catégorie..." [(ngModel)]="catSearchTerm"
+                      (click)="$event.stopPropagation()">
+                    <button class="clear-search" *ngIf="catSearchTerm"
+                      (click)="catSearchTerm = ''; $event.stopPropagation()">×</button>
+                  </div>
+                </div>
+
+                <!-- Liste des options -->
+                <div class="dropdown-options-list">
+                  <!-- Option "Toutes" -->
+                  <div class="option-row" [class.is-active]="selectedCatIds.has(0)" (click)="selectCat(0)">
+                    <div class="option-info">
+                      <span class="option-name">Toutes les catégories disponibles...</span>
+                    </div>
+                    <div class="option-checkbox" [class.checked]="selectedCatIds.has(0)">
+                      <svg *ngIf="selectedCatIds.has(0)" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </div>
+                  </div>
+
+                  <!-- Liste dynamique -->
+                  <div class="option-row" *ngFor="let cat of filteredCategories"
+                    [class.is-active]="selectedCatIds.has(cat.id)" (click)="selectCat(cat.id)">
+                    <div class="option-info">
+                      <span class="option-name">{{ cat.nom }}</span>
+                      <span class="option-meta" *ngIf="cat.description">{{ cat.description }}</span>
+                    </div>
+                    <div class="option-checkbox" [class.checked]="selectedCatIds.has(cat.id)">
+                      <svg *ngIf="selectedCatIds.has(cat.id)" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="3">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </div>
+                  </div>
+
+                  <!-- Aucun résultat -->
+                  <div class="no-results-cat" *ngIf="filteredCategories.length === 0">
+                    <p>Aucune catégorie trouvée pour "{{ catSearchTerm }}"</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -409,8 +540,9 @@
         <button class="btn-outline-neo" (click)="showWizard = false">Annuler</button>
         <div class="spacer"></div>
         <button class="btn-neo-primary" (click)="createAudit()"
-          [disabled]="!newReq.nom || (newReq.type === 'PARTIEL_CATEGORIE' && targetCatId == 0)">Confirmer et Lancer
-          l'Audit</button>
+          [disabled]="!newReq.nom || (newReq.type === 'PARTIEL_CATEGORIE' && selectedCatIds.size === 0)">
+          Confirmer et Lancer l'Audit
+        </button>
       </div>
     </div>
   </div>
@@ -449,6 +581,98 @@
             <path d="M3 3v5h5"></path>
           </svg>
           Confirmer le Re-comptage
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Refus Dialog -->
+  <div class="custom-dialog-overlay" *ngIf="showRefusDialog" (click)="cancelRefus()">
+    <div class="custom-dialog-card refuse-dialog" (click)="$event.stopPropagation()">
+      <div class="custom-dialog-header">
+        <div class="header-icon pulse-danger"
+          style="width: 3rem; height: 3rem; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width: 1.5rem;">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </div>
+        <div class="custom-dialog-titles">
+          <h3>Refus de scan</h3>
+          <p>La quantité scannée est incohérente avec le stock théorique.</p>
+        </div>
+        <button class="custom-dialog-close" (click)="cancelRefus()">✕</button>
+      </div>
+
+      <div class="custom-dialog-body" style="text-align: left; padding-top: 1.5rem;">
+        <p style="margin-bottom: 1rem; line-height: 1.6; color: var(--text-secondary);">
+          Vous êtes sur le point de rejeter le comptage pour <strong>{{pendingRefusLigne?.piece?.designation}}</strong>.
+        </p>
+        <p style="font-weight: 600; color: var(--text-primary);">
+          Voulez-vous effectuer une correction manuelle immédiate ?
+        </p>
+      </div>
+
+      <div class="custom-dialog-footer" style="display: flex; gap: 0.75rem; padding: 1.25rem;">
+        <button class="custom-dialog-btn-cancel" (click)="cancelRefus()"
+          style="flex: 1; margin: 0; padding: 0.6rem; font-size: 0.85rem; height: 40px; display: flex; align-items: center; justify-content: center;">
+          Annuler
+        </button>
+        <button class="btn-refuse-only" (click)="refuseOnly()"
+          style="flex: 1; padding: 0.6rem; border-radius: 12px; border: 1px solid #E2E8F0; background: #f8fafc; color: #64748b; font-weight: 600; cursor: pointer; font-size: 0.85rem; height: 40px; display: flex; align-items: center; justify-content: center; transition: all 0.2s;">
+          Refuser simple
+        </button>
+        <button class="custom-dialog-btn-confirm danger" (click)="confirmRefus()" [disabled]="isCorrecting"
+          style="flex: 1; margin: 0; padding: 0.6rem; background: #ef4444; font-size: 0.85rem; height: 40px; display: flex; align-items: center; justify-content: center;">
+          Oui, corriger
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dialogue de CORRECTION -->
+  <div class="custom-dialog-overlay" *ngIf="showCorrectionDialog" (click)="cancelCorrection()">
+    <div class="custom-dialog-card correction-card" (click)="$event.stopPropagation()">
+      <div class="custom-dialog-header">
+        <div class="custom-dialog-icon correction-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 113 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </div>
+        <div class="custom-dialog-titles">
+          <h3>Correction de l'inventaire</h3>
+          <p>Ajuster manuellement la quantité pour <strong>{{ pendingCorrectionLigne?.piece?.designation }}</strong></p>
+        </div>
+        <button class="custom-dialog-close" (click)="cancelCorrection()">✕</button>
+      </div>
+      <div class="custom-dialog-body">
+        <div class="correction-kpis">
+          <div class="kpi">
+            <span class="lbl">Stock Théorique</span>
+            <span class="val">{{ pendingCorrectionLigne?.stockTheorique }}</span>
+          </div>
+          <div class="kpi">
+            <span class="lbl">Dernier Scan</span>
+            <span class="val">{{ pendingCorrectionLigne?.stockPhysique ?? '—' }}</span>
+          </div>
+        </div>
+        <label class="custom-dialog-label">Nouvelle quantité physique</label>
+        <div class="correction-input-wrapper">
+          <input type="number" class="custom-dialog-input large" [(ngModel)]="correctionValue" autofocus>
+          <span class="unit-label">{{ pendingCorrectionLigne?.piece?.unite?.nom }}</span>
+        </div>
+        <div class="gap-preview" *ngIf="correctionValue !== null">
+          Nouvel écart: <strong [class.danger]="(correctionValue - (pendingCorrectionLigne?.stockTheorique || 0)) < 0">
+            {{ (correctionValue - (pendingCorrectionLigne?.stockTheorique || 0)) > 0 ? '+' : '' }}{{ (correctionValue -
+            (pendingCorrectionLigne?.stockTheorique || 0)) }}
+          </strong>
+        </div>
+      </div>
+      <div class="custom-dialog-footer">
+        <button class="custom-dialog-btn-cancel" (click)="cancelCorrection()">Annuler</button>
+        <button class="custom-dialog-btn-confirm primary" (click)="confirmCorrection()">
+          Appliquer la Correction
         </button>
       </div>
     </div>
@@ -527,10 +751,16 @@
           <td class="inv-col-ref"><code>{{ l.piece?.reference }}</code></td>
           <td class="inv-col-cat">{{ l.piece?.categorie?.nom || '—' }}</td>
           <td class="inv-col-resp">
-            <span *ngIf="l.responsableLogistique">
-              {{ l.responsableLogistique.firstName }} {{ l.responsableLogistique.lastName }}
-            </span>
-            <span *ngIf="!l.responsableLogistique" style="font-style: italic; opacity: 0.7;">Collectif</span>
+            <div *ngIf="l.responsableLogistique">
+              <div style="font-size: 0.9em; opacity: 0.8;">Scanné: {{ l.responsableLogistique.firstName }} {{
+                l.responsableLogistique.lastName }}</div>
+            </div>
+            <div *ngIf="!l.responsableLogistique">
+              <div style="font-size: 0.9em; opacity: 0.7; font-style: italic;">Scanné: Collectif</div>
+            </div>
+            <div *ngIf="l.auditeur" style="font-weight: 650; color: #0d9488; margin-top: 2px;">
+              Traité: {{ l.auditeur.firstName }} {{ l.auditeur.lastName }}
+            </div>
           </td>
           <td class="inv-col-th text-center">{{ l.stockTheorique }}</td>
           <td class="inv-col-ph text-center">{{ l.stockPhysique ?? '—' }}</td>
@@ -539,7 +769,6 @@
               {{ (l.ecart ?? 0) > 0 ? '+' : '' }}{{ l.ecart ?? 0 }}
             </span>
           </td>
-          <td class="inv-col-com">{{ l.commentaire || '' }}</td>
         </tr>
       </tbody>
     </table>
@@ -560,6 +789,264 @@
       <span *ngIf="inventaireConfig?.footerText">{{ inventaireConfig?.footerText }}</span>
       <span *ngIf="!inventaireConfig?.footerText">{{ entreprise?.nom }} — Rapport d'inventaire généré le {{
         currentAudit.date | date:'dd/MM/yyyy' }}</span>
+    </div>
+  </div>
+
+  <app-confirm-dialog [show]="showCorrectionConfirmation" [title]="'Confirmer la correction'" [type]="'success'"
+    [message]="'Voulez-vous vraiment corriger la quantité physique de ' + (pendingCorrectionLigne?.piece?.designation || 'cette pièce') + ' à ' + correctionValue + ' ? Cette action sera irréversible et enregistrée dans l\'historique.'"
+    [confirmText]="'Oui, corriger le stock'" [cancelText]="'Annuler et revenir'" (confirm)="confirmCorrection()"
+    (cancel)="cancelCorrectionChange()">
+  </app-confirm-dialog>
+
+  <app-confirm-dialog [show]="showValidationConfirmation" [title]="'Valider cette ligne'" [type]="'success'"
+    [message]="'Voulez-vous confirmer le comptage de ' + (pendingValidationLigne?.piece?.designation || 'cette pièce') + ' ? Le stock physique sera officiellement mis à jour.'"
+    [confirmText]="'Confirmer la validation'" [cancelText]="'Annuler'" (confirm)="confirmValidation()"
+    (cancel)="cancelValidation()">
+  </app-confirm-dialog>
+
+  <app-confirm-dialog [show]="showResetConfirmation" [title]="'Réinitialiser la décision'" [type]="'info'"
+    [message]="'Voulez-vous vraiment annuler la décision pour ' + (pendingResetLigne?.piece?.designation || 'cette pièce') + ' ? La ligne repassera en attente.'"
+    [confirmText]="'Oui, réinitialiser'" [cancelText]="'Annuler'" (confirm)="confirmReset()" (cancel)="cancelReset()">
+  </app-confirm-dialog>
+
+  <!-- Registre des Ajustements d'Inventaire -->
+  <!-- (Existing Historique Dialog) -->
+
+  <!-- Dialogue d'Historique par Ligne -->
+  <div class="custom-dialog-overlay" *ngIf="showLineHistoryDialog" (click)="fermerHistoriqueLigne()">
+    <div class="custom-dialog-card history-card" style="max-width: 800px;" (click)="$event.stopPropagation()">
+      <div class="custom-dialog-header">
+        <div class="header-icon" style="background: rgba(13, 148, 136, 0.1); color: #0d9488;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+        <div class="custom-dialog-titles">
+          <h3>Historique de la ligne</h3>
+          <p>Tracé complet des actions pour <strong>{{ selectedLineForHistory?.piece?.designation }}</strong></p>
+        </div>
+        <button class="custom-dialog-close" (click)="fermerHistoriqueLigne()">✕</button>
+      </div>
+
+      <div class="custom-dialog-body" style="padding: 0;">
+        <div class="line-history-timeline" *ngIf="selectedLineForHistory?.historique?.length; else noLineHistory">
+          <div class="timeline-item" *ngFor="let h of getSortedHistory(selectedLineForHistory)">
+            <div class="timeline-marker"></div>
+            <div class="timeline-content">
+              <div class="tm-header">
+                <span class="tm-action">{{ formatActionName(h.action) }}</span>
+                <span class="tm-date">{{ h.date | date:'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+              <p class="tm-details">{{ h.details }}</p>
+              <div class="tm-meta">
+                <span class="tm-user" *ngIf="h.utilisateur">
+                  <svg class="tm-user-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    style="width:14px; height:14px; margin-right:6px; opacity:0.8; vertical-align:middle;">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                  <span style="vertical-align: middle;">{{ h.utilisateur.firstName }} {{ h.utilisateur.lastName
+                    }}</span>
+                </span>
+
+                <span class="tm-values" *ngIf="h.ancienneValeur !== null || h.nouvelleValeur !== null">
+                  <span class="sub-lbl">Quantité :</span>
+                  <span class="val-pill old">{{ h.ancienneValeur ?? '—' }}</span>
+                  <svg class="sep-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                  </svg>
+                  <span class="val-pill new">{{ h.nouvelleValeur ?? '—' }}</span>
+                </span>
+
+                <span class="tm-statuts" *ngIf="h.ancienStatut || h.nouveauStatut">
+                  <span class="sub-lbl">Statut :</span>
+                  <span class="mini-status-pill">{{ formatStatut(h.ancienStatut) }}</span>
+                  <svg class="sep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                  </svg>
+                  <span class="mini-status-pill active">{{ formatStatut(h.nouveauStatut) }}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <ng-template #noLineHistory>
+          <div style="padding: 3rem; text-align: center; color: var(--text-muted);">
+            Aucun historique pour cette ligne.
+          </div>
+        </ng-template>
+      </div>
+
+      <div class="custom-dialog-footer">
+        <button class="custom-dialog-btn-confirm primary" (click)="fermerHistoriqueLigne()">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="custom-dialog-overlay" *ngIf="showHistoriqueDialog" (click)="fermerHistorique()">
+    <div class="custom-dialog-card history-card"
+      style="width: 95%; max-width: 1200px; max-height: 95vh; display: flex; flex-direction: column; overflow: hidden;"
+      (click)="$event.stopPropagation()">
+      <div class="dialog-header hub-primary"
+        style="background: var(--surface-card); border-bottom: 1px solid var(--border-color); padding: 1.5rem; display: flex; align-items: center; gap: 1rem;">
+
+        <div
+          style="width: 48px; height: 48px; min-width: 48px; min-height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: var(--primary-light); color: var(--primary);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            style="width: 24px; height: 24px;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+        </div>
+
+        <div style="flex: 1;">
+          <h3 style="margin: 0; font-size: 1.25rem;">Registre des Ajustements d'Inventaire</h3>
+          <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">Historique complet
+            et traçabilité des modifications manuelles de stock</p>
+        </div>
+
+        <button class="custom-dialog-close" (click)="fermerHistorique()"
+          style="position: absolute; right: 1rem; top: 1rem; z-index: 50;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            style="width: 20px; height: 20px;">
+            <path d="M18 6L6 18M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      <div class="dialog-body"
+        style="background: var(--bg-default); flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 0;">
+
+        <div
+          style="padding: 1.2rem 2.5rem; border-bottom: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 1rem; background: var(--surface-card); flex-shrink: 0; z-index: 10;">
+
+          <!-- Ligne 1: Recherche & Date -->
+          <div style="display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap;">
+            <div class="ws-search" style="flex: 1 1 250px; margin: 0; min-height: 48px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="left: 1.2rem; width: 18px; height: 18px;">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="M21 21l-4.35-4.35"></path>
+              </svg>
+              <input type="text" [(ngModel)]="searchTermHistorique"
+                placeholder="Rechercher par référence, produit, détails..."
+                style="padding-left: 3.5rem !important; font-size: 1rem; width: 100% !important; height: 100%;">
+            </div>
+            <div class="ws-search" style="flex: 1 1 200px; margin: 0; min-height: 48px;">
+              <input type="date" [(ngModel)]="filterDateHistorique"
+                style="color: var(--text-primary); font-size: 1rem; padding: 0 1rem !important; width: 100% !important; height: 100%;">
+            </div>
+          </div>
+
+          <!-- Ligne 2: Filtres Avancés -->
+          <div
+            style="display: flex; gap: 1rem; align-items: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem; flex-wrap: wrap;">
+            <span
+              style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
+              Filtres avancés :
+            </span>
+
+            <!-- Filtre Impact -->
+            <div class="impact-filters"
+              style="display: flex; background: var(--bg-default); border: 1px solid var(--border-color); border-radius: 12px; padding: 3px; flex-wrap: wrap; gap: 5px;">
+              <button [class.active-pill]="impactFilterHistorique === 'all'" (click)="impactFilterHistorique = 'all'"
+                style="border: none; background: transparent; padding: 0.5rem 1.2rem; font-size: 0.85rem; border-radius: 10px; cursor: pointer; color: var(--text-secondary); transition: all 0.2s;">
+                Tous
+              </button>
+              <button [class.active-pill]="impactFilterHistorique === 'increase'"
+                (click)="impactFilterHistorique = 'increase'"
+                style="border: none; background: transparent; padding: 0.5rem 1.2rem; font-size: 0.85rem; border-radius: 10px; cursor: pointer; color: var(--text-secondary); transition: all 0.2s;">
+                <i class="pi pi-arrow-up" style="font-size: 0.75rem; color: #10b981; margin-right: 4px;"></i> Hausse
+              </button>
+              <button [class.active-pill]="impactFilterHistorique === 'decrease'"
+                (click)="impactFilterHistorique = 'decrease'"
+                style="border: none; background: transparent; padding: 0.5rem 1.2rem; font-size: 0.85rem; border-radius: 10px; cursor: pointer; color: var(--text-secondary); transition: all 0.2s;">
+                <i class="pi pi-arrow-down" style="font-size: 0.75rem; color: #ef4444; margin-right: 4px;"></i> Baisse
+              </button>
+            </div>
+
+            <!-- Filtre Auditeur -->
+            <div class="ws-search" style="flex: 1 1 200px; margin: 0; min-height: 42px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="left: 1rem; width: 14px; height: 14px;">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              <input type="text" [(ngModel)]="selectedAuditorHistorique" placeholder="Filtrer par auditeur..."
+                style="padding-left: 2.5rem !important; font-size: 0.85rem; border-radius: 10px !important; width: 100% !important;">
+            </div>
+          </div>
+        </div>
+
+        <div style="flex: 1; overflow-y: auto; overflow-x: auto; width: 100%;">
+          <div *ngIf="isLoadingHistorique" style="padding: 3rem; text-align: center; color: var(--text-muted);">
+            <div class="save-dot saving" style="display: inline-block; width: 12px; height: 12px; margin-right: 8px;">
+            </div> Chargement de l'historique...
+          </div>
+
+          <div *ngIf="!isLoadingHistorique && filteredHistorique.length === 0"
+            style="padding: 3rem; text-align: center; color: var(--text-muted);">
+            Aucune correction de stock n'a été trouvée avec ces critères.
+          </div>
+
+          <table class="hub-premium-table history-log-table"
+            *ngIf="!isLoadingHistorique && filteredHistorique.length > 0" style="border-radius: 0; min-width: 900px;">
+            <thead style="position: sticky; top: 0; z-index: 5;">
+              <tr>
+                <th style="background: var(--surface-card);">Date & Heure</th>
+                <th style="background: var(--surface-card);">Auditeur</th>
+                <th style="background: var(--surface-card);">Produit</th>
+                <th
+                  style="background: var(--surface-card); white-space: normal; min-width: 250px; text-transform: uppercase;">
+                  Inventaire / Mission</th>
+                <th
+                  style="background: var(--surface-card); white-space: normal; min-width: 300px; text-transform: uppercase;">
+                  Détails de la correction</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let h of filteredHistorique" class="history-row">
+                <td style="white-space: nowrap; font-size: 0.8rem; color: var(--text-muted);">
+                  <div style="font-weight: 700; color: var(--text-primary);">{{ h.date | date:'dd MMM yyyy' }}</div>
+                  <div style="font-size: 0.75rem;">{{ h.date | date:'HH:mm:ss' }}</div>
+                </td>
+                <td>
+                  <div style="display: flex; align-items: center; gap: 0.5rem;" *ngIf="h.utilisateur">
+                    <div
+                      style="width: 24px; height: 24px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700;">
+                      {{ h.utilisateur.firstName?.charAt(0) }}{{ h.utilisateur.lastName?.charAt(0) }}
+                    </div>
+                    <span style="font-size: 0.85rem; font-weight: 500;">{{ h.utilisateur.firstName }} {{
+                      h.utilisateur.lastName }}</span>
+                  </div>
+                  <span *ngIf="!h.utilisateur" style="font-size: 0.85rem; color: var(--text-muted);">Système /
+                    Inconnu</span>
+                </td>
+                <td>
+                  <div style="display: flex; flex-direction: column;">
+                    <span style="font-weight: 700; color: var(--text-primary); font-size: 0.85rem;">{{
+                      h.piece?.designation }}</span>
+                    <code
+                      style="font-size: 0.7rem; width: fit-content; margin-top: 2px;">{{ h.piece?.reference }}</code>
+                  </div>
+                </td>
+                <td style="min-width: 250px;">
+                  <span class="type-pill"
+                    style="background: var(--primary-light); color: var(--primary); border-color: var(--primary); font-size: 0.75rem; white-space: normal; padding: 4px 10px; display: inline-block;">
+                    {{ h.details?.startsWith('[') ? (h.details.split(']')[0].substring(1)) : 'N/A' }}
+                  </span>
+                </td>
+                <td style="min-width: 300px; white-space: normal;">
+                  <div
+                    style="font-size: 0.85rem; line-height: 1.4; color: var(--text-secondary); word-break: break-word;">
+                    {{ h.details?.includes(']') ? h.details.split(']')[1].trim() : h.details }}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 

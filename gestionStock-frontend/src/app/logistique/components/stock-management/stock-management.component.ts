@@ -255,19 +255,19 @@ export class StockManagementComponent implements OnInit {
     }
 
     getImageUrl(url: string | null | undefined): string {
-        if (!url) return 'assets/images/default-piece.svg';
+        if (!url) return '/assets/images/default-piece.png';
         if (this.imageCache.has(url)) return this.imageCache.get(url)!;
 
         let result = url;
         if (url.startsWith('/api/images') || url.startsWith('/uploads')) {
-            result = `http://localhost:8081${url}`;
+            result = `http://localhost:8095${url}`;
         } else if (url.includes('/remote.php/dav/files/')) {
             const parts = url.split('/');
             const filename = parts[parts.length - 1];
-            result = `http://localhost:8081/api/images/${filename}`;
+            result = `http://localhost:8095/api/images/${filename}`;
         } else if (!url.startsWith('http') && !url.startsWith('assets/')) {
             // Handle case where it's just a filename
-            result = `http://localhost:8081/api/images/${url}`;
+            result = `http://localhost:8095/api/images/${url}`;
         }
 
         this.imageCache.set(url, result);

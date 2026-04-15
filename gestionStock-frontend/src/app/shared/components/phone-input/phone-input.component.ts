@@ -29,6 +29,7 @@ export class PhoneInputComponent implements OnInit, OnChanges {
     @Input() isEditing: boolean = false;
     @Input() placeholderNumber: string = 'Numéro de téléphone';
     @Input() placeholderSearch: string = 'Rechercher un pays ou un code...';
+    @Input() hideSelector: boolean = false;
 
     @Output() phoneNumberChange = new EventEmitter<string>();
     @Output() isValid = new EventEmitter<boolean>();

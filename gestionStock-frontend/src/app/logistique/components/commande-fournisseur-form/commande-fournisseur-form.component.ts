@@ -729,6 +729,17 @@ export class CommandeFournisseurFormComponent implements OnInit {
     }
   }
 
+  getMinDateArrivee(): string {
+    if (!this.commande.dateCmd) return '';
+    try {
+        const dateCmd = new Date(this.commande.dateCmd);
+        dateCmd.setDate(dateCmd.getDate() + 1);
+        return dateCmd.toISOString().substring(0, 10);
+    } catch {
+        return '';
+    }
+  }
+
   validate(): boolean {
     this.errors = {};
 
@@ -746,9 +757,13 @@ export class CommandeFournisseurFormComponent implements OnInit {
 
     if (this.commande.dateArrivee && this.commande.dateCmd) {
       const dateCmd = new Date(this.commande.dateCmd);
+      // On compare uniquement les dates sans l'heure
+      const dateCmdOnly = new Date(dateCmd.getFullYear(), dateCmd.getMonth(), dateCmd.getDate());
       const dateArrivee = new Date(this.commande.dateArrivee);
-      if (dateArrivee <= dateCmd) {
-        this.errors['dateArrivee'] = 'La date d\'arrivée prévue doit être postérieure à la date de commande.';
+      const dateArriveeOnly = new Date(dateArrivee.getFullYear(), dateArrivee.getMonth(), dateArrivee.getDate());
+      
+      if (dateArriveeOnly <= dateCmdOnly) {
+        this.errors['dateArrivee'] = 'La date d\'arrivée prévue doit être strictement postérieure à la date de commande.';
       }
     }
 

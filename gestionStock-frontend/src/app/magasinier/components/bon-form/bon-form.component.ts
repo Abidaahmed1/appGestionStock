@@ -219,7 +219,11 @@ export class BonFormComponent implements OnInit {
     }
 
     goBackToList() {
-        this.router.navigate(['/magasinier/bons']);
+        if (this.isAuditeur()) {
+            this.router.navigate(['/auditeur/bons']);
+        } else {
+            this.router.navigate(['/magasinier/bons']);
+        }
     }
 
     get isReturnMode(): boolean {
@@ -441,7 +445,7 @@ export class BonFormComponent implements OnInit {
             },
             error: () => {
                 this.loading = false;
-                this.router.navigate(['/magasinier/bons']);
+                this.goBackToList();
             }
         });
     }
@@ -827,7 +831,7 @@ export class BonFormComponent implements OnInit {
         this.notify('Le bon a été enregistré avec succès !', 'success');
         setTimeout(() => {
             if (isPlatformBrowser(this.platformId)) {
-                this.router.navigate(['/magasinier/bons']);
+                this.goBackToList();
             }
         }, 1500);
     }
@@ -857,7 +861,7 @@ export class BonFormComponent implements OnInit {
     }
 
     cancel() {
-        this.router.navigate(['/magasinier/bons']);
+        this.goBackToList();
     }
 
     // ─── Méthodes manquantes référencées par le template ───────────────────────
@@ -888,7 +892,7 @@ export class BonFormComponent implements OnInit {
                 this.showReactivateConfirm = false;
                 this.loading = false;
                 this.notify('Bon réactivé avec succès !', 'success');
-                setTimeout(() => this.router.navigate(['/magasinier/bons']), 1500);
+                setTimeout(() => this.goBackToList(), 1500);
             },
             error: () => {
                 this.loading = false;

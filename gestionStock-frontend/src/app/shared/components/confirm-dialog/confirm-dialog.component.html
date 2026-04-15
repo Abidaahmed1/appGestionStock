@@ -2,17 +2,33 @@
   <div class="confirm-modal-content">
 
     <div class="confirm-header-row">
-      <div class="warning-icon">
+      <!-- WARNING ICON -->
+      <div class="warning-icon" *ngIf="type === 'warning'">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-          <!-- Orange background triangle -->
           <path d="M 50 8 L 94 88 A 6 6 0 0 1 88 94 L 12 94 A 6 6 0 0 1 6 88 Z" fill="#f59e0b" />
           <path d="M 50 16 L 86 86 A 4 4 0 0 1 82 90 L 18 90 A 4 4 0 0 1 14 86 Z" fill="#fbbf24" />
           <rect x="46" y="32" width="8" height="32" rx="4" fill="#ffffff" />
           <circle cx="50" cy="76" r="5" fill="#ffffff" />
-          <path d="M 46 2 L 54 2 L 50 6 Z" fill="#fbbf24" />
-          <path d="M 40 6 L 44 2 L 46 8 Z" fill="#fbbf24" />
         </svg>
       </div>
+
+      <!-- SUCCESS ICON -->
+      <div class="success-icon" *ngIf="type === 'success'">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="45" fill="#10b981" />
+          <path d="M 30 50 L 45 65 L 70 35" stroke="#ffffff" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </div>
+
+      <!-- INFO ICON -->
+      <div class="info-icon" *ngIf="type === 'info'">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="45" fill="#3b82f6" />
+          <rect x="46" y="40" width="8" height="35" rx="4" fill="#ffffff" />
+          <circle cx="50" cy="25" r="5" fill="#ffffff" />
+        </svg>
+      </div>
+      
       <h2 class="confirm-title">{{ title }}</h2>
     </div>
 

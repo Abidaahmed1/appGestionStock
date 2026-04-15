@@ -11,7 +11,7 @@ export type { Parametre, NumerotationConfig };
     providedIn: 'root'
 })
 export class ParametreService {
-    private apiUrl = 'http://localhost:8081/api/parametres';
+    private apiUrl = 'http://localhost:8095/api/parametres';
 
     constructor(private http: HttpClient) { }
 

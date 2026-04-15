@@ -1,14 +1,7 @@
 package com.gestionStock.backend.entity.notification;
 
 import com.gestionStock.backend.entity.user.User;
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -25,7 +18,8 @@ import lombok.NoArgsConstructor;
 public class NotificationTarget {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "notif_target_seq")
+    @SequenceGenerator(name = "notif_target_seq", sequenceName = "notif_target_id_seq", allocationSize = 1, initialValue = 1000000)
     private Long id;
 
     @com.fasterxml.jackson.annotation.JsonBackReference("notif_targets")

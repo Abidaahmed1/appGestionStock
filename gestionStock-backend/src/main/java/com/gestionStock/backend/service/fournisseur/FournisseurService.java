@@ -31,7 +31,8 @@ public class FournisseurService {
 
     public Fournisseur save(Fournisseur fournisseur) {
         if (fournisseur.getId() == null) {
-            if (fournisseur.getCode() == null || fournisseur.getCode().isEmpty() || "AUTO".equalsIgnoreCase(fournisseur.getCode())) {
+            if (fournisseur.getCode() == null || fournisseur.getCode().isEmpty()
+                    || "AUTO".equalsIgnoreCase(fournisseur.getCode())) {
                 synchronized (FOURNISSEUR_LOCK) {
                     fournisseur.setCode(numerotationService.generateNextNumber("FOURNISSEUR"));
                 }
@@ -41,7 +42,7 @@ public class FournisseurService {
                     throw new IllegalStateException("Un fournisseur avec ce code existe déjà");
                 }
             }
-            
+
             if (fournisseurRepo.existsByEmail(fournisseur.getEmail())) {
                 throw new IllegalStateException("Un fournisseur avec cet email existe déjà");
             }
@@ -68,5 +69,31 @@ public class FournisseurService {
         Fournisseur fournisseur = getById(id);
         fournisseur.setArchivee(true);
         fournisseurRepo.save(fournisseur);
+    }
+
+    public List<Fournisseur> findArchived() {
+        return fournisseurRepo.findByArchiveeTrueAndEntreprise(userService.getCurrentUserEntreprise());
+    }
+
+    public Fournisseur restore(Long id) {
+        Fournisseur f = getById(id);
+        f.setArchivee(false);
+        return fournisseurRepo.save(f);
+    }
+
+    public void deletePermanently(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("L'ID est manquant.");
+        }
+        System.out.println("[DEBUG] Suppression définitive du fournisseur ID: " + id);
+        Fournisseur f = getById(id);
+
+        try {
+            fournisseurRepo.delete(f);
+            fournisseurRepo.flush();
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            throw new IllegalStateException(
+                    "Ce fournisseur ne peut pas être supprimé définitivement car il est encore associé à des pièces dans le catalogue . ");
+        }
     }
 }

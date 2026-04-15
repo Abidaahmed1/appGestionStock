@@ -15,7 +15,9 @@ public interface PieceDetacheeRepository extends JpaRepository<PieceDetachee, Lo
 
     public List<PieceDetachee> findByArchivee(boolean rep);
 
-    public List<PieceDetachee> findByArchiveeAndEntreprise(boolean archivee, Entreprise entreprise);
+    @Query("SELECT DISTINCT p FROM PieceDetachee p LEFT JOIN FETCH p.categorie LEFT JOIN FETCH p.unite WHERE p.archivee = :archivee AND p.entreprise = :entreprise ORDER BY p.designation ASC")
+    public List<PieceDetachee> findByArchiveeAndEntreprise(@Param("archivee") boolean archivee,
+            @Param("entreprise") Entreprise entreprise);
 
     public List<PieceDetachee> findByEntreprise(Entreprise entreprise);
 
@@ -29,10 +31,18 @@ public interface PieceDetacheeRepository extends JpaRepository<PieceDetachee, Lo
 
     public PieceDetachee findFirstByReferenceAndEntrepriseOrderByIdDesc(String reference, Entreprise entreprise);
 
-    public java.util.Optional<PieceDetachee> findByCodeBarreAndEntreprise(String codeBarre, Entreprise entreprise);
+    public List<PieceDetachee> findByCodeBarreAndEntreprise(String codeBarre, Entreprise entreprise);
 
     @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
     @org.springframework.transaction.annotation.Transactional
     @Query(value = "UPDATE piece_detachee SET quantite = COALESCE(quantite,0) + :delta WHERE id = :id", nativeQuery = true)
     int applyQuantityDelta(@Param("id") Long id, @Param("delta") int delta);
+
+    @org.springframework.data.jpa.repository.Modifying(clearAutomatically = true)
+    @org.springframework.transaction.annotation.Transactional
+    @Query(value = "UPDATE piece_detachee SET quantite = :qty WHERE id = :id", nativeQuery = true)
+    void updateQuantityNative(@Param("id") Long id, @Param("qty") Integer qty);
+
+    @Query("SELECT p FROM PieceDetachee p WHERE p.categorie.id IN :categoryIds AND p.archivee = false AND p.entreprise = :entreprise")
+    List<PieceDetachee> findByCategoryIds(@Param("categoryIds") List<Long> categoryIds, @Param("entreprise") Entreprise entreprise);
 }

@@ -7,7 +7,7 @@ import { Fournisseur, Stock, Bon, MouvementStock, TypeBon, TypeMouvement, BonCom
     providedIn: 'root'
 })
 export class LogistiqueService {
-    private baseUrl = 'http://localhost:8081/api';
+    private baseUrl = 'http://localhost:8095/api';
     public commandeDraft: BonCommandeFournisseur | null = null;
 
     constructor(private http: HttpClient) { }
@@ -17,8 +17,16 @@ export class LogistiqueService {
         return this.http.get<Fournisseur[]>(`${this.baseUrl}/fournisseurs`);
     }
 
+    getArchivedFournisseurs(): Observable<Fournisseur[]> {
+        return this.http.get<Fournisseur[]>(`${this.baseUrl}/fournisseurs/archived`);
+    }
+
     getFournisseurById(id: number): Observable<Fournisseur> {
         return this.http.get<Fournisseur>(`${this.baseUrl}/fournisseurs/${id}`);
+    }
+
+    restoreFournisseur(id: number): Observable<Fournisseur> {
+        return this.http.put<Fournisseur>(`${this.baseUrl}/fournisseurs/${id}/restore`, {});
     }
 
     createFournisseur(fournisseur: Fournisseur): Observable<Fournisseur> {
@@ -31,6 +39,10 @@ export class LogistiqueService {
 
     deleteFournisseur(id: number): Observable<void> {
         return this.http.delete<void>(`${this.baseUrl}/fournisseurs/${id}`);
+    }
+
+    deleteFournisseurPermanently(id: number): Observable<void> {
+        return this.http.delete<void>(`${this.baseUrl}/fournisseurs/${id}/permanent`);
     }
 
 
@@ -108,6 +120,10 @@ export class LogistiqueService {
         return this.http.patch<Bon>(`${this.baseUrl}/bons/${id}/reactivate`, {});
     }
 
+    deleteBonPermanently(id: number): Observable<void> {
+        return this.http.delete<void>(`${this.baseUrl}/bons/${id}/permanent`);
+    }
+
 
     getAllMouvements(): Observable<MouvementStock[]> {
         return this.http.get<MouvementStock[]>(`${this.baseUrl}/mouvements`);
@@ -159,6 +175,10 @@ export class LogistiqueService {
 
     deleteCommandeFournisseur(id: number): Observable<void> {
         return this.http.delete<void>(`${this.baseUrl}/commandes-fournisseurs/${id}`);
+    }
+
+    deleteCommandePermanently(id: number): Observable<void> {
+        return this.http.delete<void>(`${this.baseUrl}/commandes-fournisseurs/${id}/permanent`);
     }
 
     getLignesByCommande(commandeId: number): Observable<LigneCommande[]> {

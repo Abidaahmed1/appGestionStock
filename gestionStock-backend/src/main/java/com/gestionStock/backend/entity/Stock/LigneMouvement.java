@@ -1,12 +1,6 @@
 package com.gestionStock.backend.entity.Stock;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.*;
 import com.gestionStock.backend.entity.piece.PieceDetachee;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.NoArgsConstructor;
@@ -28,13 +22,15 @@ import lombok.ToString;
 @Builder
 public class LigneMouvement {
 	@Id
-	@GeneratedValue(strategy = GenerationType.AUTO)
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "ligne_mvt_seq")
+	@SequenceGenerator(name = "ligne_mvt_seq", sequenceName = "ligne_mvt_id_seq", allocationSize = 1, initialValue = 1000000)
 	private Long id;
 	@com.fasterxml.jackson.annotation.JsonBackReference("mvt_ligne")
 	@ManyToOne
 	@JoinColumn(name = "mouvement_id", nullable = false)
 	private MouvementStock mouvementStock;
 
+	@JsonIgnoreProperties({ "historiques", "produitsAssocies", "details" })
 	@ManyToOne
 	@JoinColumn(name = "piece_id", nullable = true)
 	private PieceDetachee piece;

@@ -15,9 +15,23 @@ export interface LigneInventaire {
     commentaire?: string;
     justification?: string;
     statutLigne?: string; // A_SCANNER, EN_ATTENTE_AUDIT, A_RECOMPTER, VALIDE, REFUSE
-    responsableLogistique?: any;
+    responsableLogistique?: any; // Le scanneur
+    auditeur?: any; // Celui qui traite la ligne
     tentativePrecedente?: number;
     motifRecomptage?: string;
+    historique?: LigneInventaireHistorique[];
+}
+
+export interface LigneInventaireHistorique {
+    id: number;
+    date: Date;
+    action: string;
+    details: string;
+    ancienneValeur: number | null;
+    nouvelleValeur: number | null;
+    ancienStatut: string;
+    nouveauStatut: string;
+    utilisateur: any;
 }
 
 export interface Inventaire {
@@ -26,6 +40,7 @@ export interface Inventaire {
     nom: string;
     type: TypeInventaire;
     estValide: boolean;
+    estTermine: boolean;
     lignes: LigneInventaire[];
     createur?: any;
     responsables?: any[];

@@ -3,6 +3,7 @@ package com.gestionStock.backend.entity.piece;
 import java.time.LocalDateTime;
 import jakarta.persistence.*;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.*;
 
 import com.gestionStock.backend.entity.user.User;
@@ -16,10 +17,10 @@ import com.gestionStock.backend.entity.user.User;
 public class PieceHistorique {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @JsonBackReference("piece_historiques")
+    @JsonIgnoreProperties("historiques")
     @ManyToOne
     @JoinColumn(name = "piece_id")
     private PieceDetachee piece;

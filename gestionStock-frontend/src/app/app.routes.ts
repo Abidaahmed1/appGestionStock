@@ -128,6 +128,18 @@ export const routes: Routes = [
                 data: { roles: ['AUDITEUR', 'ADMINISTRATEUR'] }
             },
             {
+                path: 'auditeur/bons',
+                component: BonListComponent,
+                canActivate: [authGuard],
+                data: { roles: ['AUDITEUR', 'ADMINISTRATEUR'] }
+            },
+            {
+                path: 'auditeur/bons/:id',
+                loadComponent: () => import('./magasinier/components/bon-form/bon-form.component').then(m => m.BonFormComponent),
+                canActivate: [authGuard],
+                data: { roles: ['AUDITEUR', 'ADMINISTRATEUR'] }
+            },
+            {
                 path: 'logistique/bons-history',
                 loadComponent: () => import('./auditeur/bon-history/bon-history.component').then(m => m.BonHistoryComponent),
                 canActivate: [authGuard],
@@ -167,6 +179,12 @@ export const routes: Routes = [
             {
                 path: 'admin/document-settings',
                 loadComponent: () => import('./admin/components/document-configuration/document-configuration.component').then(m => m.DocumentConfigurationComponent),
+                canActivate: [authGuard],
+                data: { roles: ['ADMINISTRATEUR'] }
+            },
+            {
+                path: 'admin/archive',
+                loadComponent: () => import('./admin/components/archive-center/archive-center.component').then(m => m.ArchiveCenterComponent),
                 canActivate: [authGuard],
                 data: { roles: ['ADMINISTRATEUR'] }
             },

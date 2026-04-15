@@ -7,7 +7,7 @@ import { Entreprise } from '../models/entreprise.model';
     providedIn: 'root'
 })
 export class EntrepriseService {
-    private apiUrl = 'http://localhost:8081/api/entreprises';
+    private apiUrl = 'http://localhost:8095/api/entreprises';
     
     private currentEntrepriseSubject = new BehaviorSubject<Entreprise | null>(null);
     public currentEntreprise$ = this.currentEntrepriseSubject.asObservable();
@@ -47,11 +47,11 @@ export class EntrepriseService {
     }
 
     getAllPays(): Observable<any[]> {
-        return this.http.get<any[]>('http://localhost:8081/api/metadata/pays');
+        return this.http.get<any[]>('http://localhost:8095/api/metadata/pays');
     }
 
     getAllDevises(): Observable<any[]> {
-        return this.http.get<any[]>('http://localhost:8081/api/metadata/devises');
+        return this.http.get<any[]>('http://localhost:8095/api/metadata/devises');
     }
 
     uploadLogo(id: number, file: File): Observable<Entreprise> {
@@ -73,7 +73,7 @@ export class EntrepriseService {
         if (path.startsWith('data:') || path.startsWith('http')) return path;
         
         // Base URL for API images 
-        const baseUrl = 'http://localhost:8081';
+        const baseUrl = 'http://localhost:8095';
         
         let finalUrl = path;
         if (path.startsWith('/api/images') || path.startsWith('/uploads')) {

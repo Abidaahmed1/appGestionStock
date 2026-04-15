@@ -4,25 +4,19 @@ export function initializeKeycloak(keycloak: KeycloakService): () => Promise<boo
   return () =>
     keycloak.init({
       config: {
-        url: 'http://localhost:8080',
+        url: 'http://localhost:8085',
         realm: 'myrealm',
         clientId: 'myclient'
       },
       initOptions: {
-        onLoad: 'check-sso',
+        onLoad: 'login-required',
         checkLoginIframe: false,
-        redirectUri: typeof window !== 'undefined' ? window.location.origin : '/',
-        flow: 'standard',
-        pkceMethod: 'S256'
+        flow: 'standard'
       },
-      bearerExcludedUrls: ['/assets', '/clients/public', '/login', '/sign-in', '/register', '/registration-success', '/access-denied'],
       enableBearerInterceptor: true,
       bearerPrefix: 'Bearer'
-    }).then(authenticated => {
-      console.log(` Keycloak initialization completed. Authenticated: ${authenticated}`);
-      return true;
     }).catch(error => {
-      console.error(' Keycloak initialization failed:', error);
+      console.error('Keycloak initialization failed:', error);
       return true;
     });
 }

@@ -7,6 +7,7 @@ import com.gestionStock.backend.entity.entreprise.Entreprise;
 import com.gestionStock.backend.entity.piece.PieceDetachee;
 import com.gestionStock.backend.repository.piece.PieceDetacheeRepository;
 import com.gestionStock.backend.repository.stock.MouvementStockRepository;
+import com.gestionStock.backend.service.notification.NotificationService;
 import com.gestionStock.backend.service.user.UserService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,13 +22,12 @@ import java.util.List;
 @Transactional
 public class MouvementStockService {
 
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MouvementStockService.class);
     private final MouvementStockRepository mouvementRepo;
     private final com.gestionStock.backend.repository.stock.BonRepository bonRepo;
     private final PieceDetacheeRepository pieceRepo;
-    private final com.gestionStock.backend.repository.piece.PieceHistoriqueRepository pieceHistRepo;
     private final UserService userService;
-    private final com.gestionStock.backend.service.notification.NotificationService notificationService;
+    private final NotificationService notificationService;
+    private final jakarta.persistence.EntityManager entityManager;
 
     public List<MouvementStock> getAll() {
         Entreprise entreprise = userService.getCurrentUserEntreprise();
@@ -122,6 +122,9 @@ public class MouvementStockService {
                 Double prix = ligne.getPrixHTVA() != null ? ligne.getPrixHTVA() : 0.0;
                 Double taux = ligne.getTauxTVA() != null ? ligne.getTauxTVA() : 0.0;
 
+                ligne.setPrixHTVA(prix);
+                ligne.setTauxTVA(taux);
+
                 double ligneHTVA = prix * ligne.getQuantite();
                 double ligneTTC = ligneHTVA * (1 + taux / 100);
                 totalHTVA += ligneHTVA;
@@ -199,6 +202,15 @@ public class MouvementStockService {
         // Sync memory object for alerts/logs
         PieceDetachee piece = pieceRepo.findById(ligne.getPiece().getId()).orElse(null);
         if (piece != null) {
+            // Force refresh from DB to bypass any L1 cache issues and get the REAL new
+            // quantity
+            try {
+                entityManager.refresh(piece);
+            } catch (Exception e) {
+                // If refresh fails (e.g. not managed), we continue with what we have
+                System.err.println("[STOCK_SYNC] Refresh failed, using findById result: " + e.getMessage());
+            }
+
             System.err.println("[STOCK_SYNC] NEW DB VALUE FOR " + piece.getReference() + ": " + piece.getQuantite());
             checkStockAlerts(piece, piece.getQuantite() - delta);
         }
@@ -207,37 +219,39 @@ public class MouvementStockService {
     private void checkStockAlerts(PieceDetachee piece, int previousQty) {
         int newQty = piece.getQuantite() != null ? piece.getQuantite() : 0;
         int minSeuil = piece.getSeuilMinimum() != null ? piece.getSeuilMinimum() : 0;
-        System.err.println("[STOCK_SYNC] ALERT CHECK: Piece=" + piece.getReference() + " Qty=" + previousQty + " -> " + newQty + " (MinSeuil=" + minSeuil + ")");
-        
+        System.err.println("[STOCK_SYNC] ALERT CHECK: Piece=" + piece.getReference() + " Qty=" + previousQty + " -> "
+                + newQty + " (MinSeuil=" + minSeuil + ")");
+
         String detailsStr = formatDetails(piece.getDetails());
+        List<com.gestionStock.backend.entity.user.Role> targetRoles = java.util.Arrays.asList(
+                com.gestionStock.backend.entity.user.Role.ADMINISTRATEUR,
+                com.gestionStock.backend.entity.user.Role.RESPONSABLE_LOGISTIQUE,
+                com.gestionStock.backend.entity.user.Role.MAGASINIER,
+                com.gestionStock.backend.entity.user.Role.AUDITEUR);
 
         if (newQty <= 0 && previousQty > 0) {
             System.err.println("[STOCK_SYNC] RUPTURE DETECTED!");
-            String titre = "Rupture de Stock";
-            String message = "Alerte ! la piéce '" + piece.getDesignation() + detailsStr + "' (" + piece.getReference()
-                    + ") est en rupture de stock totale !";
+            String titre = " Rupture de Stock : " + piece.getDesignation();
+            String message = "ALERTE ! La pièce '" + piece.getDesignation() + detailsStr + "' (" + piece.getReference()
+                    + ") est en rupture de stock totale ! Réapprovisionnement urgent requis.";
             notificationService.createNotificationForRolesAndEntreprise(
                     titre,
                     message,
                     com.gestionStock.backend.entity.notification.NotificationType.RUPTURE_STOCK,
-                    java.util.Arrays.asList(
-                            com.gestionStock.backend.entity.user.Role.ADMINISTRATEUR,
-                            com.gestionStock.backend.entity.user.Role.RESPONSABLE_LOGISTIQUE,
-                            com.gestionStock.backend.entity.user.Role.MAGASINIER,
-                            com.gestionStock.backend.entity.user.Role.AUDITEUR),
+                    targetRoles,
                     piece.getId(),
                     piece.getEntreprise());
         } else if (newQty < minSeuil && previousQty >= minSeuil) {
-            String titre = "Stock Bas (En Réserve)";
-            String message = "Attention, la piéce '" + piece.getDesignation() + detailsStr
-                    + "' est passée sous son seuil minimum.\nQuantité actuelle: " + newQty;
+            System.err.println("[STOCK_SYNC] LOW STOCK DETECTED!");
+            String titre = " Stock Bas (Réserve) : " + piece.getDesignation();
+            String message = "Attention, la pièce '" + piece.getDesignation() + detailsStr
+                    + "' est passée sous son seuil minimum.\nQuantité actuelle: " + newQty + " (Seuil: " + minSeuil
+                    + "). Pensez à passer une commande.";
             notificationService.createNotificationForRolesAndEntreprise(
                     titre,
                     message,
                     com.gestionStock.backend.entity.notification.NotificationType.WARNING,
-                    java.util.Arrays.asList(
-                            com.gestionStock.backend.entity.user.Role.ADMINISTRATEUR,
-                            com.gestionStock.backend.entity.user.Role.RESPONSABLE_LOGISTIQUE),
+                    targetRoles,
                     piece.getId(),
                     piece.getEntreprise());
         }

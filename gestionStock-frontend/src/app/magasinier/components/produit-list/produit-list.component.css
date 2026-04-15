@@ -828,3 +828,10 @@
     color: #f87171;
     border-color: #f87171;
 }
+
+
+.disabled-visual {
+    opacity: 0.5;
+    filter: grayscale(1);
+    cursor: pointer !important;
+} 

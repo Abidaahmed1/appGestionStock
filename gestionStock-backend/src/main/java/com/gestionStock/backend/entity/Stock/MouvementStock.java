@@ -19,7 +19,8 @@ import lombok.*;
 @ToString(exclude = { "ligneMouvement", "bon" })
 public class MouvementStock {
 	@Id
-	@GeneratedValue(strategy = GenerationType.AUTO)
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "mvt_stock_seq")
+	@SequenceGenerator(name = "mvt_stock_seq", sequenceName = "mvt_stock_id_seq", allocationSize = 1, initialValue = 1000000)
 	private Long id;
 
 	@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss[.SSS][XXX]")

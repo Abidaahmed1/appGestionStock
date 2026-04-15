@@ -71,11 +71,13 @@
               </div>
             </div>
             <div class="card-actions-row">
-              <button class="btn-action-ghost" (click)="manageRoles(user)" title="Modifier les rôles">
+              <button class="btn-action-ghost" *ngIf="!isUserAdmin(user)" (click)="manageRoles(user)"
+                title="Modifier les rôles">
                 <i class="fas fa-user-shield"></i>
               </button>
-              <button class="btn-action-ghost" (click)="openResetPassword(user)" title="Réinitialiser le mot de passe">
-                <i class="fas fa-key"></i>
+              <button class="btn-action-ghost disabled" *ngIf="isUserAdmin(user)"
+                title="Le rôle administrateur ne peut pas être modifié" style="opacity: 0.3; cursor: not-allowed;">
+                <i class="fas fa-user-shield"></i>
               </button>
               <button class="btn-action-ghost" [class.block-btn]="user.enabled" [class.unblock-btn]="!user.enabled"
                 (click)="toggleStatus(user)" [title]="user.enabled ? 'Bloquer ce compte' : 'Activer ce compte'">
@@ -235,38 +237,6 @@
           </div>
         </div>
 
-        <div class="form-section-title">
-          <i class="fas fa-lock"></i>
-          <span>Sécurité</span>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="password">Mot de passe <span class="required">*</span></label>
-            <div class="input-wrapper">
-              <i class="fas fa-key prefix-icon"></i>
-              <input type="password" id="password" name="password" class="input-style has-prefix"
-                [(ngModel)]="newUser.password" placeholder="••••••••" #pwd="ngModel" required minlength="8">
-            </div>
-            <div class="field-info" [class.error]="pwd?.invalid && (pwd?.touched || userForm.submitted)">
-              <span *ngIf="pwd?.errors?.['required'] && (pwd?.touched || userForm.submitted)">Obligatoire</span>
-              <span *ngIf="pwd?.errors?.['minlength'] && (pwd?.touched || userForm.submitted)">Min. 8 caractères</span>
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="confirmPassword">Confirmation <span class="required">*</span></label>
-            <div class="input-wrapper">
-              <i class="fas fa-shield-check prefix-icon"></i>
-              <input type="password" id="confirmPassword" name="confirmPassword" class="input-style has-prefix"
-                [(ngModel)]="newUser.confirmPassword" placeholder="••••••••" #pwdConf="ngModel" required>
-            </div>
-            <div class="field-info"
-              [class.error]="newUser.password !== newUser.confirmPassword && (pwdConf?.touched || userForm.submitted)">
-              <span
-                *ngIf="newUser.password !== newUser.confirmPassword && (pwdConf?.touched || userForm.submitted)">Mots de
-                passe différents</span>
-            </div>
-          </div>
-        </div>
       </div>
       <div class="modal-actions premium-footer">
         <button type="button" class="btn-cancel-premium" (click)="closeCreateModal()">Annuler</button>
@@ -303,53 +273,6 @@
   </div>
 </div>
 
-<div class="modal-overlay" *ngIf="showResetPasswordModal" (click)="closeResetPassword()">
-  <div class="modal-card premium-shadow" style="max-width: 480px;" (click)="$event.stopPropagation()">
-    <div class="modal-header premium-header">
-      <div class="header-title-group">
-        <div class="icon-badge">
-          <i class="fas fa-key"></i>
-        </div>
-        <div class="title-text">
-          <h2>Sécuriser le compte</h2>
-          <p>Réinitialisation pour <strong>{{ selectedUser?.username }}</strong></p>
-        </div>
-      </div>
-      <button class="close-btn" (click)="closeResetPassword()">
-        <i class="fas fa-times"></i>
-      </button>
-    </div>
-    <form #resetForm="ngForm" (ngSubmit)="confirmResetPassword()">
-      <div class="modal-body premium-body">
-        <div class="form-group">
-          <label for="newP">Nouveau mot de passe <span class="required">*</span></label>
-          <div class="input-wrapper">
-            <i class="fas fa-lock prefix-icon"></i>
-            <input type="password" id="newP" [(ngModel)]="resetPasswordData.newPassword" name="newPassword"
-              class="input-style has-prefix" required minlength="8" placeholder="Minimum 8 caractères"
-              #newPass="ngModel">
-          </div>
-        </div>
-        <div class="form-group" style="margin-top: 1.5rem;">
-          <label for="confP">Confirmer le mot de passe <span class="required">*</span></label>
-          <div class="input-wrapper">
-            <i class="fas fa-shield-check prefix-icon"></i>
-            <input type="password" id="confP" [(ngModel)]="resetPasswordData.confirmPassword" name="confirmPassword"
-              class="input-style has-prefix" required placeholder="Répétez le mot de passe" #confPass="ngModel">
-          </div>
-        </div>
-      </div>
-      <div class="modal-actions premium-footer">
-        <button type="button" class="btn-cancel-premium" (click)="closeResetPassword()">Annuler</button>
-        <button type="submit" class="btn-primary-premium"
-          [disabled]="!resetForm.valid || resetPasswordData.newPassword !== resetPasswordData.confirmPassword">
-          <span>Mettre à jour le mot de passe</span>
-          <i class="fas fa-sync-alt"></i>
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
 
 <!-- Roles Modal -->
 <div class="modal-overlay" *ngIf="showRoleModal" (click)="closeRoleModal()">

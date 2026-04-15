@@ -42,7 +42,11 @@ public class InventaireController {
         Entreprise entreprise = userService.getCurrentUserEntreprise();
         if (entreprise == null)
             return ResponseEntity.ok(List.of());
-        return ResponseEntity.ok(pieceDetacheeRepository.findByArchiveeAndEntreprise(false, entreprise));
+        List<PieceDetachee> all = pieceDetacheeRepository.findByArchiveeAndEntreprise(false, entreprise);
+        List<PieceDetachee> filtered = all.stream()
+                .filter(p -> p.getQuantite() != null && p.getQuantite() > 0)
+                .toList();
+        return ResponseEntity.ok(filtered);
     }
 
     @PostMapping
@@ -52,7 +56,8 @@ public class InventaireController {
 
     /** New endpoint: creates an inventory with optional specific piece IDs */
     @PostMapping("/from-request")
-    public ResponseEntity<Inventaire> createFromRequest(@RequestBody CreateInventaireRequest req) {
+    public ResponseEntity<Inventaire> createFromRequest(
+            @RequestBody com.gestionStock.backend.dto.stock.CreateInventaireRequest req) {
         return ResponseEntity.ok(inventaireService.createFromRequest(req));
     }
 
@@ -89,6 +94,11 @@ public class InventaireController {
         return ResponseEntity.ok(inventaireService.validerLigne(id, ligneId));
     }
 
+    @PostMapping("/{id}/lignes/{ligneId}/reinitialiser")
+    public ResponseEntity<Inventaire> reinitialiserLigne(@PathVariable Long id, @PathVariable Long ligneId) {
+        return ResponseEntity.ok(inventaireService.reinitialiserLigne(id, ligneId));
+    }
+
     @PostMapping("/{id}/lignes/{ligneId}/corriger")
     public ResponseEntity<Inventaire> corrigerLigneManuellement(@PathVariable Long id, @PathVariable Long ligneId,
             @RequestParam Integer nouveauStock) {
@@ -99,5 +109,10 @@ public class InventaireController {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         inventaireService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/historique-corrections")
+    public ResponseEntity<List<com.gestionStock.backend.entity.piece.PieceHistorique>> getCorrectionHistoriques() {
+        return ResponseEntity.ok(inventaireService.getCorrectionHistoriques());
     }
 }

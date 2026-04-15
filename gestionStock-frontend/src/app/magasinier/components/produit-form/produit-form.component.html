@@ -1,0 +1,175 @@
+<div class="produit-modal-overlay" *ngIf="showModal" (click)="onCancel()">
+    <div class="produit-modal-container" (click)="$event.stopPropagation()">
+        <div class="produit-modal-header">
+            <div class="header-left-group">
+                <div class="decorative-badge">
+                    <svg class="layers-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                    </svg>
+                </div>
+                <div class="titles-container">
+                    <h2>{{ selectedProduit ? 'Modifier le Produit' : 'Nouveau Produit Fini' }}</h2>
+                    <p>{{ selectedProduit ? 'Mettez à jour les informations du produit' : 'Créez une nouvelle fiche
+                        produit' }}</p>
+                </div>
+            </div>
+            <button class="close-modal-x" (click)="onCancel()" type="button">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+
+        <form #produitForm="ngForm" (ngSubmit)="onSubmit(produitForm)">
+            <div class="produit-form-body">
+                <div class="form-main-grid">
+                    <div class="form-left-column">
+                        <section class="form-fields-card">
+                            <h3 class="section-title">INFORMATIONS GÉNÉRALES</h3>
+
+                            <div class="field-container">
+                                <label class="field-label">Code Produit <span class="required-star">*</span></label>
+                                <p class="help-text" *ngIf="!selectedProduit && isAutoCode">{{
+                                    getFormatExplanation('PRODUIT') }}</p>
+
+                                <div class="form-control-wrapper">
+                                    <ng-container *ngIf="isAutoCode && !selectedProduit">
+                                        <div class="auto-code-indicator" (click)="isAutoCode = false">
+                                            <div class="auto-icon-box">
+                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                                    stroke="currentColor" stroke-width="2.5">
+                                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                                </svg>
+                                            </div>
+                                            <span>Génération automatique activée (cliquez pour manuel)</span>
+                                        </div>
+                                    </ng-container>
+
+                                    <ng-container *ngIf="!isAutoCode || selectedProduit">
+                                        <div class="input-inner-wrapper">
+                                            <input type="text" [(ngModel)]="newProduit.code" name="code" required
+                                                #codeModel="ngModel"
+                                                [placeholder]="'Ex: ' + getPrefix('PRODUIT') + '100'"
+                                                class="premium-input"
+                                                [class.is-invalid]="codeModel.invalid && (codeModel.dirty || codeModel.touched || submitted)"
+                                                [disabled]="selectedProduit != null">
+                                        </div>
+                                    </ng-container>
+                                </div>
+                            </div>
+
+                            <div class="field-container">
+                                <label class="field-label">Désignation <span class="required-star">*</span></label>
+                                <div class="form-control-wrapper">
+                                    <input type="text" [(ngModel)]="newProduit.designation" name="designation" required
+                                        #designationModel="ngModel" placeholder="Nom du produit fini"
+                                        class="premium-input"
+                                        [class.is-invalid]="designationModel.invalid && (designationModel.dirty || designationModel.touched || submitted)">
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Optional: Pricing & Stock (Mirrored from piece form for consistency) -->
+                        <section class="form-fields-card disabled-section"
+                            title="Option bientôt disponible pour les produits">
+                            <h3 class="section-title">TARIFICATION & STOCK</h3>
+                            <div class="placeholder-content">
+                                <p>Les prix et seuils pour les produits finis sont calculés à partir de leurs
+                                    composants.</p>
+                            </div>
+                        </section>
+                    </div>
+
+                    <div class="form-right-column">
+                        <section class="form-fields-card">
+                            <h3 class="section-title">Photo du produit</h3>
+                            <input type="file" #fileInput (change)="onFileSelected($event)" hidden accept="image/*">
+                            <div class="drop-zone group" (click)="fileInput.click()" [class.has-image]="imagePreview">
+                                <div class="empty-upload-content" *ngIf="!imagePreview">
+                                    <div class="upload-circle">
+                                        <svg class="upload-icon" width="32" height="32" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                            <polyline points="17 8 12 3 7 8"></polyline>
+                                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                                        </svg>
+                                    </div>
+                                    <span class="upload-text">Ajouter une photo</span>
+                                </div>
+                                <ng-container *ngIf="imagePreview">
+                                    <img [src]="getImageUrl(imagePreview)" class="uploaded-img" alt="Aperçu produit">
+                                    <div class="img-hover-overlay"><span>Changer la photo</span></div>
+                                </ng-container>
+                            </div>
+                        </section>
+
+                        <section class="form-fields-card">
+                            <div class="section-header-row">
+                                <h3 class="section-title">COMPOSITION</h3>
+                                <button type="button" class="btn-manage-pieces" (click)="showPieceSelector = true">
+                                    Gérer ({{ productPieces.length }})
+                                </button>
+                            </div>
+                            <div class="pieces-list-mini">
+                                <div *ngIf="productPieces.length === 0" class="empty-pieces">Aucune pièce sélectionnée
+                                </div>
+                                <div *ngFor="let piece of productPieces; let i = index" class="piece-tag-mini">
+                                    <span class="piece-name">{{ piece.designation }}</span>
+                                    <button type="button" class="btn-remove-mini" (click)="removePiece(i)">×</button>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Piece Selector Modal (Inner) -->
+            <div class="inner-modal-overlay" *ngIf="showPieceSelector">
+                <div class="inner-modal-content">
+                    <div class="inner-modal-header">
+                        <h3>Sélectionner les pièces</h3>
+                        <button type="button" (click)="showPieceSelector = false">×</button>
+                    </div>
+                    <div class="inner-modal-body">
+                        <div class="search-bar">
+                            <input type="text" [(ngModel)]="pieceSearchTerm" (ngModelChange)="onPieceSearch()"
+                                name="pieceSearch" placeholder="Rechercher une pièce...">
+                        </div>
+                        <div class="pieces-selection-grid">
+                            <div *ngFor="let piece of filteredPieces" class="piece-selection-card"
+                                [class.selected]="isPieceSelected(piece.id)" (click)="togglePieceSelection(piece)">
+                                <div class="selection-indicator">
+                                    <svg *ngIf="isPieceSelected(piece.id)" viewBox="0 0 24 24" fill="none"
+                                        stroke="white" stroke-width="4">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </div>
+                                <span class="piece-info">{{ piece.designation }} ({{ piece.reference }})</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="inner-modal-footer">
+                        <button type="button" class="btn-primary-inner"
+                            (click)="showPieceSelector = false">Terminer</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="produit-modal-footer">
+                <button type="button" class="btn-cancel-premium" (click)="onCancel()">Annuler</button>
+                <button type="submit" class="btn-primary-premium" [disabled]="isSaving">
+                    <span *ngIf="!isSaving">{{ selectedProduit ? 'Mettre à jour' : 'Enregistrer le produit' }}</span>
+                    <span *ngIf="isSaving" class="loader-span">
+                        <svg class="spinner" viewBox="0 0 50 50">
+                            <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+                        </svg>
+                        Traitement...
+                    </span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

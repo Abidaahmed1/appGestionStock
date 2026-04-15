@@ -51,4 +51,10 @@ public class BonCommandeFournisseurController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/{id}/permanent")
+    @PreAuthorize("hasRole('ADMINISTRATEUR')")
+    public ResponseEntity<Void> deletePermanently(@PathVariable Long id) {
+        service.deletePermanently(id);
+        return ResponseEntity.noContent().build();
+    }
 }

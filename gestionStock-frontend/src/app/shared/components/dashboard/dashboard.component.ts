@@ -513,11 +513,11 @@ export class DashboardComponent implements OnInit {
     if (!url) return '';
     if (url.startsWith('data:image/') || url.startsWith('http')) return url;
     if (url.startsWith('/api/images') || url.startsWith('/uploads')) {
-      return `http://localhost:8081${url}`;
+      return `http://localhost:8095${url}`;
     }
     if (url.includes('/remote.php/dav/files/')) {
       const parts = url.split('/');
-      return `http://localhost:8081/api/images/${parts[parts.length - 1]}`;
+      return `http://localhost:8095/api/images/${parts[parts.length - 1]}`;
     }
     return url;
   }

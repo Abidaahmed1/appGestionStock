@@ -12,6 +12,7 @@ export interface CreateInventaireRequest {
     nom: string;
     date?: Date;
     type: string;
+    categoryIds?: number[];
     affectations: LigneAffectation[];
 }
 
@@ -19,7 +20,7 @@ export interface CreateInventaireRequest {
     providedIn: 'root'
 })
 export class InventaireService {
-    private baseUrl = 'http://localhost:8081/api/inventaires';
+    private baseUrl = 'http://localhost:8095/api/inventaires';
 
     constructor(private http: HttpClient) { }
 
@@ -70,10 +71,18 @@ export class InventaireService {
     }
 
     refuserLigne(id: number, ligneId: number): Observable<Inventaire> {
-        return this.http.post<Inventaire>(`${this.baseUrl}/${id}/lignes/${ligneId}/refuse`, {});
+        return this.http.post<Inventaire>(`${this.baseUrl}/${id}/lignes/${ligneId}/refuser`, {});
+    }
+
+    reinitialiserLigne(id: number, ligneId: number): Observable<Inventaire> {
+        return this.http.post<Inventaire>(`${this.baseUrl}/${id}/lignes/${ligneId}/reinitialiser`, {});
     }
 
     corrigerLigneManuellement(id: number, ligneId: number, nouveauStock: number): Observable<Inventaire> {
         return this.http.post<Inventaire>(`${this.baseUrl}/${id}/lignes/${ligneId}/corriger?nouveauStock=${nouveauStock}`, {});
+    }
+
+    getCorrectionHistoriques(): Observable<any[]> {
+        return this.http.get<any[]>(`${this.baseUrl}/historique-corrections`);
     }
 }

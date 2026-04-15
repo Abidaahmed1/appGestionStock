@@ -2,6 +2,8 @@ package com.gestionStock.backend.service.images;
 
 import com.github.sardine.Sardine;
 import com.github.sardine.SardineFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -13,6 +15,8 @@ import java.util.UUID;
 @Service
 @ConditionalOnProperty(name = "file.storage.type", havingValue = "nextcloud")
 public class NextcloudStorage implements IImageStorage {
+
+    private static final Logger logger = LoggerFactory.getLogger(NextcloudStorage.class);
 
     @Value("${nextcloud.url}")
     private String nextcloudUrl;
@@ -43,13 +47,25 @@ public class NextcloudStorage implements IImageStorage {
         String fullUrl = nextcloudUrl + basePath + "/" + documentsFolder + "/" + fileName;
 
         String folderUrl = nextcloudUrl + basePath + "/" + documentsFolder + "/";
-        if (!sardine.exists(folderUrl)) {
-            sardine.createDirectory(folderUrl);
+        try {
+            if (!sardine.exists(folderUrl)) {
+                logger.info("Création du dossier Nextcloud: {}", folderUrl);
+                sardine.createDirectory(folderUrl);
+            }
+        } catch (Exception e) {
+            logger.warn("Impossible de vérifier/créer le dossier Nextcloud ({}): {}", folderUrl, e.getMessage());
         }
 
-        try (InputStream is = file.getInputStream()) {
-            sardine.put(fullUrl, is);
+        // Determine content type – Nextcloud requires it to avoid 411/415 errors
+        String contentType = file.getContentType();
+        if (contentType == null || contentType.isBlank()) {
+            contentType = "application/octet-stream";
         }
+
+        // Read bytes so we can provide Content-Length (required by Nextcloud WebDAV)
+        byte[] bytes = file.getBytes();
+        logger.info("Upload Nextcloud: {} ({} octets, type={})", fullUrl, bytes.length, contentType);
+        sardine.put(fullUrl, bytes, contentType);
 
         return "/api/images/" + fileName;
     }
@@ -58,9 +74,16 @@ public class NextcloudStorage implements IImageStorage {
     public InputStream getImage(String filename) throws Exception {
         Sardine sardine = SardineFactory.begin(username, password);
         String fullUrl = nextcloudUrl + basePath + "/" + documentsFolder + "/" + filename;
-        if (sardine.exists(fullUrl)) {
-            return sardine.get(fullUrl);
+        logger.debug("Récupération image Nextcloud: {}", fullUrl);
+        try {
+            if (sardine.exists(fullUrl)) {
+                return sardine.get(fullUrl);
+            }
+            logger.warn("Image introuvable sur Nextcloud: {}", fullUrl);
+            return null;
+        } catch (Exception e) {
+            logger.error("Erreur lors du téléchargement de l'image Nextcloud ({}): {}", fullUrl, e.getMessage());
+            throw e;
         }
-        return null;
     }
 }

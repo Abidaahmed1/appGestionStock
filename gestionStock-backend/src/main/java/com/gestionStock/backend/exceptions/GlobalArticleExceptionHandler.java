@@ -77,8 +77,9 @@ public class GlobalArticleExceptionHandler extends ResponseEntityExceptionHandle
 	// 409 – Contrainte d'intégrité violée (doublon, null, ou référence)
 	@ExceptionHandler(DataIntegrityViolationException.class)
 	public ResponseEntity<Erreur> handleDataIntegrity(DataIntegrityViolationException ex) {
+		ex.printStackTrace(); // Debug: Voir la cause exacte dans la console Java
 		String cause = ex.getRootCause() != null ? ex.getRootCause().getMessage() : ex.getMessage();
-		String message = "Erreur d'intégrité des données : " + cause;
+		String message = "Erreur d'intégrité : " + cause;
 
 		Map<String, String> details = new HashMap<>();
 		if (cause != null && !cause.isBlank()) {
@@ -89,6 +90,8 @@ public class GlobalArticleExceptionHandler extends ResponseEntityExceptionHandle
 				message = "Impossible de supprimer ou modifier cet élément car il est utilisé par d'autres données (ex: une pièce détachée).";
 			} else if (cause.contains("violates not-null constraint")) {
 				message = "Un champ obligatoire est manquant.";
+			} else if (cause.contains("piece_detachee_quantite_check") || cause.contains("violates check constraint")) {
+				message = "Opération impossible : Le stock résultant deviendrait négatif. Le stock de la pièce a probablement changé pendant l'audit.";
 			}
 		}
 

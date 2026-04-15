@@ -268,8 +268,9 @@
                             <!-- SECTION 1 - Panneau gauche -->
                             <div class="pl-sec-1">
                                 <div class="pl-img-container">
-                                    <img *ngIf="piece.imageUrl" [src]="getImageUrl(piece.imageUrl)" alt="Img">
-                                    <div class="pl-img-placeholder" *ngIf="!piece.imageUrl"></div>
+                                    <img [src]="getImageUrl(piece.imageUrl)" 
+                                         onerror="this.onerror=null;this.src='/assets/images/default-piece.png'" 
+                                         alt="Pièce Image">
                                 </div>
                             </div>
 
@@ -345,8 +346,8 @@
                                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                                     </svg>
                                 </button>
-                                <button class="pl-btn-action delete" title="Supprimer"
-                                    (click)="confirmDelete(piece); $event.stopPropagation()">
+                                <button class="pl-btn-action delete" [class.disabled-visual]="!canArchivePiece(piece)"
+                                    title="Supprimer" (click)="confirmDelete(piece); $event.stopPropagation()">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
                                         stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                                         stroke-linejoin="round">
@@ -366,7 +367,9 @@
                         <div class="piece-card" *ngFor="let piece of filteredPiecesList" (click)="selectPiece(piece)"
                             [class.selected]="piece.id ? selectedIds.has(piece.id) : false">
                             <div class="piece-card-image">
-                                <img [src]="getImageUrl(piece.imageUrl)" [alt]="piece.designation">
+                                <img [src]="getImageUrl(piece.imageUrl)" 
+                                     onerror="this.onerror=null;this.src='/assets/images/default-piece.png'" 
+                                     [alt]="piece.designation">
                             </div>
                             <div class="piece-card-content">
                                 <div
@@ -512,7 +515,10 @@
                                     <tr *ngFor="let variant of [activeGroup.main].concat(activeGroup.variations)">
                                         <td>
                                             <div class="vd-identity">
-                                                <div class="vd-img"><img [src]="getImageUrl(variant.imageUrl)" alt="">
+                                                <div class="vd-img">
+                                                    <img [src]="getImageUrl(variant.imageUrl)" 
+                                                         onerror="this.onerror=null;this.src='/assets/images/default-piece.png'" 
+                                                         alt="">
                                                 </div>
                                                 <div class="vd-text">
                                                     <span class="vd-name" (click)="selectPiece(variant)">
@@ -569,7 +575,7 @@
                                             </path>
                                         </svg>
                                     </button>
-                                    <button class="btn-tool-minimal btn-tool-danger"
+                                    <button class="btn-tool-minimal btn-tool-danger" [class.disabled-visual]="!canArchivePiece(activePiece)"
                                         (click)="confirmDelete(activePiece)" title="Supprimer">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -693,6 +699,7 @@
                                     <div class="visual-card-premium">
                                         <div class="image-wrapper">
                                             <img [src]="getImageUrl(activePiece.imageUrl)"
+                                                onerror="this.onerror=null;this.src='/assets/images/default-piece.png'" 
                                                 [alt]="activePiece.designation">
                                         </div>
                                         <div class="image-overlay-info" *ngIf="activePiece.imageUrl">

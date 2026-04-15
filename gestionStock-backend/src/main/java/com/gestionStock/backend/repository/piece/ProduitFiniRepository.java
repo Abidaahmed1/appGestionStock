@@ -12,6 +12,8 @@ public interface ProduitFiniRepository extends JpaRepository<ProduitFini, Long> 
 	List<ProduitFini> findByEstArchiveeFalse();
 
 	List<ProduitFini> findByEstArchiveeFalseAndEntreprise(Entreprise entreprise);
+	
+	List<ProduitFini> findByEstArchiveeTrueAndEntreprise(Entreprise entreprise);
 
 	List<ProduitFini> findByEntreprise(Entreprise entreprise);
 

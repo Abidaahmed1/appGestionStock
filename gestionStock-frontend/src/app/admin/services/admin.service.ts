@@ -7,7 +7,7 @@ import { UserRepresentation, RoleRepresentation } from '../models/admin.models';
     providedIn: 'root'
 })
 export class AdminService {
-    private apiUrl = 'http://localhost:8081/api/admin/users';
+    private apiUrl = 'http://localhost:8095/api/admin/users';
 
     constructor(private http: HttpClient) { }
 

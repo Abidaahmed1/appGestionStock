@@ -6,7 +6,7 @@ import { Observable, BehaviorSubject } from 'rxjs';
     providedIn: 'root'
 })
 export class UserService {
-    private apiUrl = 'http://localhost:8081/api/users';
+    private apiUrl = 'http://localhost:8095/api/users';
     private _userSettingsSource = new BehaviorSubject<{ theme: string; accentColor: string }>({ theme: 'light', accentColor: 'teal' });
     userSettings$ = this._userSettingsSource.asObservable();
 

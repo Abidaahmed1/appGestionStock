@@ -142,7 +142,7 @@ export class BonHistoryComponent implements OnInit {
     }
 
     viewDetails(bon: Bon): void {
-        this.router.navigate(['/magasinier/bons', bon.id]);
+        this.router.navigate(['/auditeur/bons', bon.id]);
     }
 
     reactivate(bon: Bon): void {

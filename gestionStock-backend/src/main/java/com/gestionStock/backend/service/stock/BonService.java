@@ -75,8 +75,13 @@ public class BonService {
                 String role = auth.getAuthorities().stream()
                         .map(a -> a.getAuthority())
                         .filter(r -> r.startsWith("ROLE_"))
+                        .filter(this::isInternalRole)
                         .findFirst()
-                        .orElse("");
+                        .orElseGet(() -> auth.getAuthorities().stream()
+                                .map(a -> a.getAuthority())
+                                .filter(r -> r.startsWith("ROLE_"))
+                                .findFirst()
+                                .orElse(""));
                 return new String[] { effectiveUserId, role, email != null ? email : "" };
             }
         } catch (Exception e) {
@@ -334,5 +339,22 @@ public class BonService {
                 }
             }
         }
+    }
+
+    public void deletePermanently(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("L'ID est manquant.");
+        }
+        System.out.println("[DEBUG] Suppression définitive du bon ID: " + id);
+        Bon bon = getById(id);
+        
+        // Remove associations that could cause integrity violations
+        if (bon.getMouvement() != null) {
+            // Unlink or delete as needed depending on cascade types. Usually orphanRemoval = true handles this.
+            // But if we want to ensure no orphaned dependencies, we can explicitly clear it.
+            // bon.setMouvement(null);
+        }
+        
+        bonRepo.delete(bon);
     }
 }

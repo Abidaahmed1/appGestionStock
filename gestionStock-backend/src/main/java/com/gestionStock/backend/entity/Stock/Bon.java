@@ -28,7 +28,8 @@ import lombok.*;
 })
 public class Bon {
 	@Id
-	@GeneratedValue(strategy = GenerationType.AUTO)
+	@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "bon_seq")
+	@SequenceGenerator(name = "bon_seq", sequenceName = "bon_id_seq", allocationSize = 1, initialValue = 1000000)
 	private Long id;
 
 	@JsonIgnore

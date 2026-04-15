@@ -203,24 +203,24 @@ export class CatalogueLayoutComponent implements OnInit {
     }
 
     getImageUrl(url: string | null | undefined): string {
-        const defaultImage = this.activeTab === 'pieces' ? 'assets/images/default-piece.svg' : 'assets/images/default-produit.svg';
+        const defaultImage = this.activeTab === 'pieces' ? '/assets/images/default-piece.png' : '/assets/images/default-produit.png';
         if (!url) return defaultImage;
 
         if (url.startsWith('data:image')) return url;
         if (url.startsWith('http')) return url;
 
         if (!url.includes('/') && url.length > 5) {
-            return `http://localhost:8081/api/images/${url}`;
+            return `http://localhost:8095/api/images/${url}`;
         }
 
         if (url.startsWith('/api/images') || url.startsWith('/uploads')) {
-            return `http://localhost:8081${url}`;
+            return `http://localhost:8095${url}`;
         }
 
         if (url.includes('/remote.php/dav/files/')) {
             const parts = url.split('/');
             const filename = parts[parts.length - 1];
-            return `http://localhost:8081/api/images/${filename}`;
+            return `http://localhost:8095/api/images/${filename}`;
         }
 
         return url;

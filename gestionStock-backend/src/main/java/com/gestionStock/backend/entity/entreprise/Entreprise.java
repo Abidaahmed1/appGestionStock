@@ -22,6 +22,9 @@ public class Entreprise {
 
     private String contact;
     private String adresse;
+    private String ville;
+    private String rue;
+    private String pays;
     
     @NotBlank(message = "Le téléphone est obligatoire")
     private String telephone;
@@ -36,8 +39,4 @@ public class Entreprise {
     @ManyToOne
     @JoinColumn(name = "devise_id")
     private Devise devise;
-
-    @ManyToOne
-    @JoinColumn(name = "pays_id")
-    private Pays pays;
 }

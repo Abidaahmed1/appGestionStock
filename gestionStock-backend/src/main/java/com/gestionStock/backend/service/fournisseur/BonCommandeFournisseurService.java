@@ -92,6 +92,14 @@ public class BonCommandeFournisseurService {
 
     private void validateBon(BonCommandeFournisseur bon) {
 
+        if (bon.getDateArrivee() != null && bon.getDateCmd() != null) {
+            java.time.LocalDate dateCmdDate = bon.getDateCmd().toLocalDate();
+            if (!bon.getDateArrivee().isAfter(dateCmdDate)) {
+                throw new FournisseurException(
+                        "La date d'arrivée prévue doit être strictement postérieure à l'échéance de commande.");
+            }
+        }
+
         if (bon.getLignes() != null) {
             for (int i = 0; i < bon.getLignes().size(); i++) {
                 var ligne = bon.getLignes().get(i);
@@ -263,5 +271,14 @@ public class BonCommandeFournisseurService {
     public void delete(Long id) {
         getById(id);
         repository.deleteById(id);
+    }
+
+    public void deletePermanently(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("L'ID est manquant.");
+        }
+        System.out.println("[DEBUG] Suppression définitive de la commande ID: " + id);
+        BonCommandeFournisseur bon = getById(id);
+        repository.delete(bon);
     }
 }
