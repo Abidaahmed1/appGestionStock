@@ -79,7 +79,6 @@ export class PieceConfigurationComponent implements OnInit {
                     selected: false
                 })).sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
 
-                // Dynamisation de l'affichage de la référence selon la configuration de numérotation
                 const pieceConfig = this.champs.find(p => p.numerotationConfigs?.some((nc: NumerotationConfig) => nc.module === 'PIECE'))
                     ?.numerotationConfigs?.find((nc: NumerotationConfig) => nc.module === 'PIECE');
 
@@ -193,7 +192,6 @@ export class PieceConfigurationComponent implements OnInit {
         this.loading = true;
         this.errorMessage = null;
 
-        // Clean internal UI state before sending
         const finalChamps = this.champs.map((c, index) => {
             const { selected, ...rest } = c as any;
             return { ...rest, ordre: index };

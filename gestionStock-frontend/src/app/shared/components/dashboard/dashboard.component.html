@@ -17,7 +17,7 @@
         </div>
         <div class="header-actions">
             <!-- Searchable Dropdown Piece Filter -->
-            <div class="filter-group search-dropdown">
+            <div class="filter-group search-dropdown" [class.open]="showDropdown">
                 <div class="dropdown-trigger" (click)="toggleDropdown()">
                     <i class="fas fa-search search-icon"></i>
                     <span class="selected-text">{{ selectedPieceName }}</span>

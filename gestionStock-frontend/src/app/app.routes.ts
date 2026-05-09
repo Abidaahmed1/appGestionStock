@@ -182,12 +182,6 @@ export const routes: Routes = [
                 canActivate: [authGuard],
                 data: { roles: ['ADMINISTRATEUR'] }
             },
-            {
-                path: 'admin/archive',
-                loadComponent: () => import('./admin/components/archive-center/archive-center.component').then(m => m.ArchiveCenterComponent),
-                canActivate: [authGuard],
-                data: { roles: ['ADMINISTRATEUR'] }
-            },
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
             {
                 path: 'dashboard',

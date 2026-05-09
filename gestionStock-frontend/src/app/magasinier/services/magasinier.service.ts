@@ -98,20 +98,4 @@ export class MagasinierService {
         return this.http.get<Unite[]>(`${this.baseUrl}/unites`);
     }
 
-    // Archived Items
-    getArchivedPieces(): Observable<PieceDetachee[]> {
-        return this.http.get<PieceDetachee[]>(`${this.baseUrl}/pieces/archived`);
-    }
-
-    restorePiece(id: number): Observable<PieceDetachee> {
-        return this.http.put<PieceDetachee>(`${this.baseUrl}/pieces/${id}/restore`, {});
-    }
-
-    getArchivedProduits(): Observable<ProduitFini[]> {
-        return this.http.get<ProduitFini[]>(`${this.baseUrl}/produits/archived`);
-    }
-
-    restoreProduit(id: number): Observable<ProduitFini> {
-        return this.http.put<ProduitFini>(`${this.baseUrl}/produits/${id}/restore`, {});
-    }
 }

@@ -42,6 +42,8 @@ public class BonCommandeFournisseur {
 	private LocalDateTime dateCmd;
 	private LocalDate dateArrivee;
 
+	private Boolean archivee = false;
+
 	@ManyToOne
 	@JoinColumn(name = "entreprise_id")
 	private Entreprise entreprise;
@@ -58,6 +60,4 @@ public class BonCommandeFournisseur {
 	@OneToMany(mappedBy = "bonCommandeFournisseur", cascade = CascadeType.ALL, orphanRemoval = true)
 	@NotEmpty(message = "La commande doit contenir au moins une ligne")
 	private List<LigneCommande> lignes = new ArrayList<>();
-
-	private Boolean archived = false;
 }

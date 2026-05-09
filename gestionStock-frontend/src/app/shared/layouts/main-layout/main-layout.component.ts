@@ -239,8 +239,7 @@ export class MainLayoutComponent implements OnInit {
                 title: 'ADMINISTRATION',
                 icon: 'admin',
                 items: [
-                    { label: 'Configuration Système', link: '/admin/settings', icon: 'settings' },
-                    { label: 'Centre d\'Archive', link: '/admin/archive', icon: 'rotate-ccw' }
+                    { label: 'Configuration Système', link: '/admin/settings', icon: 'settings' }
                 ]
             });
         }

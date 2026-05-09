@@ -2,12 +2,13 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject, tap } from 'rxjs';
 import { Entreprise } from '../models/entreprise.model';
+import { environment } from '../../environments/environment';
 
 @Injectable({
     providedIn: 'root'
 })
 export class EntrepriseService {
-    private apiUrl = 'http://localhost:8095/api/entreprises';
+    private apiUrl = `${environment.apiUrl}/entreprises`;
     
     private currentEntrepriseSubject = new BehaviorSubject<Entreprise | null>(null);
     public currentEntreprise$ = this.currentEntrepriseSubject.asObservable();
@@ -47,11 +48,11 @@ export class EntrepriseService {
     }
 
     getAllPays(): Observable<any[]> {
-        return this.http.get<any[]>('http://localhost:8095/api/metadata/pays');
+        return this.http.get<any[]>(`${environment.apiUrl}/metadata/pays`);
     }
 
     getAllDevises(): Observable<any[]> {
-        return this.http.get<any[]>('http://localhost:8095/api/metadata/devises');
+        return this.http.get<any[]>(`${environment.apiUrl}/metadata/devises`);
     }
 
     uploadLogo(id: number, file: File): Observable<Entreprise> {
@@ -72,8 +73,7 @@ export class EntrepriseService {
         if (!path) return '';
         if (path.startsWith('data:') || path.startsWith('http')) return path;
         
-        // Base URL for API images 
-        const baseUrl = 'http://localhost:8095';
+        const baseUrl = environment.apiUrl.replace('/api', '');
         
         let finalUrl = path;
         if (path.startsWith('/api/images') || path.startsWith('/uploads')) {

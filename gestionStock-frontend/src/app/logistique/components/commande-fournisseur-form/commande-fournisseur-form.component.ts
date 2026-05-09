@@ -205,7 +205,8 @@ export class CommandeFournisseurFormComponent implements OnInit {
 
   loadFournisseurs() {
     this.logistiqueService.getAllFournisseurs().subscribe(data => {
-      this.fournisseurs = data;
+      // Filtrage robuste : on ne garde que ceux qui n'ont PAS archivee à true
+      this.fournisseurs = data ? data.filter(f => f && f.archivee !== true) : [];
       this.cdr.detectChanges();
     });
   }
@@ -691,7 +692,9 @@ export class CommandeFournisseurFormComponent implements OnInit {
         this.allPieceFournisseurs = data.filter(pf => {
           const start = pf.dateDebutValidite ? new Date(pf.dateDebutValidite) : null;
           const end = pf.dateFinValidite ? new Date(pf.dateFinValidite) : null;
-          return (!start || start <= orderDate) && (!end || end >= orderDate);
+          // On exclut si le fournisseur est archivé
+          const isSupplierArchived = pf.fournisseur && pf.fournisseur.archivee === true;
+          return !isSupplierArchived && (!start || start <= orderDate) && (!end || end >= orderDate);
         }).sort((a, b) => {
           if (a.estPrincipale && !b.estPrincipale) return -1;
           if (!a.estPrincipale && b.estPrincipale) return 1;
@@ -732,11 +735,11 @@ export class CommandeFournisseurFormComponent implements OnInit {
   getMinDateArrivee(): string {
     if (!this.commande.dateCmd) return '';
     try {
-        const dateCmd = new Date(this.commande.dateCmd);
-        dateCmd.setDate(dateCmd.getDate() + 1);
-        return dateCmd.toISOString().substring(0, 10);
+      const dateCmd = new Date(this.commande.dateCmd);
+      dateCmd.setDate(dateCmd.getDate() + 1);
+      return dateCmd.toISOString().substring(0, 10);
     } catch {
-        return '';
+      return '';
     }
   }
 
@@ -748,11 +751,11 @@ export class CommandeFournisseurFormComponent implements OnInit {
     }
 
     if (!this.isAutoNumeroCmd) {
-        if (!this.commande.numeroCmd || this.commande.numeroCmd.trim() === '') {
-            this.errors['numeroCmd'] = 'Le numéro de commande est obligatoire en saisie manuelle.';
-        } else if (!/^[A-Z0-9\-\/]+$/i.test(this.commande.numeroCmd)) {
-            this.errors['numeroCmd'] = 'Format invalide : utilisez uniquement des lettres, chiffres, tirets (-) ou slash (/).';
-        }
+      if (!this.commande.numeroCmd || this.commande.numeroCmd.trim() === '') {
+        this.errors['numeroCmd'] = 'Le numéro de commande est obligatoire en saisie manuelle.';
+      } else if (!/^[A-Z0-9\-\/]+$/i.test(this.commande.numeroCmd)) {
+        this.errors['numeroCmd'] = 'Format invalide : utilisez uniquement des lettres, chiffres, tirets (-) ou slash (/).';
+      }
     }
 
     if (this.commande.dateArrivee && this.commande.dateCmd) {
@@ -761,7 +764,7 @@ export class CommandeFournisseurFormComponent implements OnInit {
       const dateCmdOnly = new Date(dateCmd.getFullYear(), dateCmd.getMonth(), dateCmd.getDate());
       const dateArrivee = new Date(this.commande.dateArrivee);
       const dateArriveeOnly = new Date(dateArrivee.getFullYear(), dateArrivee.getMonth(), dateArrivee.getDate());
-      
+
       if (dateArriveeOnly <= dateCmdOnly) {
         this.errors['dateArrivee'] = 'La date d\'arrivée prévue doit être strictement postérieure à la date de commande.';
       }

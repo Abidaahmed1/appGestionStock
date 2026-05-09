@@ -26,7 +26,7 @@
 
         <div class="form-body">
             <form #pieceForm="ngForm">
-                <div class="global-error-bar" *ngIf="errorMessage || getThresholdError()">
+                <div class="global-error-bar" *ngIf="errorMessage || getThresholdError() || (potentialDuplicates.length > 0 && showDuplicateErrorOnSubmit)">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"></circle>
@@ -34,10 +34,25 @@
                         <line x1="12" y1="16" x2="12.01" y2="16"></line>
                     </svg>
                     <div class="error-text-group">
-                        <span class="error-main-msg">Veuillez vérifier vos données, il y a des erreurs.</span>
-                        <span class="error-sub-msg" *ngIf="errorMessage">{{ errorMessage }}</span>
-                        <span class="error-sub-msg" *ngIf="getThresholdError() && !errorMessage">{{ getThresholdError()
-                            }}</span>
+                        <span class="error-main-msg" *ngIf="potentialDuplicates.length === 0">Veuillez vérifier vos données, il y a des erreurs.</span>
+                        <span class="error-main-msg" *ngIf="potentialDuplicates.length > 0 && showDuplicateErrorOnSubmit">Erreur de duplication : Pièce déjà existante</span>
+
+                        <span class="error-sub-msg" *ngIf="errorMessage && potentialDuplicates.length === 0">{{ errorMessage }}</span>
+
+                        <!-- Detailed Duplicate Info -->
+                        <ng-container *ngIf="potentialDuplicates.length > 0 && showDuplicateErrorOnSubmit">
+                            <span class="error-sub-msg">
+                                Un enregistrement avec la <strong>même désignation, catégorie et attributs</strong> existe déjà.
+                            </span>
+                            <div class="dup-conflict-info" style="margin-top: 8px;">
+                                <span class="conflict-label" style="font-size: 0.7rem;">Conflit avec :</span>
+                                <span class="dup-warn-chip error-chip" *ngFor="let dup of potentialDuplicates.slice(0, 3)">
+                                    {{ dup.designation }} [Ref: {{ dup.reference || 'N/A' }}]
+                                </span>
+                            </div>
+                        </ng-container>
+
+                        <span class="error-sub-msg" *ngIf="getThresholdError() && !errorMessage && potentialDuplicates.length === 0">{{ getThresholdError() }}</span>
                     </div>
                 </div>
 
@@ -51,6 +66,7 @@
                                         class="required-star">*</span></label>
                                 <input type="text" [(ngModel)]="newPiece.designation" name="designation"
                                     #desig="ngModel" required placeholder="Ex: Filtre à Huile XL" class="input-premium"
+                                    (ngModelChange)="triggerDuplicateCheck()"
                                     [class.is-invalid]="(desig.invalid || !newPiece.designation.trim()) && (desig.dirty || desig.touched || submitted)">
                             </div>
 
@@ -121,7 +137,7 @@
                                         </div>
                                         <div class="dropdown-list" *ngIf="showCategoryDropdown">
                                             <div class="dropdown-item" *ngFor="let cat of filteredCategories"
-                                                (mousedown)="selectCategory(cat); catSearchInput.blur()">
+                                                (mousedown)="selectCategory(cat); catSearchInput.blur(); triggerDuplicateCheck()">
                                                 {{ cat.nom }}
                                             </div>
                                             <div class="dropdown-no-results" *ngIf="filteredCategories.length === 0">
@@ -227,57 +243,57 @@
                                         <select *ngIf="param.options && param.options.length > 0" class="input-premium"
                                             [name]="'param_' + i" #paramSelect="ngModel" [required]="param.obligatoire"
                                             [class.is-invalid]="paramSelect.invalid && (paramSelect.dirty || paramSelect.touched || submitted)"
-                                            [(ngModel)]="getDetailForParam(param).valeur">
+                                            [(ngModel)]="getDetailForParam(param).valeur" (ngModelChange)="triggerDuplicateCheck()">
                                             <option value="">Sélectionner...</option>
                                             <option *ngFor="let opt of param.options" [value]="opt">{{ opt }}</option>
                                         </select>
-
-                                        <!-- DATE -->
-                                        <input
-                                            *ngIf="(!param.options || param.options.length === 0) && param.type === 'DATE'"
-                                            type="date" class="input-premium" [name]="'param_' + i"
-                                            #paramInput="ngModel" [required]="param.obligatoire"
-                                            [class.is-invalid]="(paramInput.invalid || (param.obligatoire && !getDetailForParam(param).valeur)) && (paramInput.dirty || paramInput.touched || submitted)"
-                                            [(ngModel)]="getDetailForParam(param).valeur">
-
-                                        <!-- NUMBER -->
-                                        <input
-                                            *ngIf="(!param.options || param.options.length === 0) && param.type === 'NUMBER'"
-                                            type="number" class="input-premium" [name]="'param_' + i"
-                                            #paramInput="ngModel" [required]="param.obligatoire"
-                                            [class.is-invalid]="(paramInput.invalid || (param.obligatoire && !getDetailForParam(param).valeur)) && (paramInput.dirty || paramInput.touched || submitted)"
-                                            [placeholder]="'Saisir ' + param.nom + '...'"
-                                            [(ngModel)]="getDetailForParam(param).valeur">
-
-                                        <!-- BOOLEAN -->
-                                        <div *ngIf="(!param.options || param.options.length === 0) && param.type === 'BOOLEAN'"
-                                            class="boolean-toggle-wrapper">
-                                            <label class="toggle-switch">
-                                                <input type="checkbox" [name]="'param_' + i"
-                                                    [(ngModel)]="getDetailForParam(param).valeurBool">
-                                                <span class="toggle-slider"></span>
-                                            </label>
-                                            <span class="toggle-label">{{ getDetailForParam(param).valeurBool ? 'Oui' :
-                                                'Non' }}</span>
-                                        </div>
-
-                                        <!-- TEXTAREA -->
-                                        <textarea
-                                            *ngIf="(!param.options || param.options.length === 0) && param.type === 'TEXTAREA'"
-                                            class="input-premium" style="min-height: 80px; resize: vertical;"
-                                            [name]="'param_' + i" #paramInput="ngModel" [required]="param.obligatoire"
-                                            [class.is-invalid]="(paramInput.invalid || (param.obligatoire && !getDetailForParam(param).valeur)) && (paramInput.dirty || paramInput.touched || submitted)"
-                                            [placeholder]="'Saisir ' + param.nom + '...'"
-                                            [(ngModel)]="getDetailForParam(param).valeur"></textarea>
-
-                                        <!-- TEXT / EMAIL / URL / default -->
-                                        <input
-                                            *ngIf="(!param.options || param.options.length === 0) && param.type !== 'DATE' && param.type !== 'NUMBER' && param.type !== 'BOOLEAN' && param.type !== 'TEXTAREA'"
-                                            type="text" class="input-premium" [name]="'param_' + i"
-                                            #paramInput="ngModel" [required]="param.obligatoire"
-                                            [class.is-invalid]="(paramInput.invalid || (param.obligatoire && !getDetailForParam(param).valeur)) && (paramInput.dirty || paramInput.touched || submitted)"
-                                            placeholder="Saisir {{ param.nom }}..."
-                                            [(ngModel)]="getDetailForParam(param).valeur">
+ 
+                                         <!-- DATE -->
+                                         <input
+                                             *ngIf="(!param.options || param.options.length === 0) && param.type === 'DATE'"
+                                             type="date" class="input-premium" [name]="'param_' + i"
+                                             #paramInput="ngModel" [required]="param.obligatoire"
+                                             [class.is-invalid]="(paramInput.invalid || (param.obligatoire && !getDetailForParam(param).valeur)) && (paramInput.dirty || paramInput.touched || submitted)"
+                                             [(ngModel)]="getDetailForParam(param).valeur" (ngModelChange)="triggerDuplicateCheck()">
+ 
+                                         <!-- NUMBER -->
+                                         <input
+                                             *ngIf="(!param.options || param.options.length === 0) && param.type === 'NUMBER'"
+                                             type="number" class="input-premium" [name]="'param_' + i"
+                                             #paramInput="ngModel" [required]="param.obligatoire"
+                                             [class.is-invalid]="(paramInput.invalid || (param.obligatoire && !getDetailForParam(param).valeur)) && (paramInput.dirty || paramInput.touched || submitted)"
+                                             [placeholder]="'Saisir ' + param.nom + '...'"
+                                             [(ngModel)]="getDetailForParam(param).valeur" (ngModelChange)="triggerDuplicateCheck()">
+ 
+                                         <!-- BOOLEAN -->
+                                         <div *ngIf="(!param.options || param.options.length === 0) && param.type === 'BOOLEAN'"
+                                             class="boolean-toggle-wrapper">
+                                             <label class="toggle-switch">
+                                                 <input type="checkbox" [name]="'param_' + i"
+                                                     [(ngModel)]="getDetailForParam(param).valeurBool" (ngModelChange)="triggerDuplicateCheck()">
+                                                 <span class="toggle-slider"></span>
+                                             </label>
+                                             <span class="toggle-label">{{ getDetailForParam(param).valeurBool ? 'Oui' :
+                                                 'Non' }}</span>
+                                         </div>
+ 
+                                         <!-- TEXTAREA -->
+                                         <textarea
+                                             *ngIf="(!param.options || param.options.length === 0) && param.type === 'TEXTAREA'"
+                                             class="input-premium" style="min-height: 80px; resize: vertical;"
+                                             [name]="'param_' + i" #paramInput="ngModel" [required]="param.obligatoire"
+                                             [class.is-invalid]="(paramInput.invalid || (param.obligatoire && !getDetailForParam(param).valeur)) && (paramInput.dirty || paramInput.touched || submitted)"
+                                             [placeholder]="'Saisir ' + param.nom + '...'"
+                                             [(ngModel)]="getDetailForParam(param).valeur" (ngModelChange)="triggerDuplicateCheck()"></textarea>
+ 
+                                         <!-- TEXT / EMAIL / URL / default -->
+                                         <input
+                                             *ngIf="(!param.options || param.options.length === 0) && param.type !== 'DATE' && param.type !== 'NUMBER' && param.type !== 'BOOLEAN' && param.type !== 'TEXTAREA'"
+                                             type="text" class="input-premium" [name]="'param_' + i"
+                                             #paramInput="ngModel" [required]="param.obligatoire"
+                                             [class.is-invalid]="(paramInput.invalid || (param.obligatoire && !getDetailForParam(param).valeur)) && (paramInput.dirty || paramInput.touched || submitted)"
+                                             placeholder="Saisir {{ param.nom }}..."
+                                             [(ngModel)]="getDetailForParam(param).valeur" (ngModelChange)="triggerDuplicateCheck()">
                                     </div>
                                 </ng-container>
                             </div>

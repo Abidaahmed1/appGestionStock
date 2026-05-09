@@ -54,12 +54,9 @@
     flex-direction: column;
     overflow-y: auto;
     
-    /* Hide scrollbar but keep functionality */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
+    scrollbar-width: none; 
+    -ms-overflow-style: none; 
 }
-
-/* Chrome/Safari scrollbar hiding */
 .sidebar-nav::-webkit-scrollbar {
     display: none;
 }
@@ -278,17 +275,15 @@ body.dark-theme .nav-section:not(.collapsed) .nav-section-header {
 
 .top-header {
     height: 72px;
-    background-color: var(--bg-sidebar); /* Solid background — NO backdrop-filter */
-    /* backdrop-filter REMOVED: it creates a stacking context that blurs fixed children (notifications panel) */
+    background-color: var(--bg-sidebar); 
     border-bottom: 1px solid var(--border-color);
     padding: 0 1.75rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    z-index: 1000; /* Increased to stay above component headers (like catalogue-layout) */
+    z-index: 1000; 
 }
 
-/* Header Actions */
 .header-actions-group {
     display: flex;
     align-items: center;
@@ -357,12 +352,10 @@ body.dark-theme .nav-section:not(.collapsed) .nav-section-header {
     overflow-y: auto;
     background-color: var(--bg-main);
     
-    /* Hide scrollbar but keep functionality */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE/Edge */
+    scrollbar-width: none; 
+    -ms-overflow-style: none; 
 }
 
-/* Chrome/Safari scrollbar hiding */
 .page-container::-webkit-scrollbar {
     display: none;
 }

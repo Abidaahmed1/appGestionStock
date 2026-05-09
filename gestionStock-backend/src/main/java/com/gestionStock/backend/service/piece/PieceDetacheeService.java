@@ -243,16 +243,16 @@ public class PieceDetacheeService {
 
         piece.setQuantite(0);
 
-        if (piece.getDetails() != null) {
-            for (DetailPiece detail : piece.getDetails()) {
+        if (piece.getRawDetails() != null) {
+            for (DetailPiece detail : piece.getRawDetails()) {
                 detail.setPiece(piece);
             }
         }
 
         PieceDetachee savedPiece = this.pieceRepo.save(piece);
 
-        if (savedPiece.getDetails() != null && !savedPiece.getDetails().isEmpty()) {
-            for (DetailPiece dp : savedPiece.getDetails()) {
+        if (savedPiece.getRawDetails() != null && !savedPiece.getRawDetails().isEmpty()) {
+            for (DetailPiece dp : savedPiece.getRawDetails()) {
                 this.detailPieceRepo.save(dp);
             }
         }
@@ -324,9 +324,9 @@ public class PieceDetacheeService {
         String ref = piece.getReference();
 
         String variantLabel = "";
-        if (piece.getDetails() != null && !piece.getDetails().isEmpty()) {
+        if (piece.getRawDetails() != null && !piece.getRawDetails().isEmpty()) {
             try {
-                String v = piece.getDetails().stream()
+                String v = piece.getRawDetails().stream()
                         .filter(d -> d != null && d.getParametre() != null && d.getValeur() != null
                                 && !d.getValeur().trim().isEmpty() && !d.getValeur().equals("-"))
                         .map(d -> d.getParametre().getNom() + ": " + d.getValeur())
@@ -537,24 +537,28 @@ public class PieceDetacheeService {
         }
 
         StringBuilder detailDiff = new StringBuilder();
-        if (piece.getDetails() != null) {
-            Set<Long> updatedDetailIds = piece.getDetails().stream()
+        if (piece.getRawDetails() != null) {
+            Set<Long> updatedDetailIds = piece.getRawDetails().stream()
                     .filter(d -> d.getId() != null)
                     .map(DetailPiece::getId)
                     .collect(Collectors.toSet());
 
             // Check for removals
-            for (DetailPiece d : existingPiece.getDetails()) {
+            for (DetailPiece d : existingPiece.getRawDetails()) {
                 if (d.getId() != null && !updatedDetailIds.contains(d.getId())) {
                     detailDiff.append(" variante '").append(getVariantLabel(d)).append("' supprimée;");
                 }
             }
 
-            existingPiece.getDetails().removeIf(d -> d.getId() != null && !updatedDetailIds.contains(d.getId()));
+            existingPiece.getRawDetails().removeIf(d -> 
+                d.getId() != null && 
+                !updatedDetailIds.contains(d.getId()) && 
+                (d.getParametre() == null || Boolean.TRUE.equals(d.getParametre().getActif()))
+            );
 
-            for (DetailPiece updatedDetail : piece.getDetails()) {
+            for (DetailPiece updatedDetail : piece.getRawDetails()) {
                 if (updatedDetail.getId() != null) {
-                    existingPiece.getDetails().stream()
+                    existingPiece.getRawDetails().stream()
                             .filter(d -> d.getId().equals(updatedDetail.getId()))
                             .findFirst()
                             .ifPresent(existingDetail -> {
@@ -572,7 +576,7 @@ public class PieceDetacheeService {
                     detailDiff.append(" nouvelle variante '").append(getVariantLabel(updatedDetail))
                             .append("' ajoutée;");
                     updatedDetail.setPiece(existingPiece);
-                    existingPiece.getDetails().add(updatedDetail);
+                    existingPiece.getRawDetails().add(updatedDetail);
                 }
             }
         }

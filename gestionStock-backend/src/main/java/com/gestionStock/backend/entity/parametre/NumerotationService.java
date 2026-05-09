@@ -23,8 +23,6 @@ public class NumerotationService {
             return "DEFAULT-" + System.currentTimeMillis();
         }
 
-        // On cherche la config dans n'importe quel paramètre (en général ils l'auront
-        // tous ou on en choisit un)
         NumerotationConfig config = null;
         Entreprise entreprise = params.get(0).getEntreprise();
 

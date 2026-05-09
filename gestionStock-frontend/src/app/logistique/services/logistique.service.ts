@@ -17,17 +17,11 @@ export class LogistiqueService {
         return this.http.get<Fournisseur[]>(`${this.baseUrl}/fournisseurs`);
     }
 
-    getArchivedFournisseurs(): Observable<Fournisseur[]> {
-        return this.http.get<Fournisseur[]>(`${this.baseUrl}/fournisseurs/archived`);
-    }
 
     getFournisseurById(id: number): Observable<Fournisseur> {
         return this.http.get<Fournisseur>(`${this.baseUrl}/fournisseurs/${id}`);
     }
 
-    restoreFournisseur(id: number): Observable<Fournisseur> {
-        return this.http.put<Fournisseur>(`${this.baseUrl}/fournisseurs/${id}/restore`, {});
-    }
 
     createFournisseur(fournisseur: Fournisseur): Observable<Fournisseur> {
         return this.http.post<Fournisseur>(`${this.baseUrl}/fournisseurs`, fournisseur);
@@ -159,6 +153,10 @@ export class LogistiqueService {
 
     getAllCommandesFournisseurs(): Observable<BonCommandeFournisseur[]> {
         return this.http.get<BonCommandeFournisseur[]>(`${this.baseUrl}/commandes-fournisseurs`);
+    }
+
+    getAllCommandesFournisseursForStats(): Observable<BonCommandeFournisseur[]> {
+        return this.http.get<BonCommandeFournisseur[]>(`${this.baseUrl}/commandes-fournisseurs/stats`);
     }
 
     getCommandeFournisseurById(id: number): Observable<BonCommandeFournisseur> {

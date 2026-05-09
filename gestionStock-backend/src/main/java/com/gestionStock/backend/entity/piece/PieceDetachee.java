@@ -4,9 +4,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.*;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
@@ -91,7 +91,8 @@ public class PieceDetachee {
 	@Column(columnDefinition = "TEXT")
 	private String description;
 
-	@JsonManagedReference("piece_details")
+	// @JsonManagedReference("piece_details")
+	@JsonIgnore
 	@OneToMany(mappedBy = "piece", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
 	@Builder.Default
 	private List<DetailPiece> details = new ArrayList<>();
@@ -110,4 +111,21 @@ public class PieceDetachee {
 	public Boolean isArchivee() {
 		return this.archivee;
 	}
+
+	@JsonProperty("details")
+	public List<DetailPiece> getDetails() {
+		if (this.details == null)
+			return new ArrayList<>();
+		return this.details.stream()
+				.filter(d -> d.getParametre() != null && Boolean.TRUE.equals(d.getParametre().getActif()))
+				.collect(Collectors.toList());
+	}
+
+	@JsonIgnore
+	public List<DetailPiece> getRawDetails() {
+		if (this.details == null)
+			this.details = new ArrayList<>();
+		return this.details;
+	}
+
 }

@@ -31,7 +31,7 @@ import jakarta.persistence.ManyToOne;
 @Entity
 @Getter
 @Setter
-@EqualsAndHashCode(of = "code")
+@EqualsAndHashCode(of = { "nom", "entreprise" })
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -55,7 +55,6 @@ public class Fournisseur {
 
 	@NotBlank(message = "Le code fournisseur est obligatoire")
 	@Size(min = 2, max = 20, message = "Le code doit contenir entre 2 et 20 caractères")
-	@Pattern(regexp = "^FOUR-.*", message = "Le code fournisseur doit commencer par FOUR-")
 	private String code;
 
 	@NotBlank(message = "Le nom du fournisseur est obligatoire")

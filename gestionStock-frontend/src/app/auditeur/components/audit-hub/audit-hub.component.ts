@@ -638,7 +638,17 @@ export class AuditHubComponent implements OnInit, OnDestroy {
     this.filterDateHistorique = '';
     this.inventaireService.getCorrectionHistoriques().subscribe({
       next: (data) => {
-        this.historiqueCorrections = data;
+        // Extraction intelligente des valeurs pour éviter le NaN dans le design premium
+        this.historiqueCorrections = data.map((h: any) => {
+          if (h.details && (!h.ancienneValeur || !h.nouvelleValeur)) {
+            const parts = h.details.match(/de (\d+) à (\d+)/);
+            if (parts) {
+              h.ancienneValeur = parseInt(parts[1]);
+              h.nouvelleValeur = parseInt(parts[2]);
+            }
+          }
+          return h;
+        });
         this.isLoadingHistorique = false;
       },
       error: () => {
@@ -714,8 +724,6 @@ export class AuditHubComponent implements OnInit, OnDestroy {
 
       let matchImpact = true;
       if (this.impactFilterHistorique !== 'all' && h.details) {
-        const isIncrease = h.details.includes('augmenté') || h.details.toLowerCase().includes('à la hausse'); // logic depends on string format
-        // In our case: "Stock corrigé manuellement de X à Y"
         const parts = h.details.match(/de (\d+) à (\d+)/);
         if (parts) {
           const from = parseInt(parts[1]);
@@ -727,6 +735,28 @@ export class AuditHubComponent implements OnInit, OnDestroy {
 
       return matchSearch && matchDate && matchAuditor && matchImpact;
     });
+  }
+
+  get groupedHistorique(): { date: string, items: any[] }[] {
+    const filtered = this.filteredHistorique;
+    const sorted = [...filtered].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const groups: { [key: string]: any[] } = {};
+
+    sorted.forEach(h => {
+      const d = new Date(h.date);
+      const today = new Date();
+      const yesterday = new Date();
+      yesterday.setDate(today.getDate() - 1);
+
+      let key = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+      if (d.toDateString() === today.toDateString()) key = "Aujourd'hui";
+      else if (d.toDateString() === yesterday.toDateString()) key = "Hier";
+
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(h);
+    });
+
+    return Object.keys(groups).map(key => ({ date: key, items: groups[key] }));
   }
 
   notify(msg: string, type: 'success' | 'error'): void {

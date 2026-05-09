@@ -30,30 +30,60 @@ public class FournisseurService {
     }
 
     public Fournisseur save(Fournisseur fournisseur) {
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
+
         if (fournisseur.getId() == null) {
-            if (fournisseur.getCode() == null || fournisseur.getCode().isEmpty()
-                    || "AUTO".equalsIgnoreCase(fournisseur.getCode())) {
+            // 1. Vérification de l'unicité du NOM dans l'entreprise
+            if (fournisseurRepo.existsByNomAndEntreprise(fournisseur.getNom(), entreprise)) {
+                throw new IllegalStateException("Un fournisseur avec ce nom existe déjà");
+            }
+
+            // 2. Gestion du CODE (Auto ou Manuel)
+            String code = fournisseur.getCode();
+            boolean isAuto = code == null || code.trim().isEmpty()
+                    || "AUTO".equalsIgnoreCase(code)
+                    || code.endsWith("AUTO");
+
+            if (isAuto) {
                 synchronized (FOURNISSEUR_LOCK) {
-                    fournisseur.setCode(numerotationService.generateNextNumber("FOURNISSEUR"));
+                    String generatedCode;
+                    int attempts = 0;
+                    do {
+                        generatedCode = numerotationService.generateNextNumber("FOURNISSEUR");
+                        attempts++;
+                    } while (fournisseurRepo.existsByCode(generatedCode) && attempts < 10);
+
+                    fournisseur.setCode(generatedCode);
                 }
             } else {
-                numerotationService.validateReference("FOURNISSEUR", fournisseur.getCode());
-                if (fournisseurRepo.existsByCode(fournisseur.getCode())) {
+                numerotationService.validateReference("FOURNISSEUR", code);
+                if (fournisseurRepo.existsByCode(code)) {
                     throw new IllegalStateException("Un fournisseur avec ce code existe déjà");
                 }
             }
 
+            // 3. Vérification de l'Email
             if (fournisseurRepo.existsByEmail(fournisseur.getEmail())) {
                 throw new IllegalStateException("Un fournisseur avec cet email existe déjà");
             }
         }
-        fournisseur.setEntreprise(userService.getCurrentUserEntreprise());
+
+        fournisseur.setEntreprise(entreprise);
         return fournisseurRepo.save(fournisseur);
     }
 
     public Fournisseur update(Long id, Fournisseur fournisseur) {
         Fournisseur existing = getById(id);
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
 
+        // Vérification si le nom a changé et s'il est déjà pris
+        if (!existing.getNom().equalsIgnoreCase(fournisseur.getNom())) {
+            if (fournisseurRepo.existsByNomAndEntreprise(fournisseur.getNom(), entreprise)) {
+                throw new IllegalStateException("Un fournisseur avec ce nom existe déjà");
+            }
+        }
+
+        // Vérification si le code a changé
         if (!existing.getCode().equals(fournisseur.getCode())) {
             numerotationService.validateReference("FOURNISSEUR", fournisseur.getCode());
             if (fournisseurRepo.existsByCode(fournisseur.getCode())) {
@@ -62,6 +92,7 @@ public class FournisseurService {
         }
 
         fournisseur.setId(id);
+        fournisseur.setEntreprise(entreprise);
         return fournisseurRepo.save(fournisseur);
     }
 

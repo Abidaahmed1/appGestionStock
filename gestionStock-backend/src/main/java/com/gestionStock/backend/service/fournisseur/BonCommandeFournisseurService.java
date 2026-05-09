@@ -61,6 +61,14 @@ public class BonCommandeFournisseurService {
         return java.util.List.of();
     }
 
+    public List<BonCommandeFournisseur> getAllForEnterprise() {
+        com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
+        if (entreprise == null) {
+            return java.util.List.of();
+        }
+        return repository.findByEntreprise(entreprise);
+    }
+
     public BonCommandeFournisseur getById(Long id) {
         BonCommandeFournisseur bon = repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Bon de commande non trouvé"));
@@ -68,23 +76,15 @@ public class BonCommandeFournisseurService {
         com.gestionStock.backend.entity.entreprise.Entreprise currentEntreprise = userService
                 .getCurrentUserEntreprise();
 
-        if (bon.getCreateur() != null && bon.getCreateur().getEntreprise() != null) {
-            if (!bon.getCreateur().getEntreprise().equals(currentEntreprise)) {
+        if (bon.getEntreprise() != null) {
+            if (!bon.getEntreprise().equals(currentEntreprise)) {
                 throw new org.springframework.security.access.AccessDeniedException(
                         "Interdit : Cette commande appartient à une autre entreprise.");
             }
-        }
-
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof Jwt jwt) {
-            String userId = jwt.getSubject();
-            boolean hasFullAccess = auth.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMINISTRATEUR") ||
-                            a.getAuthority().equals("ROLE_AUDITEUR"));
-
-            if (!hasFullAccess && (bon.getCreateur() == null || !bon.getCreateur().getId().equals(userId))) {
+        } else if (bon.getCreateur() != null && bon.getCreateur().getEntreprise() != null) {
+            if (!bon.getCreateur().getEntreprise().equals(currentEntreprise)) {
                 throw new org.springframework.security.access.AccessDeniedException(
-                        "Vous n'avez pas l'autorisation d'accéder à cette commande.");
+                        "Interdit : Cette commande appartient à une autre entreprise.");
             }
         }
         return bon;

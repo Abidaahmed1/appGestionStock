@@ -9,21 +9,21 @@ import java.util.Optional;
 
 @Repository
 public interface BonCommandeFournisseurRepository extends JpaRepository<BonCommandeFournisseur, Long> {
-    Optional<BonCommandeFournisseur> findByNumeroCmd(String numeroCmd);
+        Optional<BonCommandeFournisseur> findByNumeroCmd(String numeroCmd);
 
-    List<BonCommandeFournisseur> findByFournisseurId(Long fournisseurId);
+        List<BonCommandeFournisseur> findByFournisseurId(Long fournisseurId);
 
-    List<BonCommandeFournisseur> findByCreateurId(String createurId);
+        List<BonCommandeFournisseur> findByCreateurId(String createurId);
 
-    List<BonCommandeFournisseur> findByCreateurEntreprise(
-            com.gestionStock.backend.entity.entreprise.Entreprise entreprise);
+        List<BonCommandeFournisseur> findByCreateurEntreprise(
+                        com.gestionStock.backend.entity.entreprise.Entreprise entreprise);
 
-    List<BonCommandeFournisseur> findByEntreprise(
-            com.gestionStock.backend.entity.entreprise.Entreprise entreprise);
+        List<BonCommandeFournisseur> findByEntreprise(
+                        com.gestionStock.backend.entity.entreprise.Entreprise entreprise);
 
-    List<BonCommandeFournisseur> findByArchivedFalseAndEntreprise(
-            com.gestionStock.backend.entity.entreprise.Entreprise entreprise);
+        List<BonCommandeFournisseur> findByArchiveeFalseAndEntreprise(
+                        com.gestionStock.backend.entity.entreprise.Entreprise entreprise);
 
-    List<BonCommandeFournisseur> findByArchivedTrueAndEntreprise(
-            com.gestionStock.backend.entity.entreprise.Entreprise entreprise);
+        List<BonCommandeFournisseur> findByArchiveeTrueAndEntreprise(
+                        com.gestionStock.backend.entity.entreprise.Entreprise entreprise);
 }

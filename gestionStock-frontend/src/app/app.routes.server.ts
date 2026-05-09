@@ -1,8 +1,6 @@
 import { RenderMode, ServerRoute } from '@angular/ssr';
 
 export const serverRoutes: ServerRoute[] = [
-  // Explicitly setting problematic groups to Server to resolve Angular SSR build conflicts.
-  // Routes sharing segments must have consistent render modes.
   
   { path: 'magasinier/bons', renderMode: RenderMode.Server },
   { path: 'magasinier/bons/nouveau', renderMode: RenderMode.Server },
@@ -24,12 +22,13 @@ export const serverRoutes: ServerRoute[] = [
   { path: 'logistique/tracking', renderMode: RenderMode.Server },
   { path: 'logistique/bons-history', renderMode: RenderMode.Server },
 
-  { path: 'admin/entreprise', renderMode: RenderMode.Server },
-  { path: 'admin/entreprise/:id', renderMode: RenderMode.Server },
-  { path: 'admin/settings', renderMode: RenderMode.Server },
-  { path: 'admin/users', renderMode: RenderMode.Server },
-  { path: 'admin/parametres', renderMode: RenderMode.Server },
-  { path: 'admin/numerotation', renderMode: RenderMode.Server },
+  { path: 'admin/entreprise', renderMode: RenderMode.Client },
+  { path: 'admin/entreprise/:id', renderMode: RenderMode.Client },
+  { path: 'admin/settings', renderMode: RenderMode.Client },
+  { path: 'admin/users', renderMode: RenderMode.Client },
+  { path: 'admin/parametres', renderMode: RenderMode.Client },
+  { path: 'admin/numerotation', renderMode: RenderMode.Client },
+  { path: 'admin/document-settings', renderMode: RenderMode.Client },
 
   { path: 'dashboard', renderMode: RenderMode.Server },
   { path: 'settings', renderMode: RenderMode.Server },

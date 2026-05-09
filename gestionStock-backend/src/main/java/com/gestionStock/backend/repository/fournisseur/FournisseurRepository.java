@@ -23,4 +23,6 @@ public interface FournisseurRepository extends JpaRepository<Fournisseur, Long> 
     boolean existsByCode(String code);
 
     boolean existsByEmail(String email);
+
+    boolean existsByNomAndEntreprise(String nom, Entreprise entreprise);
 }

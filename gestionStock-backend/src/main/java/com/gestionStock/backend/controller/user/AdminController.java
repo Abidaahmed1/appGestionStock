@@ -132,7 +132,8 @@ public class AdminController {
 			
 			// Envoyer l'email d'invitation personnalisé avec le mot de passe
 			try {
-				invitationEmailService.sendInvitationEmail(email, (String) user.get("firstName"), temporaryPassword);
+				String name=user.get("firstName")+" "+user.get("lastName");
+				invitationEmailService.sendInvitationEmail(email, name, temporaryPassword);
 				System.out.println("AdminController: Email avec mot de passe provisoire envoyé à " + email);
 			} catch (Exception emailEx) {
 				System.err.println("AdminController: Erreur lors de l'envoi de l'email Backend: " + emailEx.getMessage());

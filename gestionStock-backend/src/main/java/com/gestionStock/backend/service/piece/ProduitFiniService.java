@@ -74,13 +74,14 @@ public class ProduitFiniService {
         System.out.println("[DEBUG] Suppression définitive du produit ID: " + id);
 
         ProduitFini produit = produitRepo.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Produit introuvable en base (ID: " + id + "). Veuillez actualiser."));
-        
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Produit introuvable en base (ID: " + id + "). Veuillez actualiser."));
+
         // Decouple pieces to avoid constraint issues if necessary
         if (produit.getPieces() != null) {
             produit.getPieces().clear();
         }
-        
+
         produitRepo.delete(produit);
         System.out.println("[DEBUG] Produit " + id + " supprimé avec succès.");
     }

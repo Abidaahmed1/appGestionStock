@@ -3,6 +3,72 @@
     box-sizing: border-box;
 }
 
+/* Conflict info styles used in global-error-bar */
+.dup-conflict-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+}
+
+.conflict-label {
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #b91c1c;
+    letter-spacing: 0.05em;
+}
+
+:host-context(.dark-theme) .conflict-label {
+    color: #f87171;
+}
+
+.dup-warn-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #fef9c3;
+    border: 1px solid #fde68a;
+    color: #78350f;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+.dup-warn-chip.error-chip {
+    background: #fee2e2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+.dup-warn-chip.dup-more {
+    background: transparent;
+    border-style: dashed;
+    border-color: #fbbf24;
+    color: #b45309;
+}
+
+.dup-ref {
+    font-weight: 400;
+    opacity: 0.75;
+    margin-left: 2px;
+}
+
+:host-context(.dark-theme) .dup-warn-chip {
+    background: #451a03;
+    border-color: #92400e;
+    color: #fde68a;
+}
+
+:host-context(.dark-theme) .dup-warn-chip.error-chip {
+    background: #7f1d1d;
+    border-color: #991b1b;
+    color: #fecaca;
+}
+/* ============================================================== */
+
+
 :host {
     display: block;
     width: 100%;
@@ -985,16 +1051,40 @@ input[type=number] {
 
 .global-error-bar {
     background: #fef2f2;
-    border: 1px solid #fecaca;
+    border: 1.5px solid #fecaca;
     color: #991b1b;
-    padding: 12px 16px;
-    border-radius: 8px;
+    padding: 16px 20px;
+    border-radius: 10px;
     margin-bottom: 24px;
     display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 14px;
-    font-weight: 500;
+    align-items: flex-start;
+    gap: 16px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.error-text-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.error-main-msg {
+    font-size: 15px;
+    font-weight: 700;
+    display: block;
+}
+
+.error-sub-msg {
+    font-size: 13px;
+    opacity: 0.9;
+    line-height: 1.5;
+    display: block;
 }
 
 :host-context(.dark-theme) .global-error-bar {

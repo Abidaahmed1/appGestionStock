@@ -122,7 +122,6 @@ export class SettingsComponent implements OnInit {
             }
         }
 
-        // Also fetch from DB for other details
         this.userService.getCurrentUser().subscribe({
             next: (user) => {
                 if (user) {

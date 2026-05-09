@@ -82,7 +82,7 @@ export class PriceTrackingComponent implements OnInit, OnDestroy {
     }
 
     loadStats() {
-        this.logistiqueService.getAllCommandesFournisseurs().subscribe({
+        this.logistiqueService.getAllCommandesFournisseursForStats().subscribe({
             next: (commandes: any[]) => {
                 const tempStats: { [key: string]: number[] } = {};
                 const timeSeriesData: { [key: string]: { date: string, price: number }[] } = {};

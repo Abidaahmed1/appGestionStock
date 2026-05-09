@@ -158,13 +158,13 @@
 }
 
 .security-bg {
-    background: rgba(79, 70, 229, 0.1);
-    color: #4f46e5;
+    background: var(--primary-light);
+    color: var(--primary);
 }
 
 .appearance-bg {
-    background: rgba(14, 165, 233, 0.1);
-    color: #0ea5e9;
+    background: var(--primary-light);
+    color: var(--primary);
 }
 
 .notifications-bg {
@@ -401,8 +401,9 @@
 
 /* Security Specifics */
 .security-banner-info {
-    background: rgba(79, 70, 229, 0.05);
-    border: 1px solid rgba(79, 70, 229, 0.15);
+    background: var(--primary-light);
+    border: 1px solid var(--border-color);
+    opacity: 0.8;
     border-radius: 20px;
     padding: 1.25rem 1.75rem;
     display: flex;
@@ -414,8 +415,8 @@
 .banner-icon {
     width: 48px;
     height: 48px;
-    background: white;
-    color: #4f46e5;
+    background: var(--bg-card);
+    color: var(--primary);
     border-radius: 14px;
     display: flex;
     align-items: center;
@@ -526,7 +527,7 @@
 }
 
 .security-btn-accent {
-    box-shadow: 0 10px 20px -8px rgba(79, 70, 229, 0.4);
+    box-shadow: 0 10px 20px -8px var(--primary-light);
 }
 
 /* Body Styling Reprise */
@@ -868,8 +869,8 @@
 }
 
 .notif-icon-box.orders {
-    background: rgba(14, 165, 233, 0.1);
-    color: #0ea5e9;
+    background: var(--primary-light);
+    color: var(--primary);
 }
 
 .notif-icon-box.stock {

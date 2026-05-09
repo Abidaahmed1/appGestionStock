@@ -1093,6 +1093,4 @@ export class PieceListComponent implements OnInit {
 
         processNext(0);
     }
-
-
 }

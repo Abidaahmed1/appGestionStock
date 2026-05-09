@@ -33,7 +33,6 @@ public class CategorieService {
     public Categorie create(Categorie categorie) {
         com.gestionStock.backend.entity.entreprise.Entreprise entreprise = userService.getCurrentUserEntreprise();
         
-        // Recherche d'une catégorie existante par nom (insensible à la casse) dans cette entreprise
         List<Categorie> allCats = categorieRepo.findByEntreprise(entreprise);
         Categorie existing = allCats.stream()
                 .filter(c -> c.getNom().equalsIgnoreCase(categorie.getNom()))

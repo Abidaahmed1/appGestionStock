@@ -21,6 +21,7 @@ export class PieceFormComponent implements OnInit, OnChanges, OnDestroy {
     @Input() categories: Categorie[] = [];
     @Input() produitsFinis: ProduitFini[] = [];
     @Input() unites: Unite[] = [];
+    @Input() allPieces: PieceDetachee[] = [];
     @Input() errorMessage: string | null = null;
     @Input() devise: Devise | null | undefined = null;
     @Output() close = new EventEmitter<void>();
@@ -41,6 +42,12 @@ export class PieceFormComponent implements OnInit, OnChanges, OnDestroy {
     isImageMarkedForDeletion: boolean = false;
     showSaveConfirm: boolean = false;
     localParametres: Parametre[] = [];
+
+    // Duplicate detection
+    potentialDuplicates: PieceDetachee[] = [];
+    dismissedDuplicateWarning: boolean = false;
+    showDuplicateErrorOnSubmit: boolean = false;
+    private duplicateCheckSubject = new Subject<void>();
 
     // Search and Selection
     productSearchTerm: string = '';
@@ -76,11 +83,19 @@ export class PieceFormComponent implements OnInit, OnChanges, OnDestroy {
         ).subscribe(term => {
             this.executeCategorySearch(term);
         });
+
+        this.duplicateCheckSubject.pipe(
+            debounceTime(400),
+            takeUntil(this.destroy$)
+        ).subscribe(() => {
+            this.checkForDuplicates();
+        });
     }
 
     ngOnDestroy(): void {
         this.destroy$.next();
         this.destroy$.complete();
+        this.duplicateCheckSubject.complete();
     }
 
     ngOnChanges(changes: SimpleChanges): void {
@@ -115,6 +130,9 @@ export class PieceFormComponent implements OnInit, OnChanges, OnDestroy {
     resetForm() {
         this.submitted = false;
         this.localParametres = [...(this.parametres || [])];
+        this.potentialDuplicates = [];
+        this.dismissedDuplicateWarning = false;
+        this.showDuplicateErrorOnSubmit = false;
 
         if (this.selectedPiece) {
             this.newPiece = {
@@ -225,8 +243,84 @@ export class PieceFormComponent implements OnInit, OnChanges, OnDestroy {
                 return detail.valeur !== undefined && detail.valeur !== null && String(detail.valeur).trim() !== '';
             });
 
-        return basicOk && thresholdsOk && paramsOk;
+        // Hard restriction: Combination must be unique
+        const noDuplicates = this.potentialDuplicates.length === 0;
+
+        return basicOk && thresholdsOk && paramsOk && noDuplicates;
     }
+
+    // ====================== DUPLICATE DETECTION ======================
+    triggerDuplicateCheck(): void {
+        this.dismissedDuplicateWarning = false;
+        this.showDuplicateErrorOnSubmit = false; // Hide error until next submit attempt if they change values
+        this.duplicateCheckSubject.next();
+    }
+
+    private getPotentialDuplicates(): PieceDetachee[] {
+        const currentId = this.selectedPiece?.id;
+        const designation = (this.newPiece.designation || '').toLowerCase().trim();
+        const categorieId = this.newPiece.categorie?.id;
+
+        if (!designation || designation.length < 2) {
+            return [];
+        }
+
+        // Get current non-empty attributes for comparison
+        const currentDetails = (this.newPiece.details || [])
+            .filter(d => {
+                const val = d.parametre?.type === 'BOOLEAN' ? d.valeurBool : d.valeur;
+                return val !== undefined && val !== null && String(val).trim() !== '';
+            });
+
+        return (this.allPieces || []).filter(p => {
+            // Exclude the piece being edited
+            if (p.id && currentId && p.id === currentId) return false;
+
+            const pDesig = (p.designation || '').toLowerCase().trim();
+
+            // Match designation (strict or fuzzy)
+            const designationMatch = pDesig === designation || pDesig.includes(designation) || designation.includes(pDesig);
+            if (!designationMatch) return false;
+
+            // Match category if selected
+            if (categorieId && p.categorie?.id && p.categorie.id !== categorieId) {
+                return false;
+            }
+
+            // Match attributes (details)
+            if (currentDetails.length > 0) {
+                for (const currentDetail of currentDetails) {
+                    const paramId = currentDetail.parametre?.id;
+                    const paramNom = currentDetail.parametreNom || currentDetail.parametre?.nom;
+                    
+                    const candidateDetail = p.details?.find(d => 
+                        (paramId && d.parametre?.id === paramId) || 
+                        (paramNom && (d.parametreNom === paramNom || d.parametre?.nom === paramNom))
+                    );
+
+                    if (!candidateDetail) return false; 
+
+                    const currentVal = currentDetail.parametre?.type === 'BOOLEAN' ? currentDetail.valeurBool : String(currentDetail.valeur).trim().toLowerCase();
+                    const candidateVal = candidateDetail.parametre?.type === 'BOOLEAN' ? candidateDetail.valeurBool : String(candidateDetail.valeur).trim().toLowerCase();
+
+                    if (currentVal !== candidateVal) return false;
+                }
+            }
+
+            return true;
+        });
+    }
+
+    private checkForDuplicates(): void {
+        this.potentialDuplicates = this.getPotentialDuplicates();
+        this.cdr.detectChanges();
+    }
+
+    dismissDuplicateWarning(): void {
+        this.dismissedDuplicateWarning = true;
+        this.cdr.detectChanges();
+    }
+    // =================================================================
 
     getThresholdError(): string | null {
         const sMin = Number(this.newPiece.seuilMinimum || 0);
@@ -255,6 +349,18 @@ export class PieceFormComponent implements OnInit, OnChanges, OnDestroy {
 
     onSubmit(): void {
         this.submitted = true;
+
+        // Perform a fresh sync check to be sure (especially for creation)
+        this.potentialDuplicates = this.getPotentialDuplicates();
+
+        if (this.potentialDuplicates.length > 0) {
+            this.showDuplicateErrorOnSubmit = true;
+            this.errorMessage = "Impossible d'enregistrer : Cette pièce existe déjà dans votre catalogue.";
+            this.scrollToTop();
+            this.cdr.detectChanges();
+            return;
+        }
+
         if (!this.isFormValid()) {
             this.errorMessage = "Veuillez corriger les erreurs dans le formulaire avant de continuer.";
             this.scrollToTop();

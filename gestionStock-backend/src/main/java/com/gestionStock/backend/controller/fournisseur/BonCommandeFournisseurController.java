@@ -25,6 +25,12 @@ public class BonCommandeFournisseurController {
         return service.getAll();
     }
 
+    @GetMapping("/stats")
+    @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE', 'AUDITEUR', 'ADMINISTRATEUR')")
+    public List<BonCommandeFournisseur> getAllForEnterprise() {
+        return service.getAllForEnterprise();
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('RESPONSABLE_LOGISTIQUE', 'AUDITEUR', 'ADMINISTRATEUR')")
     public ResponseEntity<BonCommandeFournisseur> getById(@PathVariable Long id) {

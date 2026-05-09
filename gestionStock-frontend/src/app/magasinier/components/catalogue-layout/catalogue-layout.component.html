@@ -4,7 +4,6 @@
         <span class="msg">{{ notification.message }}</span>
         <button class="close-btn" (click)="notification = null">✕</button>
     </div>
-
     <div class="header-section">
         <div class="header-left">
             <h1>
@@ -22,11 +21,11 @@
             <div class="search-box">
                 <div class="search-input-wrapper">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        stroke="currentColor" stroke-width="2">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-                    <input type="text" [(ngModel)]="searchTerm" (input)="filterItems()"
+                    <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="filterItems()"
                         placeholder="Rechercher dans le catalogue...">
                 </div>
                 <select class="category-select" [(ngModel)]="searchCategory" (change)="filterItems()">
@@ -34,10 +33,10 @@
                     <option value="designation">Désignation</option>
                     <option value="code">Code/Réf</option>
                 </select>
-                <button class="filter-toggle-btn" [class.active]="showAdvancedFilters" (click)="toggleAdvancedFilters()"
-                    title="Filtres avancés">
+                <button class="filter-toggle-btn" [class.active]="showAdvancedFilters"
+                    (click)="showAdvancedFilters = !showAdvancedFilters">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        stroke="currentColor" stroke-width="2">
                         <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
                     </svg>
                     <span>Filtres</span>
@@ -55,53 +54,78 @@
         </div>
     </div>
 
-    <div class="advanced-filters-panel" [class.show]="showAdvancedFilters">
-        <div class="filters-grid">
-            <div class="filter-group" *ngIf="activeTab === 'pieces'">
-                <label>Catégorie</label>
-                <select [(ngModel)]="filterCategory" (change)="filterItems()">
-                    <option value="all">Toutes les catégories</option>
-                    <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
-                </select>
-            </div>
-
-            <div class="filter-group" *ngIf="activeTab === 'pieces'">
-                <label>État du Stock</label>
-                <select [(ngModel)]="filterStockStatus" (change)="filterItems()">
-                    <option value="all">Tous les états</option>
-                    <option value="available">Disponible</option>
-                    <option value="low">Stock Faible</option>
-                    <option value="out">Rupture de Stock</option>
-                </select>
-            </div>
-
-            <div class="filter-group" *ngIf="activeTab === 'pieces'">
-                <label>Prix (Min - Max)</label>
-                <div class="range-inputs">
-                    <input type="number" [(ngModel)]="minPrice" (input)="filterItems()"
-                        [placeholder]="'Min ' + currencySymbol">
-                    <span class="range-sep">-</span>
-                    <input type="number" [(ngModel)]="maxPrice" (input)="filterItems()"
-                        [placeholder]="'Max ' + currencySymbol">
+        <div class="filter-panel-premium" *ngIf="showAdvancedFilters">
+            <div class="filter-grid-premium">
+                <div class="filter-group category-search-group" *ngIf="activeTab === 'pieces'">
+                    <label class="filter-label">Catégorie</label>
+                    <div class="searchable-select-wrapper">
+                        <input type="text" [(ngModel)]="catSearchTerm" (focus)="showCatSuggestions = true"
+                            (input)="filterCategoriesList()" placeholder="Rechercher une Catégorie..."
+                            class="premium-input search-cat-input">
+                        <div class="suggestions-dropdown" *ngIf="showCatSuggestions && filteredCategories.length > 0">
+                            <div class="suggestion-item" (click)="selectCategory('all')">Toutes les Catégories</div>
+                            <div class="suggestion-item" *ngFor="let cat of filteredCategories"
+                                (click)="selectCategory(cat.nom || '')">
+                                {{ cat.nom }}
+                            </div>
+                        </div>
+                        <svg class="select-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="m6 9 6 6 6-6" />
+                        </svg>
+                    </div>
                 </div>
-            </div>
 
-            <div class="filter-group" *ngIf="activeTab === 'produits'">
-                <label>Contient la pièce</label>
-                <input type="text" [(ngModel)]="filterPieceSearch" (input)="filterItems()"
-                    placeholder="Désignation ou réf. pièce...">
-            </div>
+                <div class="filter-group" *ngIf="activeTab === 'pieces'">
+                    <label class="filter-label">État du Stock</label>
+                    <select [(ngModel)]="filterStockStatus" (ngModelChange)="filterItems()" class="premium-input">
+                        <option value="all">Tous les états</option>
+                        <option value="available">Disponible</option>
+                        <option value="low">Stock Faible</option>
+                        <option value="out">Rupture de Stock</option>
+                    </select>
+                </div>
 
-            <div class="filter-actions">
-                <button class="btn-reset-filters" (click)="resetFilters(); filterItems()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-                        <path d="M3 3v5h5"></path>
-                    </svg>
-                    Réinitialiser
-                </button>
-            </div>
+                <div class="filter-group" *ngIf="activeTab === 'pieces'">
+                    <label class="filter-label">Prix Min (DH)</label>
+                    <input type="number" [(ngModel)]="minPrice" (ngModelChange)="filterItems()" placeholder="Min"
+                        class="premium-input">
+                </div>
+
+                <div class="filter-group" *ngIf="activeTab === 'pieces'">
+                    <label class="filter-label">Prix Max (DH)</label>
+                    <input type="number" [(ngModel)]="maxPrice" (ngModelChange)="filterItems()" placeholder="Max"
+                        class="premium-input">
+                </div>
+
+                <div class="filter-group" *ngIf="activeTab === 'produits'">
+                    <label class="filter-label">Contient la pièce</label>
+                    <input type="text" [(ngModel)]="filterPieceSearch" (ngModelChange)="filterItems()"
+                        placeholder="Désignation ou réf. pièce..." class="premium-input">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Trier par</label>
+                    <select [(ngModel)]="sortOption" (ngModelChange)="filterItems()" class="premium-input">
+                        <option value="designation_asc">Nom (A-Z)</option>
+                        <option value="designation_desc">Nom (Z-A)</option>
+                        <option value="price_asc" *ngIf="activeTab === 'pieces'">Prix croissant</option>
+                        <option value="price_desc" *ngIf="activeTab === 'pieces'">Prix décroissant</option>
+                        <option value="stock_asc" *ngIf="activeTab === 'pieces'">Stock croissant</option>
+                        <option value="stock_desc" *ngIf="activeTab === 'pieces'">Stock décroissant</option>
+                    </select>
+                </div>
+
+                <div class="filter-actions-premium">
+                    <button class="btn-reset-filters" (click)="resetFilters()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                            <path d="M3 3v5h5" />
+                        </svg>
+                        Réinitialiser
+                    </button>
+                </div>
         </div>
     </div>
 
