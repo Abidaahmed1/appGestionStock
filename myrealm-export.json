@@ -30,8 +30,8 @@
             "credentials": [
                 {
                     "type": "password",
-                    "value": "admin",
-                    "temporary": false
+                    "value": "CHANGE_ME_ON_FIRST_LOGIN",
+                    "temporary": true
                 }
             ],
             "realmRoles": [
